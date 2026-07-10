@@ -1,0 +1,25 @@
+:root {
+
+    /* Colors */
+
+    --space: #050816;
+    --surface: #10192e;
+    --surface-light: #162340;
+
+    --primary: #49C7FF;
+    --secondary: #6EF3A5;
+    --accent: #7566FF;
+
+    --text: #F5F7FA;
+    --text-muted: #AAB5C5;
+
+    /* Radius */
+
+    --radius: 20px;
+
+    /* Shadows */
+
+    --glow:
+        0 0 25px rgba(73, 199, 255, .35);
+
+}
