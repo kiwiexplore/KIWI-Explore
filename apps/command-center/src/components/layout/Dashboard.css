@@ -69,3 +69,16 @@
     margin-bottom: 40px;
 
 }
+
+.command-output {
+    margin-top: 15px;
+    padding: 15px;
+
+    background: #111827;
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+
+    color: #7dd3fc;
+
+    width: 600px;
+}

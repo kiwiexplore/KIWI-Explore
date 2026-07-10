@@ -1,0 +1,27 @@
+.command-bar {
+
+    width: 80%;
+
+    margin-top: 40px;
+
+}
+
+.command-bar input {
+
+    width: 100%;
+
+    padding: 18px;
+
+    background: #10192e;
+
+    border: 1px solid #49C7FF;
+
+    border-radius: 18px;
+
+    color: white;
+
+    font-size: 18px;
+
+    outline: none;
+
+}
