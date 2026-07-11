@@ -1,7 +1,7 @@
 import StatusBar from "./StatusBar";
 import TopBar from "./TopBar";
 import Widget from "../widget/Widget";
-import Brain from "../brain/Brain";
+import BrainSystem from "../brain/BrainSystem";
 import { defaultWidgets } from "../../state/widgets";
 import "./Dashboard.css";
 
@@ -24,7 +24,7 @@ export default function Dashboard() {
                 </aside>
 
                 <section className="hq-center">
-                    <Brain />
+                    <BrainSystem />
                 </section>
 
                 <aside className="hq-panel hq-panel--right">

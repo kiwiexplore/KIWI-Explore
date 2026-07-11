@@ -2,11 +2,19 @@
 
     width: 100%;
 
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
 }
 
 .command-bar input {
 
-    width: 100%;
+    flex: 1;
+
+    min-width: 0;
 
     padding: 12px 18px;
 
@@ -23,6 +31,34 @@
     outline: none;
 
     box-sizing: border-box;
+
+}
+
+.command-bar button {
+
+    flex-shrink: 0;
+
+    padding: 12px 20px;
+
+    background: var(--primary);
+
+    border: none;
+
+    border-radius: var(--radius);
+
+    color: var(--space);
+
+    font-weight: bold;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+}
+
+.command-bar button:hover {
+
+    filter: brightness(1.1);
 
 }
 
