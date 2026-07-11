@@ -13,16 +13,19 @@ export const defaultWidgets: WidgetDefinition[] = [
     {
         id: "space-news",
         title: "🚀 Space News",
+        column: "left",
         body: "No data available.",
     },
     {
         id: "ai-news",
         title: "🤖 AI News",
+        column: "left",
         body: "No data available.",
     },
     {
         id: "projects",
         title: "📁 Projects",
+        column: "right",
         body: "No active projects.",
     },
 ];

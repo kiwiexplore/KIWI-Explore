@@ -13,38 +13,20 @@
     --text: #F5F7FA;
     --text-muted: #AAB5C5;
 
+    --danger: #FF4F6D;
+    --border: #223457;
+
     /* Radius */
 
     --radius: 20px;
+
+    /* Transitions */
+
+    --transition: 0.25s ease;
 
     /* Shadows */
 
     --glow:
         0 0 25px rgba(73, 199, 255, .35);
 
-    :root {
-
-        --background: #05070d;
-
-        --surface: #0b1220;
-
-        --surface-light: #151f34;
-
-        --primary: #3cffb4;
-
-        --secondary: #46b6ff;
-
-        --text: #f5f7fa;
-
-        --text-muted: #8e9aac;
-
-        --danger: #ff4f6d;
-
-        --border: #1e2b45;
-
-        --radius: 12px;
-
-        --transition: 0.25s ease;
-
-    }
 }

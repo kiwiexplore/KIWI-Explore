@@ -1,84 +1,59 @@
 .dashboard {
+
     min-height: 100vh;
-    background: #070b18;
-    color: white;
+
+    background: var(--space);
+
+    color: var(--text);
 
     display: flex;
+
     flex-direction: column;
 
     align-items: center;
+
 }
 
-.topbar {
-    padding: 30px;
-}
+.hq-grid {
 
-.topbar h1 {
-    font-size: 48px;
-}
-
-.brain-section {
-    margin-top: 20px;
-    margin-bottom: 60px;
-}
-
-.widgets {
-
-    width: 90%;
+    width: 95%;
 
     display: grid;
 
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 2fr 1fr;
 
-    gap: 20px;
+    gap: 24px;
 
-    margin-bottom: 60px;
+    align-items: start;
+
+    margin: 30px 0 40px;
 
 }
 
-.widget {
-
-    background: #10192e;
-
-    border: 1px solid #223457;
-
-    border-radius: 20px;
-
-    min-height: 170px;
+.hq-panel {
 
     display: flex;
 
+    flex-direction: column;
+
+    gap: 20px;
+
+}
+
+.hq-panel .panel {
+
+    min-height: 170px;
+
+}
+
+.hq-center {
+
+    display: flex;
+
+    flex-direction: column;
+
     align-items: center;
 
-    justify-content: center;
+    gap: 30px;
 
-}
-
-.command-bar {
-
-    width: 80%;
-
-    background: #10192e;
-
-    border-radius: 20px;
-
-    padding: 25px;
-
-    text-align: center;
-
-    margin-bottom: 40px;
-
-}
-
-.command-output {
-    margin-top: 15px;
-    padding: 15px;
-
-    background: #111827;
-    border: 1px solid #2d3748;
-    border-radius: 10px;
-
-    color: #7dd3fc;
-
-    width: 600px;
 }

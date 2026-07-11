@@ -1,39 +1,39 @@
 import StatusBar from "./StatusBar";
-import CommandTest from "../../features/command/CommandTest";
-import CommandBar from "./CommandBar";
+import TopBar from "./TopBar";
 import Widget from "../widget/Widget";
 import Brain from "../brain/Brain";
 import { defaultWidgets } from "../../state/widgets";
 import "./Dashboard.css";
 
 export default function Dashboard() {
+
+    const leftWidgets = defaultWidgets.filter((w) => w.column !== "right");
+    const rightWidgets = defaultWidgets.filter((w) => w.column === "right");
+
     return (
         <main className="dashboard">
 
-            <header className="topbar">
-                <h1>KIWI HQ</h1>
+            <TopBar />
 
-                <StatusBar />
-            </header>
+            <section className="hq-grid">
 
-            <section className="brain-section">
-                <Brain />
+                <aside className="hq-panel hq-panel--left">
+                    {leftWidgets.map((widget) => (
+                        <Widget key={widget.id} definition={widget} />
+                    ))}
+                </aside>
+
+                <section className="hq-center">
+                    <Brain />
+                </section>
+
+                <aside className="hq-panel hq-panel--right">
+                    {rightWidgets.map((widget) => (
+                        <Widget key={widget.id} definition={widget} />
+                    ))}
+                </aside>
 
             </section>
-
-            <section className="widgets">
-
-                <CommandTest />
-
-                {defaultWidgets.map((widget) => (
-                    <Widget key={widget.id} definition={widget} />
-                ))}
-
-            </section>
-
-            <footer className="command-bar">
-                <CommandBar />
-            </footer>
 
             <StatusBar />
 
