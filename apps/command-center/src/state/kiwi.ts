@@ -1,13 +1,39 @@
-export const kiwi = {
+export interface KiwiState {
 
-    online: true,
+    version: string;
 
-    listening: false,
+    status: string;
 
-    thinking: false,
+    activeModule: string;
 
-    memory: true,
+    lastCommand: string;
 
-    version: "0.0.2",
+}
+
+export const kiwiState: KiwiState = {
+
+    version: "0.0.3",
+
+    status: "Online",
+
+    activeModule: "Dashboard",
+
+    lastCommand: "",
 
 };
+
+export function setStatus(status: string) {
+    kiwiState.status = status;
+}
+
+export function setActiveModule(module: string) {
+    kiwiState.activeModule = module;
+}
+
+export function setLastCommand(command: string) {
+    kiwiState.lastCommand = command;
+}
+
+export function getState() {
+    return kiwiState;
+}

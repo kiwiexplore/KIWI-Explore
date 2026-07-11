@@ -1,3 +1,4 @@
+import Panel from "../ui/Panel";
 import StatusBar from "./StatusBar";
 import CommandTest from "../../features/command/CommandTest";
 import CommandBar from "./CommandBar";
@@ -23,23 +24,25 @@ export default function Dashboard() {
 
                 <CommandTest />
 
-                <div className="widget">
-                    Space News
-                </div>
+                <Panel title="🚀 Space News">
+                    No data available.
+                </Panel>
 
-                <div className="widget">
-                    AI News
-                </div>
+                <Panel title="🤖 AI News">
+                    No data available.
+                </Panel>
 
-                <div className="widget">
-                    Projects
-                </div>
+                <Panel title="📁 Projects">
+                    No active projects.
+                </Panel>
 
             </section>
 
             <footer className="command-bar">
                 <CommandBar />
             </footer>
+
+            <StatusBar />
 
         </main>
     );
