@@ -28,6 +28,10 @@ The central AI entity is called KIWI.
 - React
 - TypeScript
 - Vite
+- Tailwind CSS
+- Zustand (state management — chosen because CommandEngine and future
+  services need to read/write shared state from outside React
+  components, which plain React Context cannot do)
 - CSS
 - Git
 - GitHub

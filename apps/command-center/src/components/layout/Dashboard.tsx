@@ -1,9 +1,10 @@
-import Panel from "../ui/Panel";
 import StatusBar from "./StatusBar";
 import CommandTest from "../../features/command/CommandTest";
 import CommandBar from "./CommandBar";
-import "./Dashboard.css";
+import Widget from "../widget/Widget";
 import Brain from "../brain/Brain";
+import { defaultWidgets } from "../../state/widgets";
+import "./Dashboard.css";
 
 export default function Dashboard() {
     return (
@@ -24,17 +25,9 @@ export default function Dashboard() {
 
                 <CommandTest />
 
-                <Panel title="🚀 Space News">
-                    No data available.
-                </Panel>
-
-                <Panel title="🤖 AI News">
-                    No data available.
-                </Panel>
-
-                <Panel title="📁 Projects">
-                    No active projects.
-                </Panel>
+                {defaultWidgets.map((widget) => (
+                    <Widget key={widget.id} definition={widget} />
+                ))}
 
             </section>
 
