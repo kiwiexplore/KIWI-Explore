@@ -14,7 +14,7 @@ export default function BrainSystem() {
         <div className="brain-system">
 
             <div className="brain-system-ring">
-                <OrbitRing modules={orbitModules} />
+                <OrbitRing modules={orbitModules} radius={260} innerRadius={180} />
             </div>
 
             <div className="brain-system-core">

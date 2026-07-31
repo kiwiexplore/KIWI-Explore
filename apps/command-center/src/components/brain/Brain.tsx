@@ -1,3 +1,4 @@
+import NeuralCore from "./NeuralCore";
 import "./Brain.css";
 
 export default function Brain() {
@@ -6,9 +7,9 @@ export default function Brain() {
 
             <div className="brain-core">
 
-                <div className="core-glow"></div>
+                <NeuralCore />
 
-                <div className="core-center">
+                <div className="core-label">
                     KIWI
                 </div>
 

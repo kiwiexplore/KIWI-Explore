@@ -1,5 +1,5 @@
-import Dashboard from "./components/layout/Dashboard";
+import BrainScene3D from "./components/brain/BrainScene3D";
 
 export default function App() {
-  return <Dashboard />;
-}
+  return <BrainScene3D />;
+} 
