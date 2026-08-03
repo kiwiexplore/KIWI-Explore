@@ -1,0 +1,27 @@
+.voice-bar {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    width: 100%;
+    max-width: 420px;
+
+    padding: 12px 32px;
+
+    background: radial-gradient(circle at 32% 28%, #172848, #0b1220 72%);
+
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+
+    box-shadow:
+        0 0 14px rgba(73, 199, 255, .35),
+        inset 0 0 10px rgba(73, 199, 255, .15);
+
+    color: var(--text-muted);
+    font-size: 14px;
+
+    white-space: nowrap;
+
+}
