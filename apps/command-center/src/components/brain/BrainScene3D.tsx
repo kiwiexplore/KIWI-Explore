@@ -10,6 +10,8 @@ import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import SignUpForm from "../ui/SignUpForm";
 import ProfileSettings from "../ui/ProfileSettings";
 import InfoPanel from "../ui/InfoPanel";
+import WeatherWidget from "./WeatherWidget";
+import SpaceNewsWidget from "./SpaceNewsWidget";
 import { leftWidgets, rightWidgets, bottomWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import milkyWayPhoto from "../../assets/milky-way-background.jpg";
@@ -109,6 +111,13 @@ export default function BrainScene3D() {
         setDetail({ title: w.title, body, anchor });
     };
 
+    // Shared by the live-data widgets (Weather, Space News) — they build
+    // their own detail body (forecast/article list) internally, unlike
+    // the placeholder widgets above whose body is just static text.
+    const openDetail = (title: string, anchor: { x: number; y: number }, body: ReactNode, maxHeight?: number) => {
+        setDetail({ title, anchor, body, maxHeight });
+    };
+
     const handleSignInClick = (event: MouseEvent<HTMLElement>) => {
         const anchor = anchorFromEvent(event);
         setDetail({
@@ -170,11 +179,15 @@ export default function BrainScene3D() {
             >
                 <aside className="side-widget-column">
                     {leftWidgets.map((w) => (
-                        <Widget
-                            key={w.id}
-                            definition={w}
-                            onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
-                        />
+                        w.id === "weather"
+                            ? <WeatherWidget key={w.id} onOpenDetail={openDetail} />
+                            : (
+                                <Widget
+                                    key={w.id}
+                                    definition={w}
+                                    onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                                />
+                            )
                     ))}
                 </aside>
 
@@ -214,10 +227,14 @@ export default function BrainScene3D() {
             <div className="bottom-widget-row">
                 {bottomWidgets.map((w) => (
                     <div key={w.id} className="bottom-widget-item">
-                        <Widget
-                            definition={w}
-                            onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
-                        />
+                        {w.id === "space-news"
+                            ? <SpaceNewsWidget onOpenDetail={openDetail} />
+                            : (
+                                <Widget
+                                    definition={w}
+                                    onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                                />
+                            )}
                     </div>
                 ))}
             </div>
