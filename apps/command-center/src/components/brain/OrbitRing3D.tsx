@@ -19,7 +19,7 @@ import { brainAdjacency } from "./brainTopology";
 import { getDotTexture, getHazeTexture } from "./dotTexture";
 import "./OrbitRing3D.css";
 
-const RADIUS_X = 1.58;
+const RADIUS_X = 1.48;
 // Flattened vertically relative to RADIUS_X — a true oval rather than a
 // near-circle — so the ring's top/bottom icons sit closer to the brain
 // than its left/right icons, fitting inside the available vertical space
@@ -27,7 +27,7 @@ const RADIUS_X = 1.58;
 // downward shift of the whole scene to compensate. Not too flattened
 // though — kept fairly close to RADIUS_X so it still reads as a rounded
 // oval rather than a squashed ellipse.
-const RADIUS_Y = 1.22;
+const RADIUS_Y = 1.15;
 // Nudges the ring + icons up relative to the brain — only the ring's own
 // curve and the icons' anchor points, NOT the brain itself (that lives
 // in a sibling group) and NOT the branch targets (real brain node
@@ -197,6 +197,21 @@ function pointOnBranch(
 }
 
 const PARTICLES_PER_BRANCH = AMBIENT_PARTICLES / 3;
+
+// A particle's position wraps instantly from the target (t=1) back to
+// the icon (t=0) every cycle — pointOnBranch(t=0) IS the icon and
+// pointOnBranch(t=1) IS the target, so that's a full-length teleport,
+// not a gradual move. The hover line's trunk vertices used to render at
+// a flat, constant brightness (see IconEnergyLink's doc comment), so
+// that teleport was fully visible once a hovered branch's line snapped
+// across its whole length for a frame. Fading briefly right at the very
+// ends of the cycle (not a "breathing" fade through the whole thing —
+// just the last/first 8%) hides the teleport without reintroducing the
+// flicker a fuller fade cycle read as earlier.
+const EDGE_FADE_WIDTH = 0.08;
+function edgeFade(t: number): number {
+    return Math.min(smoothstep(0, EDGE_FADE_WIDTH, t), 1 - smoothstep(1 - EDGE_FADE_WIDTH, 1, t));
+}
 
 /**
  * One icon's connection into the brain has two parts:
@@ -369,6 +384,7 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                 } else if (n <= PARTICLES_PER_BRANCH) {
                     const live = particlesLive.current[b][n - 1];
                     px = live.x; py = live.y; pz = live.z;
+                    brightness = edgeFade(live.t);
                 } else {
                     const k = n - 1 - PARTICLES_PER_BRANCH;
                     nodeIdx = path[k];
@@ -660,7 +676,7 @@ function BranchWeb({ positioned }: { positioned: Positioned[] }) {
                 <bufferGeometry>
                     <bufferAttribute attach="attributes-position" args={[linePositions, 3]} />
                 </bufferGeometry>
-                <lineBasicMaterial color="#6fd4ff" transparent opacity={0.35} />
+                <lineBasicMaterial color="#6fd4ff" transparent opacity={0.2} />
             </lineSegments>
             <points ref={hazeRef}>
                 <bufferGeometry>

@@ -201,7 +201,7 @@ export default function BrainScene3D() {
                             space, a uniform scale here preserves exactly the
                             same icon-to-brain gap, just bigger, rather than
                             needing to separately recompute icon distances. */}
-                        <group scale={1.22} position={[0, -0.22, 0]}>
+                        <group scale={1.27} position={[0, -0.22, 0]}>
                             <BrainSystem3D onPulseReady={setPulseLines} />
                             <OrbitRing3D
                                 onHoverLinesReady={setHoverLines}
