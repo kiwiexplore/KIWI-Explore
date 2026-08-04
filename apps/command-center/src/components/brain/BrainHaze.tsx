@@ -3,7 +3,16 @@ import { useFrame } from "@react-three/fiber";
 import { AdditiveBlending, type BufferAttribute, type Points } from "three";
 import { brainSwirlColor } from "./brainColor";
 import { connectionPositions } from "./connectionGeometry";
+import { NECK_ZONE_Y } from "./keptNodes";
 import { getHazeTexture } from "./dotTexture";
+
+// Deterministic hash (not Math.random — must stay pure since this runs
+// inside a useMemo initializer during render), used only to jitter the
+// neck's duplicated haze samples apart from their originals.
+function hash(i: number): number {
+    const s = Math.sin(i * 12.9898) * 43758.5453;
+    return s - Math.floor(s);
+}
 
 /**
  * A soft "space smoke" layer sampled from ALONG the actual rendered
@@ -48,6 +57,27 @@ export default function BrainHaze() {
                 mx, my, mz,
                 (mx + bx) / 2, (my + by) / 2, (mz + bz) / 2,
             );
+
+            // The neck/stem has far fewer raw connections than the dense
+            // main lobes (see keptNodes.ts's NECK_ZONE_Y comments), so
+            // sampling "3 points per connection" the same way everywhere
+            // leaves the neck visibly thinner on haze even though it's
+            // covered by the same rule — there just aren't as many
+            // connections there to sample from. Duplicating each
+            // neck-zone connection's 3 points a couple extra times (with
+            // a small jitter so they don't render as exact stacked
+            // duplicates) brings its haze density up in line with the
+            // main mass instead of leaving it looking bald.
+            if (my < NECK_ZONE_Y) {
+                for (let d = 0; d < 2; d++) {
+                    const j = (n: number) => (hash(i + d * 7 + n) - 0.5) * 0.05;
+                    kept.push(
+                        (ax + mx) / 2 + j(1), (ay + my) / 2 + j(2), (az + mz) / 2 + j(3),
+                        mx + j(4), my + j(5), mz + j(6),
+                        (mx + bx) / 2 + j(7), (my + by) / 2 + j(8), (mz + bz) / 2 + j(9),
+                    );
+                }
+            }
         }
         return new Float32Array(kept);
     }, []);

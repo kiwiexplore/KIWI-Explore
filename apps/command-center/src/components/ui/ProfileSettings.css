@@ -1,0 +1,98 @@
+.profile-settings {
+
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+}
+
+.profile-settings-avatar-row {
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+}
+
+.profile-settings-avatar {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 48px;
+    height: 48px;
+
+    border-radius: 50%;
+
+    background: rgba(73, 199, 255, .12);
+    border: 1px solid var(--primary);
+
+    color: var(--primary);
+
+}
+
+.profile-settings-avatar-hint {
+
+    font-size: 12px;
+    color: var(--text-muted);
+
+}
+
+.profile-settings-section {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 12px 14px;
+
+    background: rgba(5, 8, 22, 0.45);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+}
+
+.profile-settings-section-label {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+
+}
+
+.profile-settings-section-hint {
+
+    font-size: 11px;
+    color: var(--text-muted);
+
+}
+
+.profile-settings-signout {
+
+    margin-top: 4px;
+    padding: 9px 14px;
+
+    background: transparent;
+    border: 1px solid var(--danger);
+    border-radius: 10px;
+
+    color: var(--danger);
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.profile-settings-signout:hover {
+
+    background: rgba(255, 79, 109, .12);
+
+}

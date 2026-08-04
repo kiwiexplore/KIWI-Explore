@@ -16,15 +16,31 @@ import { brainNodes3D } from "../../state/neuralNetwork3D";
 import { brainSwirlColor } from "./brainColor";
 import { KEPT_NODE_INDICES } from "./keptNodes";
 import { brainAdjacency } from "./brainTopology";
-import { getDotTexture } from "./dotTexture";
+import { getDotTexture, getHazeTexture } from "./dotTexture";
 import "./OrbitRing3D.css";
 
-const RADIUS = 1.48;
+const RADIUS_X = 1.58;
+// Flattened vertically relative to RADIUS_X — a true oval rather than a
+// near-circle — so the ring's top/bottom icons sit closer to the brain
+// than its left/right icons, fitting inside the available vertical space
+// (between the top bar and the bottom widget row) without needing a big
+// downward shift of the whole scene to compensate. Not too flattened
+// though — kept fairly close to RADIUS_X so it still reads as a rounded
+// oval rather than a squashed ellipse.
+const RADIUS_Y = 1.22;
+// Nudges the ring + icons up relative to the brain — only the ring's own
+// curve and the icons' anchor points, NOT the brain itself (that lives
+// in a sibling group) and NOT the branch targets (real brain node
+// positions, found independently via `target` in layoutModules below) —
+// applied inside ringPointAt so both RingConnections (the curve) and
+// layoutModules (icon placement) shift together and stay on the same
+// curve.
+const RING_Y_OFFSET = 0.15;
 const INNER_RADIUS = 0.65; // how deep into the brain's volume the connection reaches, not just its outer surface
 const FORK_T = 0.6; // fraction of the journey that's a shared trunk before it splits into branches
 const AMBIENT_PARTICLES = 9; // 3 per branch — the calm, always-on hint
 const HOVER_PATH_LENGTH = 14; // brain nodes the hover pulse hops across, past the entry point
-const DRIFT_SPEED = 0.16; // loops per second — slow, magical, not a fast dash
+const DRIFT_SPEED = 0.08; // loops per second — halved per explicit request, even slower/more magical
 // The graph-walk continuation (the part that actually lights up brain
 // nodes past the entry point) cycles through the same fade-in/hold/
 // fade-out envelope as EnergyLayer's own pulses — the icon-to-entry
@@ -70,19 +86,29 @@ function findNearestKeptNodes(target: [number, number, number], count: number): 
     return scored.slice(0, count).map((s) => s.idx);
 }
 
+// A plain, symmetric oval — a true ellipse via RADIUS_X/RADIUS_Y, no
+// extra top/bottom distortion on top of that (an earlier version pulled
+// the bottom in and pushed the top out unevenly, which read as
+// lopsided). Shared by layoutModules (icon positions) AND
+// RingConnections (the connecting curve itself), sampled continuously
+// there instead of just at the 10 icon angles — that's what makes the
+// ring actually read as smoothly round instead of a faceted decagon,
+// while icons still sit exactly on it since both use this same formula.
+// Returns a point directly (not a scalar radius) since X and Y don't
+// share one radius.
+function ringPointAt(angle: number): [number, number] {
+    return [Math.cos(angle) * RADIUS_X, Math.sin(angle) * RADIUS_Y + RING_Y_OFFSET];
+}
+
 function layoutModules(): Positioned[] {
     const n = orbitModules.length;
     const step = (2 * Math.PI) / n;
 
     return orbitModules.map((module, i) => {
         const angle = step * i - Math.PI / 2;
-        // The ring reads as slightly egg-shaped rather than circular —
-        // pull the bottom icons in a bit and push the top ones out a
-        // touch to compensate, rather than a uniform radius.
         const yFactor = Math.sin(angle);
-        const radiusScale = yFactor < 0 ? 1 + yFactor * 0.18 : 1 + yFactor * 0.06;
-        const iconRadius = RADIUS * radiusScale;
-        const outer: [number, number, number] = [Math.cos(angle) * iconRadius, Math.sin(angle) * iconRadius, 0];
+        const [ox, oy] = ringPointAt(angle);
+        const outer: [number, number, number] = [ox, oy, 0];
         // Roughly where this icon's energy reaches toward — real, visible
         // brain nodes well inside the brain's volume along this icon's
         // angle (not just grazing its outer surface), used as fork
@@ -170,6 +196,8 @@ function pointOnBranch(
     ];
 }
 
+const PARTICLES_PER_BRANCH = AMBIENT_PARTICLES / 3;
+
 /**
  * One icon's connection into the brain has two parts:
  *
@@ -178,27 +206,24 @@ function pointOnBranch(
  *    each reaching a different real, currently-visible brain node, like
  *    a lightning bolt forking near its end rather than a single wire.
  *
- * 2. On hover, ONE bright line — a single branch (not a fork), but built
- *    by threading through the CURRENT positions of ALL 9 ambient
- *    particles (forced onto branch 0's curve regardless of which prong
- *    they're each nominally drifting along, since that curve is
- *    identical for all of them up to the fork point anyway), read
- *    straight out of the same values ambientPoints is writing this frame
- *    — so the strand moves exactly as those particles drift and visibly
- *    threads through every one of them, not just a subset. Past the
- *    entry node it keeps going via a random walk across the brain's real
- *    graph adjacency (see brainTopology), nudging pulseBoost at each
- *    node it passes. Unlike EnergyLayer's internal pulses, this one does
- *    NOT fade in/out or travel as a comet — it just lights up at full
- *    brightness for as long as the icon is hovered, per feedback that a
- *    fade cycle read as "flickering" rather than a steady connection.
+ * 2. On hover, THREE bright lines — one per prong, not just branch 0 —
+ *    each built by threading through the CURRENT positions of that
+ *    prong's own 3 ambient particles, read straight out of the same
+ *    values ambientPoints is writing this frame — so each strand moves
+ *    exactly as its particles drift. Past its own entry node each keeps
+ *    going via its own random walk across the brain's real graph
+ *    adjacency (see brainTopology), nudging pulseBoost at each node it
+ *    passes. Unlike EnergyLayer's internal pulses, none of the three
+ *    fade in/out or travel as a comet on their trunk — they light up at
+ *    full brightness for as long as the icon is hovered, per feedback
+ *    that a fade cycle read as "flickering" rather than a steady
+ *    connection (only the graph-walk tail past the entry node breathes).
  */
 function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }: IconEnergyLinkProps) {
     const branches = useMemo<[number, number, number][]>(
         () => branchIndices.map((idx) => [brainNodes3D[idx * 3], brainNodes3D[idx * 3 + 1], brainNodes3D[idx * 3 + 2]]),
         [branchIndices],
     );
-    const entryIdx = branchIndices[0];
 
     // Each ambient particle is permanently assigned to one of the 3
     // prongs (round-robin) so the fork is always evenly populated.
@@ -223,39 +248,40 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
         return [new ThreePoints(geometry, material)];
     }, []);
 
-    // Single strand: icon + all 9 ambient particles' live positions +
-    // the graph-walk continuation past the entry node. Wrapped in a
-    // 1-element array (not a bare object) so it can be mutated inside
-    // useFrame via a .forEach callback parameter — mutating the raw
-    // useMemo result directly trips the react-hooks/immutability rule.
+    // Three strands, one per branch: icon + that branch's own 3 ambient
+    // particles' live positions + a graph-walk continuation past that
+    // branch's own entry node.
     const hoverLines = useMemo(() => {
-        const pointCount = 1 + AMBIENT_PARTICLES + HOVER_PATH_LENGTH;
-        const geometry = new BufferGeometry();
-        geometry.setAttribute("position", new BufferAttribute(new Float32Array(pointCount * 3), 3));
-        geometry.setAttribute("color", new BufferAttribute(new Float32Array(pointCount * 3), 3));
-        const material = new LineBasicMaterial({
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.95,
-            blending: AdditiveBlending,
+        const pointCount = 1 + PARTICLES_PER_BRANCH + HOVER_PATH_LENGTH;
+        return Array.from({ length: 3 }, () => {
+            const geometry = new BufferGeometry();
+            geometry.setAttribute("position", new BufferAttribute(new Float32Array(pointCount * 3), 3));
+            geometry.setAttribute("color", new BufferAttribute(new Float32Array(pointCount * 3), 3));
+            const material = new LineBasicMaterial({
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.95,
+                blending: AdditiveBlending,
+            });
+            return new ThreeLine(geometry, material);
         });
-        return [new ThreeLine(geometry, material)];
     }, []);
 
     useEffect(() => {
-        onHoverLineReady?.(hoverLines[0]);
+        hoverLines.forEach((ln) => onHoverLineReady?.(ln));
     }, [hoverLines, onHoverLineReady]);
 
-    // The graph-walk continuation's path (and its fade cycle) resets
-    // once per hover — see the wasActive transition below.
-    const traveler = useRef<{ path: number[]; elapsed: number }>({ path: [], elapsed: 0 });
+    // The graph-walk continuations' paths (and their shared fade cycle)
+    // reset once per hover — see the wasActive transition below. One
+    // path per branch, all cycling on the same shared timer.
+    const traveler = useRef<{ paths: number[][]; elapsed: number }>({ paths: [[], [], []], elapsed: 0 });
     const wasActive = useRef(false);
 
-    // Reused every frame for all 9 particles' live positions (forced onto
-    // branch 0's curve — see doc comment) — declared outside useFrame so
-    // it's not reallocated per frame.
-    const particlesLive = useRef<{ t: number; x: number; y: number; z: number }[]>(
-        Array.from({ length: AMBIENT_PARTICLES }, () => ({ t: 0, x: 0, y: 0, z: 0 })),
+    // Reused every frame for each branch's own 3 particles' live
+    // positions — declared outside useFrame so it's not reallocated per
+    // frame. particlesLive[branch][slot].
+    const particlesLive = useRef<{ t: number; x: number; y: number; z: number }[][]>(
+        Array.from({ length: 3 }, () => Array.from({ length: PARTICLES_PER_BRANCH }, () => ({ t: 0, x: 0, y: 0, z: 0 }))),
     );
 
     useFrame((state, delta) => {
@@ -289,46 +315,49 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                     Math.min(1, local[2] * boost),
                 );
 
-                // The hover line threads through this SAME particle, but
-                // recomputed on branch 0's curve (identical to its own
-                // curve up to the fork point regardless of which branch
-                // it's nominally on) so every particle contributes a
-                // point on the one single strand rather than only
-                // branch 0's third of them.
-                const [lx, ly, lz] = pointOnBranch(outer, branches, 0, t);
-                particlesLive.current[i] = { t, x: lx + perpX * wobble, y: ly + perpY * wobble, z: lz };
+                // This branch's hover line threads through this SAME
+                // particle — the ambient dot's own natural position, not
+                // forced onto another branch's curve, since each branch
+                // now gets its own strand.
+                const slot = Math.floor(i / 3);
+                particlesLive.current[branch][slot] = { t, x, y, z };
             }
             posAttr.needsUpdate = true;
             colAttr.needsUpdate = true;
         });
-        particlesLive.current.sort((a, b) => a.t - b.t);
+        particlesLive.current.forEach((slots) => slots.sort((a, b) => a.t - b.t));
 
         if (active && !wasActive.current) {
-            traveler.current = { path: randomWalk(entryIdx, HOVER_PATH_LENGTH), elapsed: 0 };
+            traveler.current = { paths: branchIndices.map((idx) => randomWalk(idx, HOVER_PATH_LENGTH)), elapsed: 0 };
             wasActive.current = true;
         } else if (!active) {
             wasActive.current = false;
         }
 
-        hoverLines.forEach((ln) => {
-            ln.visible = active;
-            if (!active) return;
+        if (!active) {
+            hoverLines.forEach((ln) => { ln.visible = false; });
+            return;
+        }
 
-            traveler.current.elapsed += delta;
-            let pathProgress = traveler.current.elapsed / HOVER_DURATION;
-            if (pathProgress >= 1) {
-                traveler.current = { path: randomWalk(entryIdx, HOVER_PATH_LENGTH), elapsed: 0 };
-                pathProgress = 0;
-            }
-            // Same fade-in/hold/fade-out envelope as EnergyLayer's
-            // internal pulses — only the graph-walk continuation (past
-            // the entry node) breathes with it; the trunk stays constant.
-            const envelope = smoothstep(0, HOVER_FADE_IN, pathProgress) * (1 - smoothstep(1 - HOVER_FADE_OUT, 1, pathProgress));
+        traveler.current.elapsed += delta;
+        let pathProgress = traveler.current.elapsed / HOVER_DURATION;
+        if (pathProgress >= 1) {
+            traveler.current = { paths: branchIndices.map((idx) => randomWalk(idx, HOVER_PATH_LENGTH)), elapsed: 0 };
+            pathProgress = 0;
+        }
+        // Same fade-in/hold/fade-out envelope as EnergyLayer's internal
+        // pulses, shared by all three branches — only each graph-walk
+        // continuation (past its own entry node) breathes with it; the
+        // trunk stays constant.
+        const envelope = smoothstep(0, HOVER_FADE_IN, pathProgress) * (1 - smoothstep(1 - HOVER_FADE_OUT, 1, pathProgress));
+        const pointCount = 1 + PARTICLES_PER_BRANCH + HOVER_PATH_LENGTH;
 
-            const path = traveler.current.path;
+        hoverLines.forEach((ln, b) => {
+            ln.visible = true;
+
+            const path = traveler.current.paths[b];
             const posAttr = ln.geometry.attributes.position as BufferAttribute;
             const colAttr = ln.geometry.attributes.color as BufferAttribute;
-            const pointCount = 1 + AMBIENT_PARTICLES + HOVER_PATH_LENGTH;
 
             for (let n = 0; n < pointCount; n++) {
                 let px: number, py: number, pz: number, nodeIdx = -1;
@@ -337,11 +366,11 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                 if (n === 0) {
                     // The icon itself — fixed anchor for the strand.
                     [px, py, pz] = outer;
-                } else if (n <= AMBIENT_PARTICLES) {
-                    const live = particlesLive.current[n - 1];
+                } else if (n <= PARTICLES_PER_BRANCH) {
+                    const live = particlesLive.current[b][n - 1];
                     px = live.x; py = live.y; pz = live.z;
                 } else {
-                    const k = n - 1 - AMBIENT_PARTICLES;
+                    const k = n - 1 - PARTICLES_PER_BRANCH;
                     nodeIdx = path[k];
                     px = brainNodes3D[nodeIdx * 3];
                     py = brainNodes3D[nodeIdx * 3 + 1];
@@ -429,14 +458,20 @@ function RingConnections({ positioned }: { positioned: Positioned[] }) {
     );
 
     const { lines, glowPoints, pointCount } = useMemo(() => {
+        // Sampled as a smooth continuous curve (ringPointAt at many
+        // angles), NOT by interpolating straight chords between the 10
+        // icon positions — connecting the actual icon points directly
+        // produced a visibly faceted decagon (10 flat sides) rather than
+        // a round ring, especially since the icons themselves aren't
+        // evenly spaced in radius (see ringPointAt's oval + egg-shape).
+        // This still passes exactly through every icon's own position,
+        // since layoutModules uses this identical formula.
+        const totalPoints = positioned.length * RING_SUBSEGMENTS;
         const pts: [number, number, number][] = [];
-        for (let i = 0; i < positioned.length; i++) {
-            const a = positioned[i].outer;
-            const b = positioned[(i + 1) % positioned.length].outer;
-            for (let s = 0; s < RING_SUBSEGMENTS; s++) {
-                const t = s / RING_SUBSEGMENTS;
-                pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]);
-            }
+        for (let s = 0; s < totalPoints; s++) {
+            const angle = (s / totalPoints) * Math.PI * 2 - Math.PI / 2;
+            const [x, y] = ringPointAt(angle);
+            pts.push([x, y, 0]);
         }
 
         const positions = new Float32Array(pts.length * 3);
@@ -562,20 +597,115 @@ function RingConnections({ positioned }: { positioned: Positioned[] }) {
     );
 }
 
+// Half of BrainHaze's own opacity (0.0672) — per explicit request that
+// this web's smoke read as present but clearly secondary to the brain's
+// own haze, not competing with it.
+const WEB_HAZE_OPACITY = 0.0336;
+
+/**
+ * Now that each icon reaches into the brain via 3 separate branches (see
+ * IconEnergyLink), this connects those 3 branch endpoints TO EACH OTHER
+ * too — a small triangle per icon — so the whole thing reads as a
+ * spider-web sitting where each icon's energy fans into the brain,
+ * rather than 3 branches that only ever meet back at the icon. Always
+ * visible (not hover-gated) and rendered once from the same
+ * `branchIndices` layoutModules already computed, in the same style as
+ * the brain's own connections (ConnectionLayer) so it reads as part of
+ * the same structure. A faint haze along these new edges (see
+ * BrainHaze) at half its intensity ties it visually to the rest of the
+ * brain's smoke without overpowering it.
+ */
+function BranchWeb({ positioned }: { positioned: Positioned[] }) {
+    const { linePositions, hazePositions } = useMemo(() => {
+        const lines: number[] = [];
+        const haze: number[] = [];
+        positioned.forEach(({ branchIndices }) => {
+            const pts = branchIndices.map((idx): [number, number, number] => [
+                brainNodes3D[idx * 3], brainNodes3D[idx * 3 + 1], brainNodes3D[idx * 3 + 2],
+            ]);
+            const edges: [number, number][] = [[0, 1], [1, 2], [2, 0]];
+            edges.forEach(([a, b]) => {
+                const [ax, ay, az] = pts[a];
+                const [bx, by, bz] = pts[b];
+                lines.push(ax, ay, az, bx, by, bz);
+                haze.push((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2);
+            });
+        });
+        return { linePositions: new Float32Array(lines), hazePositions: new Float32Array(haze) };
+    }, [positioned]);
+
+    const hazeColors = useMemo(() => new Float32Array(hazePositions.length), [hazePositions]);
+    const hazeRef = useRef<ThreePoints>(null);
+
+    useFrame((state) => {
+        const attr = hazeRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        if (!attr) return;
+        const time = state.clock.elapsedTime;
+        const count = hazePositions.length / 3;
+        for (let n = 0; n < count; n++) {
+            const x = hazePositions[n * 3], y = hazePositions[n * 3 + 1], z = hazePositions[n * 3 + 2];
+            const base = brainSwirlColor(x, y, z, time);
+            // Same value-boost normalization BrainHaze uses — keeps every
+            // sample the same brightness regardless of which hue it is.
+            const maxChannel = Math.max(base[0], base[1], base[2], 0.001);
+            const boost = 1 / maxChannel;
+            attr.setXYZ(n, base[0] * boost, base[1] * boost, base[2] * boost);
+        }
+        attr.needsUpdate = true;
+    });
+
+    return (
+        <group>
+            <lineSegments>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[linePositions, 3]} />
+                </bufferGeometry>
+                <lineBasicMaterial color="#6fd4ff" transparent opacity={0.35} />
+            </lineSegments>
+            <points ref={hazeRef}>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[hazePositions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[hazeColors, 3]} />
+                </bufferGeometry>
+                <pointsMaterial
+                    vertexColors
+                    map={getHazeTexture()}
+                    size={0.17}
+                    sizeAttenuation
+                    transparent
+                    opacity={WEB_HAZE_OPACITY}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </points>
+        </group>
+    );
+}
+
 interface OrbitRing3DProps {
     // All 10 icons' hover-pulse Line objects, reported once fully
     // collected — see IconEnergyLink's onHoverLineReady doc.
     onHoverLinesReady?: (lines: ThreeLine[]) => void;
+    // Fired when an icon itself is clicked (not hovered) — opens that
+    // module's detail card, anchored at the icon's own screen position
+    // (see BrainScene3D / DetailDrawer).
+    onModuleClick?: (moduleId: string, anchor: { x: number; y: number }) => void;
+    // A module whose detail drawer is currently open — its hover glow
+    // stays lit even after the mouse moves away (e.g. toward the
+    // drawer), only clearing once the drawer closes AND the mouse isn't
+    // over it either. Set by BrainScene3D.
+    activeModuleId?: string | null;
 }
 
-export default function OrbitRing3D({ onHoverLinesReady }: OrbitRing3DProps) {
+export default function OrbitRing3D({ onHoverLinesReady, onModuleClick, activeModuleId }: OrbitRing3DProps) {
     const positioned = useMemo(() => layoutModules(), []);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const collectedHoverLines = useRef<ThreeLine[]>([]);
 
     const handleHoverLineReady = (line: ThreeLine) => {
         collectedHoverLines.current.push(line);
-        if (collectedHoverLines.current.length === positioned.length) {
+        // 3 hover lines per icon now (one per branch) — see IconEnergyLink.
+        if (collectedHoverLines.current.length === positioned.length * 3) {
             onHoverLinesReady?.(collectedHoverLines.current);
         }
     };
@@ -584,11 +714,12 @@ export default function OrbitRing3D({ onHoverLinesReady }: OrbitRing3DProps) {
         <group>
 
             <RingConnections positioned={positioned} />
+            <BranchWeb positioned={positioned} />
 
             {positioned.map(({ module, outer, branchIndices }, i) => (
                 <IconEnergyLink
                     key={module.id}
-                    active={hoveredId === module.id}
+                    active={hoveredId === module.id || activeModuleId === module.id}
                     outer={outer}
                     branchIndices={branchIndices}
                     seed={i}
@@ -607,6 +738,10 @@ export default function OrbitRing3D({ onHoverLinesReady }: OrbitRing3DProps) {
                                 className="orbit3d-circle"
                                 onMouseEnter={() => setHoveredId(module.id)}
                                 onMouseLeave={() => setHoveredId((current) => (current === module.id ? null : current))}
+                                onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    onModuleClick?.(module.id, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+                                }}
                             >
 
                                 {Icon && <Icon size={23} color="#eaf6ff" strokeWidth={1.75} />}

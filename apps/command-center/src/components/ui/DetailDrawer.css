@@ -1,0 +1,126 @@
+.detail-drawer-scrim {
+
+    position: fixed;
+    inset: 0;
+
+    /* Deliberately no background dimming — the whole point is that the
+       brain stays fully visible while a drawer is open. This is just an
+       invisible click-catcher so clicking outside the card closes it. */
+    background: transparent;
+
+    z-index: 40;
+
+    opacity: 0;
+    pointer-events: none;
+
+}
+
+.detail-drawer-scrim-visible {
+
+    opacity: 1;
+    pointer-events: auto;
+
+}
+
+.detail-drawer {
+
+    position: fixed;
+
+    width: 340px;
+    max-height: 320px;
+    box-sizing: border-box;
+
+    padding: 22px 22px;
+    overflow-y: auto;
+
+    background: rgba(13, 20, 38, 0.58);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+
+    z-index: 41;
+
+}
+
+.detail-drawer-open {
+
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+
+}
+
+.detail-drawer-header {
+
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+
+    margin-bottom: 20px;
+
+}
+
+.detail-drawer-title {
+
+    margin: 0;
+
+    font-size: 18px;
+    font-weight: 700;
+
+    color: var(--primary);
+
+}
+
+.detail-drawer-subtitle {
+
+    margin: 6px 0 0;
+
+    font-size: 13px;
+    color: var(--text-muted);
+
+}
+
+.detail-drawer-close {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    color: var(--text-muted);
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.detail-drawer-close:hover {
+
+    border-color: var(--primary);
+    color: #eaf6ff;
+
+}
+
+.detail-drawer-body {
+
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+
+}

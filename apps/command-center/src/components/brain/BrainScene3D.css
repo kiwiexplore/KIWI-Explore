@@ -1,0 +1,99 @@
+/* The 3 main widgets pinned beside the brain — bigger than the bottom
+   row's, since these are the primary ones (per explicit request).
+   Stretched to fill the whole column height (not just centered as a
+   group) so they grow into whatever vertical space is available instead
+   of leaving dead space above/below them. */
+.side-widget-column {
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    overflow-y: auto;
+
+}
+
+.side-widget-column .panel {
+
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 20px 22px;
+
+}
+
+.side-widget-column .panel-header {
+
+    font-size: 15px;
+
+}
+
+.side-widget-column .panel-body {
+
+    font-size: 14px;
+
+}
+
+.bottom-widget-row {
+
+    display: flex;
+    gap: 12px;
+
+    /* Extra top padding — a deliberate gap from the ring's bottom icon
+       sitting just above this row, per explicit request. */
+    padding: 32px 24px 18px;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+
+}
+
+.bottom-widget-row::-webkit-scrollbar {
+
+    height: 8px;
+
+}
+
+.bottom-widget-row::-webkit-scrollbar-track {
+
+    background: transparent;
+
+}
+
+.bottom-widget-row::-webkit-scrollbar-thumb {
+
+    background: var(--border);
+    border-radius: 999px;
+
+}
+
+.bottom-widget-row::-webkit-scrollbar-thumb:hover {
+
+    background: var(--primary);
+
+}
+
+.bottom-widget-item {
+
+    flex: 0 0 200px;
+
+    display: flex;
+
+}
+
+.bottom-widget-item .panel {
+
+    width: 100%;
+    min-height: 108px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+}

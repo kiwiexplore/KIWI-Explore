@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
 import { AmbientLight, type Line } from "three";
 import BrainSystem3D from "./BrainSystem3D";
@@ -6,8 +6,14 @@ import GlowLayer from "./GlowLayer";
 import OrbitRing3D from "./OrbitRing3D";
 import TopBar from "./TopBar";
 import Widget from "../widget/Widget";
-import { leftWidgets, rightWidgets } from "./sceneWidgets";
+import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
+import SignUpForm from "../ui/SignUpForm";
+import ProfileSettings from "../ui/ProfileSettings";
+import InfoPanel from "../ui/InfoPanel";
+import { leftWidgets, rightWidgets, bottomWidgets } from "./sceneWidgets";
+import { orbitModules } from "../../state/orbitModules";
 import milkyWayPhoto from "../../assets/milky-way-background.jpg";
+import "./BrainScene3D.css";
 
 // A uniform dark scrim over the whole photo (it was too bright/busy for
 // the brain's thin cyan lines to read clearly against it), plus a soft
@@ -20,6 +26,11 @@ const BACKGROUND_LAYERS = [
     `url(${milkyWayPhoto})`,
 ].join(", ");
 
+function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number } {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+}
+
 /**
  * Test harness for the 3D Brain — Canvas, camera, lights, and the Brain
  * itself (BrainSystem3D = NeuronLayer + ConnectionLayer + EnergyLayer)
@@ -30,13 +41,10 @@ const BACKGROUND_LAYERS = [
  * dragging directly on the brain (see its own pointer handlers) or its
  * own idle auto-spin when not being dragged.
  *
- * Layout is a first pass at the real KIWI HQ 3-column grid (see
- * Dashboard.css's .hq-grid) rather than the brain filling the full
- * viewport width — a TopBar (brand mark, the "Hey Kiwi" voice bar, and a
- * login/status placeholder) sits above everything, and left/right widget
- * columns sit beside the Canvas below it (R3F auto-resizes the
- * camera/canvas to its narrower container, no manual math needed). All
- * widgets live in those two columns now — no below-the-fold row. This is
+ * Layout: a TopBar sits above everything, left/right widget columns
+ * flank the brain Canvas (a handful of pinned widgets each, per explicit
+ * request — Weather/Date left, YouTube right), and the REST of the
+ * widgets live in a horizontally-scrollable row below the brain. This is
  * still the isolated 3D preview harness, not the final wired-up
  * Dashboard — see App.tsx.
  *
@@ -54,11 +62,82 @@ const BACKGROUND_LAYERS = [
  * and merged into one selection, purely so GlowLayer's SelectiveBloom
  * can target exactly those objects — see GlowLayer's doc comment for why
  * a plain global-threshold Bloom couldn't do this.
+ *
+ * Clicking a widget or an orbit icon opens DetailDrawer with that item's
+ * full info, anchored right where the clicked thing is on screen —
+ * deliberately not a fixed side panel or full-screen modal, so the brain
+ * stays visible/"within reach" while it's open (see DetailDrawer's own
+ * doc comment). Sign-in/profile use the exact same DetailDrawer, just
+ * with a form or settings list as the body instead of widget text — see
+ * handleSignInClick/handleProfileClick below. There's no real backend
+ * behind any of this yet (see SignUpForm's own note) — `nickname` just
+ * lives in local state so the logged-in-vs-not UI flow can be reviewed
+ * before real auth exists.
  */
 export default function BrainScene3D() {
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
     const [hoverLines, setHoverLines] = useState<Line[]>([]);
+    const [detail, setDetail] = useState<DetailDrawerContent | null>(null);
+    // Which orbit icon's drawer is open, if any — kept separate from
+    // `detail` itself (which also covers widgets) so OrbitRing3D can use
+    // it to keep that one icon's hover glow lit even once the mouse has
+    // moved away, e.g. toward the drawer's content.
+    const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+    const [nickname, setNickname] = useState<string | null>(null);
+
+    const closeDetail = () => {
+        setDetail(null);
+        setActiveModuleId(null);
+    };
+
+    const handleModuleClick = (moduleId: string, anchor: { x: number; y: number }) => {
+        const module = orbitModules.find((m) => m.id === moduleId);
+        if (!module) return;
+        setActiveModuleId(moduleId);
+        setDetail({
+            title: module.label,
+            subtitle: module.description,
+            anchor,
+            body: module.badgeCount !== undefined
+                ? `${module.badgeCount} new since you last checked.`
+                : "Nothing new right now.",
+        });
+    };
+
+    const handleWidgetClick = (w: { title: string }, anchor: { x: number; y: number }, body: ReactNode) => {
+        setDetail({ title: w.title, body, anchor });
+    };
+
+    const handleSignInClick = (event: MouseEvent<HTMLElement>) => {
+        const anchor = anchorFromEvent(event);
+        setDetail({
+            title: "Create your account",
+            anchor,
+            maxHeight: 520,
+            body: <SignUpForm onSubmit={(name) => { setNickname(name); closeDetail(); }} />,
+        });
+    };
+
+    const handleProfileClick = (event: MouseEvent<HTMLElement>) => {
+        const anchor = anchorFromEvent(event);
+        setDetail({
+            title: "Profile & settings",
+            anchor,
+            maxHeight: 420,
+            body: <ProfileSettings nickname={nickname ?? ""} onSignOut={() => { setNickname(null); closeDetail(); }} />,
+        });
+    };
+
+    const handleInfoClick = (event: MouseEvent<HTMLElement>) => {
+        const anchor = anchorFromEvent(event);
+        setDetail({
+            title: "Info",
+            anchor,
+            maxHeight: 420,
+            body: <InfoPanel />,
+        });
+    };
 
     return (
         <div
@@ -76,40 +155,74 @@ export default function BrainScene3D() {
                 overflow: "hidden",
             }}
         >
-            <TopBar />
+            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} />
 
             <div
                 style={{
                     flex: 1,
                     minHeight: 0,
                     display: "grid",
-                    gridTemplateColumns: "1fr 2.6fr 1fr",
-                    gap: 24,
-                    padding: "12px 32px 32px",
+                    gridTemplateColumns: "1.05fr 2.7fr 1.05fr",
+                    gap: 26,
+                    padding: "8px 24px",
                     boxSizing: "border-box",
                 }}
             >
-                <aside style={{ display: "flex", flexDirection: "column", gap: 16, overflowY: "auto", justifyContent: "center" }}>
+                <aside className="side-widget-column">
                     {leftWidgets.map((w) => (
-                        <Widget key={w.id} definition={w} />
+                        <Widget
+                            key={w.id}
+                            definition={w}
+                            onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                        />
                     ))}
                 </aside>
 
                 <div style={{ position: "relative", height: "100%" }}>
                     <Canvas camera={{ position: [0, 0, 4], fov: 50 }} gl={{ alpha: true }}>
                         <primitive object={ambientLight} />
-                        <BrainSystem3D onPulseReady={setPulseLines} />
-                        <OrbitRing3D onHoverLinesReady={setHoverLines} />
+                        {/* Brain + orbit ring scaled up together (not just the
+                            brain alone) so the icons grow/move outward right
+                            along with it — since RADIUS etc. in OrbitRing3D
+                            are defined relative to the brain's own local
+                            space, a uniform scale here preserves exactly the
+                            same icon-to-brain gap, just bigger, rather than
+                            needing to separately recompute icon distances. */}
+                        <group scale={1.22} position={[0, -0.22, 0]}>
+                            <BrainSystem3D onPulseReady={setPulseLines} />
+                            <OrbitRing3D
+                                onHoverLinesReady={setHoverLines}
+                                onModuleClick={handleModuleClick}
+                                activeModuleId={activeModuleId}
+                            />
+                        </group>
                         <GlowLayer selection={[...pulseLines, ...hoverLines]} lights={[ambientLight]} />
                     </Canvas>
                 </div>
 
-                <aside style={{ display: "flex", flexDirection: "column", gap: 16, overflowY: "auto", justifyContent: "center" }}>
+                <aside className="side-widget-column">
                     {rightWidgets.map((w) => (
-                        <Widget key={w.id} definition={w} />
+                        <Widget
+                            key={w.id}
+                            definition={w}
+                            onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                        />
                     ))}
                 </aside>
             </div>
+
+            <div className="bottom-widget-row">
+                {bottomWidgets.map((w) => (
+                    <div key={w.id} className="bottom-widget-item">
+                        <Widget
+                            definition={w}
+                            onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                        />
+                    </div>
+                ))}
+            </div>
+
+            <DetailDrawer content={detail} onClose={closeDetail} />
         </div>
     );
 }

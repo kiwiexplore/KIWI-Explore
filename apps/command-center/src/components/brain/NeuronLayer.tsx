@@ -15,6 +15,8 @@ function hash(i: number): number {
     return s - Math.floor(s);
 }
 
+const STATIC_BOOST = 1.6;
+
 /**
  * Renders only the neuron particles — no connections, no energy, no glow
  * setup. Deliberately narrow responsibility (per the layered architecture:
@@ -77,11 +79,16 @@ export default function NeuronLayer() {
             const v = variance[n];
             const boostIdx = keptIndices[n] * 3;
 
+            // These dots aren't part of GlowLayer's SelectiveBloom
+            // selection (only pulses/hover lines are), so now that those
+            // got much brighter over several rounds of tuning, the plain
+            // dots started reading as faded out by comparison. STATIC_BOOST
+            // brings their own baseline brightness back up to compete.
             attr.setXYZ(
                 n,
-                Math.min(1, base[0] * v + pulseBoost[boostIdx]),
-                Math.min(1, base[1] * v + pulseBoost[boostIdx + 1]),
-                Math.min(1, base[2] * v + pulseBoost[boostIdx + 2]),
+                Math.min(1, base[0] * v * STATIC_BOOST + pulseBoost[boostIdx]),
+                Math.min(1, base[1] * v * STATIC_BOOST + pulseBoost[boostIdx + 1]),
+                Math.min(1, base[2] * v * STATIC_BOOST + pulseBoost[boostIdx + 2]),
             );
         }
 
@@ -98,7 +105,7 @@ export default function NeuronLayer() {
                 vertexColors
                 map={getDotTexture()}
                 alphaTest={0.05}
-                size={0.026}
+                size={0.034}
                 sizeAttenuation
                 transparent
                 depthWrite={false}

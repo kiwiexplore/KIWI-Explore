@@ -2,13 +2,13 @@
 
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
+    justify-content: space-between;
+    gap: 16px;
 
     width: 100%;
     max-width: 420px;
 
-    padding: 12px 32px;
+    padding: 12px 18px 12px 24px;
 
     background: radial-gradient(circle at 32% 28%, #172848, #0b1220 72%);
 
@@ -23,5 +23,54 @@
     font-size: 14px;
 
     white-space: nowrap;
+
+}
+
+.voice-bar-left {
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+}
+
+.voice-bar-mic {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: none;
+    border: none;
+    padding: 4px;
+
+    color: var(--text-muted);
+    cursor: pointer;
+
+    border-radius: 999px;
+    transition: color .2s ease;
+
+}
+
+.voice-bar-mic:hover {
+
+    color: var(--primary);
+
+}
+
+/* Stands in for real speech activity — see VoiceBar's doc comment — a
+   continuous gentle bounce/pulse while the mock "listening" state is on,
+   rather than a static icon, so the button visibly reads as "live". */
+.voice-bar-mic-active {
+
+    color: #6EF3A5;
+    animation: voice-bar-pulse 0.9s ease-in-out infinite;
+
+}
+
+@keyframes voice-bar-pulse {
+
+    0%, 100% { transform: scaleY(1); opacity: .8; }
+    50% { transform: scaleY(1.4); opacity: 1; }
 
 }

@@ -9,7 +9,7 @@
 
     border-radius: var(--radius);
 
-    padding: 24px 26px;
+    padding: 16px 18px;
 
     transition: var(--transition);
 
@@ -21,14 +21,27 @@
 
 }
 
+.panel-clickable {
+
+    cursor: pointer;
+
+}
+
+.panel-clickable:hover {
+
+    border-color: var(--primary);
+    box-shadow: 0 0 16px rgba(73, 199, 255, .25);
+
+}
+
 .panel-header {
 
     color: var(--primary);
 
     font-weight: bold;
-    font-size: 16px;
+    font-size: 14px;
 
-    margin-bottom: 14px;
+    margin-bottom: 8px;
 
 }
 
@@ -36,7 +49,7 @@
 
     color: var(--text);
 
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.45;
 
 }

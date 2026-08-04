@@ -1,14 +1,18 @@
 import "./Panel.css";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 interface PanelProps {
     title: string;
     children: ReactNode;
+    onClick?: (event: MouseEvent<HTMLElement>) => void;
 }
 
-export default function Panel({ title, children }: PanelProps) {
+export default function Panel({ title, children, onClick }: PanelProps) {
     return (
-        <section className="panel">
+        <section
+            className={`panel${onClick ? " panel-clickable" : ""}`}
+            onClick={onClick}
+        >
 
             <header className="panel-header">
                 {title}
