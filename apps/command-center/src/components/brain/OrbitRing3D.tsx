@@ -209,19 +209,19 @@ const WEB_EDGES: [number, number][] = [[0, 1], [1, 2], [2, 0]];
 // effect, not competing with the particles or the branch lines.
 const WEB_BOOST = 0.4;
 
-// A particle's position wraps instantly from the target (t=1) back to
-// the icon (t=0) every cycle — pointOnBranch(t=0) IS the icon and
-// pointOnBranch(t=1) IS the target, so that's a full-length teleport,
-// not a gradual move. The hover line's trunk vertices used to render at
-// a flat, constant brightness (see IconEnergyLink's doc comment), so
-// that teleport was fully visible once a hovered branch's line snapped
-// across its whole length for a frame. Fading briefly right at the very
-// ends of the cycle (not a "breathing" fade through the whole thing —
-// just the last/first 8%) hides the teleport without reintroducing the
-// flicker a fuller fade cycle read as earlier.
-const EDGE_FADE_WIDTH = 0.08;
-function edgeFade(t: number): number {
-    return Math.min(smoothstep(0, EDGE_FADE_WIDTH, t), 1 - smoothstep(1 - EDGE_FADE_WIDTH, 1, t));
+// A particle's progress used to wrap instantly via `% 1` — pointOnBranch
+// at t=0 IS the icon and at t=1 IS the target, so that reset was a real,
+// full-length teleport every cycle, not just a brief flash to hide (an
+// earlier fix tried exactly that: fading brightness to zero right at the
+// wrap — it hid the flash but the underlying jump was still there).
+// Ping-ponging back and forth between 0 and 1 instead of resetting means
+// the particle's position is continuous everywhere, all the time — no
+// instant is a moment where position needs to be hidden, because nothing
+// ever actually jumps.
+function triangleWave(x: number): number {
+    const u = x % 2;
+    const wrapped = u < 0 ? u + 2 : u;
+    return wrapped <= 1 ? wrapped : 2 - wrapped;
 }
 
 /**
@@ -293,16 +293,38 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
         });
     }, []);
 
-    useEffect(() => {
-        hoverLines.forEach((ln) => onHoverLineReady?.(ln));
-    }, [hoverLines, onHoverLineReady]);
-
     // The cross-branch web (see WEB_EDGES) — always on, like the ambient
     // particles themselves, not hover-gated.
     const webPointCount = PARTICLES_PER_BRANCH * WEB_EDGES.length * 2;
     const webPositions = useMemo(() => new Float32Array(webPointCount * 3), [webPointCount]);
     const webColors = useMemo(() => new Float32Array(webPointCount * 3), [webPointCount]);
     const webRef = useRef<LineSegments>(null);
+
+    // A 4th hover-only line, alongside the 3 branch hoverLines — the SAME
+    // web edges shown at rest (see the ambient web above), just switched
+    // to full brightness + included in GlowLayer's bloom selection while
+    // hovered, per explicit request that hover show exactly the existing
+    // branching/web rather than a different-looking effect, with the
+    // existing glow simply added on top. Wrapped in a 1-element array —
+    // same reason as hoverLines above (mutating the raw useMemo result
+    // directly trips the react-hooks/immutability rule).
+    const hoverWebLines = useMemo(() => {
+        const geometry = new BufferGeometry();
+        geometry.setAttribute("position", new BufferAttribute(new Float32Array(webPointCount * 3), 3));
+        geometry.setAttribute("color", new BufferAttribute(new Float32Array(webPointCount * 3), 3));
+        const material = new LineBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.95,
+            blending: AdditiveBlending,
+        });
+        return [new LineSegments(geometry, material)];
+    }, [webPointCount]);
+
+    useEffect(() => {
+        hoverLines.forEach((ln) => onHoverLineReady?.(ln));
+        hoverWebLines.forEach((ln) => onHoverLineReady?.(ln));
+    }, [hoverLines, hoverWebLines, onHoverLineReady]);
 
     // The graph-walk continuations' paths (and their shared fade cycle)
     // reset once per hover — see the wasActive transition below. One
@@ -329,7 +351,10 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
 
             for (let i = 0; i < AMBIENT_PARTICLES; i++) {
                 const { phase, branch } = ambientSeeds[i];
-                const t = (phase + time * DRIFT_SPEED) % 1;
+                // Ping-pongs between 0 (icon) and 1 (target) — see
+                // triangleWave's doc comment — instead of resetting via
+                // modulo, so this particle's own position never jumps.
+                const t = triangleWave(phase + time * DRIFT_SPEED);
                 const wobble = Math.sin(t * Math.PI * 3 + i * 1.7) * 0.1 * (1 - t);
 
                 const [px, py, pz] = pointOnBranch(outer, branches, branch, t);
@@ -339,13 +364,8 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                 posAttr.setXYZ(i, x, y, z);
 
                 const fade = Math.sin(t * Math.PI); // 0 at the icon and at arrival, peak mid-flight
-                // fade alone still leaves a 0.34 floor (see boost below),
-                // so the ambient dot never actually reached zero brightness
-                // right at the wrap — edgeFade forces true zero there,
-                // hiding the instant teleport back to the icon.
-                const edge = edgeFade(t);
                 const local = brainSwirlColor(x, y, z, time);
-                const boost = (active ? 1.3 : 1) * (0.34 + fade * 0.85) * edge;
+                const boost = (active ? 1.3 : 1) * (0.34 + fade * 0.85);
                 colAttr.setXYZ(
                     i,
                     Math.min(1, local[0] * boost),
@@ -376,7 +396,8 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                     [particlesLive.current[a][slot], particlesLive.current[b][slot]].forEach((p) => {
                         webPosAttr.setXYZ(w, p.x, p.y, p.z);
                         const c = brainSwirlColor(p.x, p.y, p.z, time);
-                        const boost = (active ? 1.3 : 1) * WEB_BOOST * edgeFade(p.t);
+                        const fade = Math.sin(p.t * Math.PI); // matches the ambient particles' own dim/bright shape
+                        const boost = (active ? 1.3 : 1) * WEB_BOOST * fade;
                         webColAttr.setXYZ(w, Math.min(1, c[0] * boost), Math.min(1, c[1] * boost), Math.min(1, c[2] * boost));
                         w++;
                     });
@@ -385,6 +406,32 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
             webPosAttr.needsUpdate = true;
             webColAttr.needsUpdate = true;
         }
+
+        // The bright hover-only twin of the web above — same edges, same
+        // SLOT-indexed (not t-sorted) data, just full brightness instead
+        // of the ambient dim/bright shape, and only while hovered.
+        hoverWebLines.forEach((ln) => {
+            ln.visible = active;
+            if (!active) return;
+            const hPosAttr = ln.geometry.attributes.position as BufferAttribute;
+            const hColAttr = ln.geometry.attributes.color as BufferAttribute;
+            let hw = 0;
+            for (let slot = 0; slot < PARTICLES_PER_BRANCH; slot++) {
+                WEB_EDGES.forEach(([a, b]) => {
+                    [particlesLive.current[a][slot], particlesLive.current[b][slot]].forEach((p) => {
+                        hPosAttr.setXYZ(hw, p.x, p.y, p.z);
+                        const c = brainSwirlColor(p.x, p.y, p.z, time);
+                        const maxChannel = Math.max(c[0], c[1], c[2], 0.001);
+                        const valueBoost = 1 / maxChannel;
+                        hColAttr.setXYZ(hw, Math.min(1, c[0] * valueBoost), Math.min(1, c[1] * valueBoost), Math.min(1, c[2] * valueBoost));
+                        hw++;
+                    });
+                });
+            }
+            hPosAttr.needsUpdate = true;
+            hColAttr.needsUpdate = true;
+        });
+
         particlesLive.current.forEach((slots) => slots.sort((a, b) => a.t - b.t));
 
         if (active && !wasActive.current) {
@@ -429,7 +476,6 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                 } else if (n <= PARTICLES_PER_BRANCH) {
                     const live = particlesLive.current[b][n - 1];
                     px = live.x; py = live.y; pz = live.z;
-                    brightness = edgeFade(live.t);
                 } else {
                     const k = n - 1 - PARTICLES_PER_BRANCH;
                     nodeIdx = path[k];
@@ -480,6 +526,9 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
             ))}
             {hoverLines.map((ln, i) => (
                 <primitive key={`h${i}`} object={ln} />
+            ))}
+            {hoverWebLines.map((ln, i) => (
+                <primitive key={`hw${i}`} object={ln} />
             ))}
             <lineSegments ref={webRef}>
                 <bufferGeometry>
@@ -772,8 +821,8 @@ export default function OrbitRing3D({ onHoverLinesReady, onModuleClick, activeMo
 
     const handleHoverLineReady = (line: ThreeLine) => {
         collectedHoverLines.current.push(line);
-        // 3 hover lines per icon now (one per branch) — see IconEnergyLink.
-        if (collectedHoverLines.current.length === positioned.length * 3) {
+        // 4 hover lines per icon now (3 branches + 1 web) — see IconEnergyLink.
+        if (collectedHoverLines.current.length === positioned.length * 4) {
             onHoverLinesReady?.(collectedHoverLines.current);
         }
     };
