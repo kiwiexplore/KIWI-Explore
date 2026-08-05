@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import {
     AdditiveBlending, BufferAttribute, BufferGeometry,
-    Line as ThreeLine, LineBasicMaterial,
+    Line as ThreeLine, LineBasicMaterial, LineSegments,
     Points as ThreePoints, PointsMaterial,
 } from "three";
 import { orbitModules } from "../../state/orbitModules";
@@ -197,6 +197,17 @@ function pointOnBranch(
 }
 
 const PARTICLES_PER_BRANCH = AMBIENT_PARTICLES / 3;
+// Connects corresponding particles across the 3 branches (slot 0 of
+// branch A to slot 0 of branch B, etc.) — a triangle per slot, 3 in
+// total per icon — rather than a static line between the branches' fixed
+// arrival nodes. Since these vertices ARE the live, drifting ambient
+// particles, this "web" continuously deforms as they travel instead of
+// sitting still, per explicit request that the interconnect happen
+// through the flying particles themselves.
+const WEB_EDGES: [number, number][] = [[0, 1], [1, 2], [2, 0]];
+// Dimmer than the ambient particles' own peak brightness — a secondary
+// effect, not competing with the particles or the branch lines.
+const WEB_BOOST = 0.4;
 
 // A particle's position wraps instantly from the target (t=1) back to
 // the icon (t=0) every cycle — pointOnBranch(t=0) IS the icon and
@@ -286,6 +297,13 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
         hoverLines.forEach((ln) => onHoverLineReady?.(ln));
     }, [hoverLines, onHoverLineReady]);
 
+    // The cross-branch web (see WEB_EDGES) — always on, like the ambient
+    // particles themselves, not hover-gated.
+    const webPointCount = PARTICLES_PER_BRANCH * WEB_EDGES.length * 2;
+    const webPositions = useMemo(() => new Float32Array(webPointCount * 3), [webPointCount]);
+    const webColors = useMemo(() => new Float32Array(webPointCount * 3), [webPointCount]);
+    const webRef = useRef<LineSegments>(null);
+
     // The graph-walk continuations' paths (and their shared fade cycle)
     // reset once per hover — see the wasActive transition below. One
     // path per branch, all cycling on the same shared timer.
@@ -321,8 +339,13 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                 posAttr.setXYZ(i, x, y, z);
 
                 const fade = Math.sin(t * Math.PI); // 0 at the icon and at arrival, peak mid-flight
+                // fade alone still leaves a 0.34 floor (see boost below),
+                // so the ambient dot never actually reached zero brightness
+                // right at the wrap — edgeFade forces true zero there,
+                // hiding the instant teleport back to the icon.
+                const edge = edgeFade(t);
                 const local = brainSwirlColor(x, y, z, time);
-                const boost = (active ? 1.3 : 1) * (0.34 + fade * 0.85);
+                const boost = (active ? 1.3 : 1) * (0.34 + fade * 0.85) * edge;
                 colAttr.setXYZ(
                     i,
                     Math.min(1, local[0] * boost),
@@ -340,6 +363,28 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
             posAttr.needsUpdate = true;
             colAttr.needsUpdate = true;
         });
+
+        // Cross-branch web — built from these SAME slot-indexed (not yet
+        // t-sorted) live positions, right after they're filled and before
+        // the sort below reorders them for the hover line's own purposes.
+        const webPosAttr = webRef.current?.geometry.attributes.position as BufferAttribute | undefined;
+        const webColAttr = webRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        if (webPosAttr && webColAttr) {
+            let w = 0;
+            for (let slot = 0; slot < PARTICLES_PER_BRANCH; slot++) {
+                WEB_EDGES.forEach(([a, b]) => {
+                    [particlesLive.current[a][slot], particlesLive.current[b][slot]].forEach((p) => {
+                        webPosAttr.setXYZ(w, p.x, p.y, p.z);
+                        const c = brainSwirlColor(p.x, p.y, p.z, time);
+                        const boost = (active ? 1.3 : 1) * WEB_BOOST * edgeFade(p.t);
+                        webColAttr.setXYZ(w, Math.min(1, c[0] * boost), Math.min(1, c[1] * boost), Math.min(1, c[2] * boost));
+                        w++;
+                    });
+                });
+            }
+            webPosAttr.needsUpdate = true;
+            webColAttr.needsUpdate = true;
+        }
         particlesLive.current.forEach((slots) => slots.sort((a, b) => a.t - b.t));
 
         if (active && !wasActive.current) {
@@ -436,6 +481,13 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
             {hoverLines.map((ln, i) => (
                 <primitive key={`h${i}`} object={ln} />
             ))}
+            <lineSegments ref={webRef}>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[webPositions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[webColors, 3]} />
+                </bufferGeometry>
+                <lineBasicMaterial vertexColors transparent opacity={0.6} blending={AdditiveBlending} />
+            </lineSegments>
         </group>
     );
 }
