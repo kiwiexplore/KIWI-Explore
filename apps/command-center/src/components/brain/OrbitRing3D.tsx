@@ -11,9 +11,11 @@ import {
     Points as ThreePoints, PointsMaterial,
 } from "three";
 import { orbitModules } from "../../state/orbitModules";
+import { pulseBoost } from "./pulseField";
 import { brainNodes3D } from "../../state/neuralNetwork3D";
 import { brainSwirlColor } from "./brainColor";
 import { KEPT_NODE_INDICES } from "./keptNodes";
+import { brainAdjacency } from "./brainTopology";
 import { getDotTexture, getHazeTexture } from "./dotTexture";
 import "./OrbitRing3D.css";
 
@@ -116,6 +118,22 @@ function layoutModules(): Positioned[] {
     });
 }
 
+// Same technique as EnergyLayer's internal pulses: a random walk across
+// real graph adjacency, so the hover pulse's arrival "flare" actually
+// follows the brain's own connections rather than a straight line.
+function randomWalk(start: number, length: number): number[] {
+    let current = start;
+    const path = [current];
+    for (let i = 0; i < length - 1; i++) {
+        const neighbors = brainAdjacency.get(current);
+        if (!neighbors || neighbors.length === 0) break;
+        current = neighbors[Math.floor(Math.random() * neighbors.length)];
+        path.push(current);
+    }
+    while (path.length < length) path.push(path[path.length - 1]);
+    return path;
+}
+
 interface IconEnergyLinkProps {
     active: boolean;
     outer: [number, number, number];
@@ -201,6 +219,24 @@ const WEB_HAZE_SIZE = 0.17;
 // pointOnBranch's t already uses elsewhere in this file).
 const PARTICLE_EDGE_SPEED = 0.35;
 
+// Gentle side-to-side sway — amplitude scales with each node's own
+// nodeT, so it's exactly 0 right at the icon (a fixed "joint") and
+// grows toward the brain, per explicit request.
+const MAX_SWAY = 0.05;
+const SWAY_SPEED = 0.4;
+
+// The hover pulse: travels icon -> brain over PULSE_TRAVEL_DURATION,
+// holds for PULSE_PAUSE_DURATION, then repeats — per explicit request
+// ("zacne u ikony a skonci v tom mozku... pak 2 sekundy a zas projde
+// pulz"). On arrival it triggers a short-lived "flare": random walks
+// into the brain's real graph from each of the 3 targets, fading out
+// over FLARE_DURATION — reviving the deeper reach-into-the-brain effect
+// from an earlier version, now driven by the pulse's own arrival.
+const PULSE_TRAVEL_DURATION = 1.4;
+const PULSE_PAUSE_DURATION = 2;
+const FLARE_PATH_LENGTH = 10;
+const FLARE_DURATION = 1;
+
 // The web's shape: converged at the icon, spreading out toward the
 // brain, per explicit request. A shared trunk from the icon (t=0) to a
 // fork point (t=FORK_T) — subdivided into 3 short edges so the trunk's
@@ -216,6 +252,11 @@ interface WebGraph {
     nodePositions: [number, number, number][];
     edges: [number, number][]; // index pairs into nodePositions
     adjacency: number[][]; // nodePositions index -> edge indices touching it
+    // BFS hop-distance from the icon (node 0), normalized 0..1 — 0 AT the
+    // icon, 1 at the graph's deepest nodes. Used both for the sway
+    // amount (icon stays a fixed "joint", motion grows with distance)
+    // and for the hover comet's "how far along" position.
+    nodeT: number[];
 }
 
 function buildWebGraph(outer: [number, number, number], branches: [number, number, number][]): WebGraph {
@@ -253,7 +294,34 @@ function buildWebGraph(outer: [number, number, number], branches: [number, numbe
         adjacency[b].push(edgeIdx);
     });
 
-    return { nodePositions, edges, adjacency };
+    const depth = new Array(nodePositions.length).fill(-1);
+    depth[0] = 0;
+    const queue = [0];
+    while (queue.length) {
+        const cur = queue.shift()!;
+        adjacency[cur].forEach((edgeIdx) => {
+            const [a, b] = edges[edgeIdx];
+            const other = a === cur ? b : a;
+            if (depth[other] === -1) {
+                depth[other] = depth[cur] + 1;
+                queue.push(other);
+            }
+        });
+    }
+    const maxDepth = Math.max(...depth);
+    const nodeT = depth.map((d) => d / maxDepth);
+
+    return { nodePositions, edges, adjacency, nodeT };
+}
+
+// Comet shape for the hover pulse — soft leading edge, short fading
+// tail — evaluated per-vertex against that vertex's own nodeT (distance
+// from the icon), so the same formula produces a wavefront expanding
+// outward through the web as pulseProgress goes 0 (icon) to 1 (brain).
+function cometBrightness(nodeT: number, pulseProgress: number): number {
+    const signedDist = nodeT - pulseProgress;
+    const raw = signedDist > 0 ? Math.max(0, 1 - signedDist * 6) : Math.max(0, 1 + signedDist * 1.2);
+    return raw * raw * (3 - 2 * raw);
 }
 
 interface WebParticle {
@@ -263,24 +331,28 @@ interface WebParticle {
 }
 
 /**
- * One icon's connection into the brain has two parts:
+ * One icon's connection into the brain has three parts:
  *
- * 1. A STATIC web (see buildWebGraph) — converged at the icon, spreading
- *    out into a mesh as it nears the brain. Built once from `outer`/
- *    `branches` and never repositioned; only its vertex colors (a dim,
- *    always-on living-swirl tint) and its haze animate. An earlier
- *    version tied the web's own positions to the drifting ambient
- *    particles instead, which occasionally jumped or read as
- *    disconnected — a fixed web can't do either.
+ * 1. The web (see buildWebGraph) — converged at the icon, spreading out
+ *    into a mesh as it nears the brain. Its GRAPH (which nodes connect
+ *    to which) is fixed, built once from `outer`/`branches`, but its
+ *    rendered POSITIONS sway gently side to side every frame — 0 motion
+ *    right at the icon (nodeT=0, a fixed "joint"), growing with
+ *    distance — see the sway block in useFrame.
  *
- * 2. Particles that travel ALONG that web's actual edges — never off of
+ * 2. Particles that travel ALONG the web's actual edges — never off of
  *    it — each doing its own random walk across the web's graph: when a
  *    particle reaches a node, it picks a random edge touching that node
  *    (the SAME edge to bounce back the way it came, or a different one
  *    at a junction) and continues seamlessly from that exact point, so
- *    there's never a jump. On hover, a second bright copy of these same
- *    particle positions is shown (added to GlowLayer's bloom selection)
- *    — per explicit request, hover lights up the PARTICLES, not a line.
+ *    there's never a jump.
+ *
+ * 3. On hover, a comet-shaped PULSE sweeps along the web from the icon
+ *    to the brain (using each node's own nodeT as its "how far along"
+ *    position — see cometBrightness), pauses, then repeats. On arrival
+ *    it triggers a brief "flare": random walks into the brain's real
+ *    graph from each of the 3 targets, nudging pulseBoost like
+ *    EnergyLayer's own pulses do.
  */
 function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: IconEnergyLinkProps) {
     const branches = useMemo<[number, number, number][]>(
@@ -288,36 +360,36 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
         [branchIndices],
     );
 
-    const { nodePositions, edges, adjacency } = useMemo(() => buildWebGraph(outer, branches), [outer, branches]);
+    const { nodePositions, edges, adjacency, nodeT } = useMemo(() => buildWebGraph(outer, branches), [outer, branches]);
+    const angle = useMemo(() => Math.atan2(outer[1], outer[0]), [outer]);
 
-    // The static backbone's render buffers — position data is written
-    // ONCE below (not in useFrame), only colors animate.
-    const { webLinePositions, webGlowPositions, webHazePositions } = useMemo(() => {
-        const lines: number[] = [];
-        const glow: number[] = [];
-        const haze: number[] = [];
-        edges.forEach(([ai, bi]) => {
-            const a = nodePositions[ai], b = nodePositions[bi];
-            lines.push(...a, ...b);
-            for (let s = 0; s < WEB_GLOW_SAMPLES_PER_EDGE; s++) {
-                const et = s / (WEB_GLOW_SAMPLES_PER_EDGE - 1);
-                glow.push(a[0] + (b[0] - a[0]) * et, a[1] + (b[1] - a[1]) * et, a[2] + (b[2] - a[2]) * et);
-            }
-            haze.push((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-        });
-        return {
-            webLinePositions: new Float32Array(lines),
-            webGlowPositions: new Float32Array(glow),
-            webHazePositions: new Float32Array(haze),
-        };
-    }, [edges, nodePositions]);
-
-    const webLineColors = useMemo(() => new Float32Array(webLinePositions.length), [webLinePositions]);
+    // Render buffers, sized once from the graph's edge count — actual
+    // position/color values are rewritten every frame in useFrame below
+    // (positions sway, colors carry the ambient tint + hover comet).
+    const webLineArrays = useMemo(() => ({
+        positions: new Float32Array(edges.length * 2 * 3),
+        colors: new Float32Array(edges.length * 2 * 3),
+    }), [edges]);
     const webLineRef = useRef<LineSegments>(null);
-    const webGlowColors = useMemo(() => new Float32Array(webGlowPositions.length), [webGlowPositions]);
+    const webGlowArrays = useMemo(() => ({
+        positions: new Float32Array(edges.length * WEB_GLOW_SAMPLES_PER_EDGE * 3),
+        colors: new Float32Array(edges.length * WEB_GLOW_SAMPLES_PER_EDGE * 3),
+    }), [edges]);
     const webGlowRef = useRef<ThreePoints>(null);
-    const webHazeColors = useMemo(() => new Float32Array(webHazePositions.length), [webHazePositions]);
+    const webHazeArrays = useMemo(() => ({
+        positions: new Float32Array(edges.length * 3),
+        colors: new Float32Array(edges.length * 3),
+    }), [edges]);
     const webHazeRef = useRef<ThreePoints>(null);
+
+    // The hover pulse's own bright twin of the glow-dots above — same
+    // sample layout, but comet-brightness ONLY (no ambient baseline) and
+    // only visible while active, so it's safe to add to GlowLayer's
+    // bloom selection without blooming at rest (see onHoverPointsReady).
+    const webPulseGlowArrays = useMemo(() => ({
+        positions: new Float32Array(edges.length * WEB_GLOW_SAMPLES_PER_EDGE * 3),
+        colors: new Float32Array(edges.length * WEB_GLOW_SAMPLES_PER_EDGE * 3),
+    }), [edges]);
 
     // Each particle's own random walk state — lazily seeded once (a
     // fresh random edge/direction/progress per particle) on the first
@@ -341,31 +413,37 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
         return [new ThreePoints(geometry, material)];
     }, []);
 
-    // The hover-only bright twin of the particles above — same live
-    // positions, mirrored each frame, just full brightness and only
-    // visible while active. Wrapped in a 1-element array — mutating the
-    // raw useMemo result directly trips the react-hooks/immutability
-    // rule.
-    const hoverGlowPoints = useMemo(() => {
+    const webPulseGlowPoints = useMemo(() => {
         const geometry = new BufferGeometry();
-        geometry.setAttribute("position", new BufferAttribute(new Float32Array(AMBIENT_PARTICLES * 3), 3));
-        geometry.setAttribute("color", new BufferAttribute(new Float32Array(AMBIENT_PARTICLES * 3), 3));
+        geometry.setAttribute("position", new BufferAttribute(webPulseGlowArrays.positions, 3));
+        geometry.setAttribute("color", new BufferAttribute(webPulseGlowArrays.colors, 3));
         const material = new PointsMaterial({
             vertexColors: true,
             map: getDotTexture(),
             alphaTest: 0.05,
-            size: 0.06,
+            size: 0.04,
             sizeAttenuation: true,
             transparent: true,
             depthWrite: false,
             blending: AdditiveBlending,
         });
         return [new ThreePoints(geometry, material)];
-    }, []);
+    }, [webPulseGlowArrays]);
 
     useEffect(() => {
-        hoverGlowPoints.forEach((p) => onHoverPointsReady?.(p));
-    }, [hoverGlowPoints, onHoverPointsReady]);
+        webPulseGlowPoints.forEach((p) => onHoverPointsReady?.(p));
+    }, [webPulseGlowPoints, onHoverPointsReady]);
+
+    // Hover-pulse cycle state: elapsed time since hover started, which
+    // cycle of travel+pause we're in, and whether this cycle's brain-side
+    // flare has already been triggered (plus the flare's own random-walk
+    // paths and how long it's been burning).
+    const wasActive = useRef(false);
+    const pulseElapsed = useRef(0);
+    const cycleIndex = useRef(-1);
+    const flareTriggered = useRef(false);
+    const flareElapsed = useRef(0);
+    const flarePaths = useRef<number[][]>([]);
 
     useFrame((state, delta) => {
         const time = state.clock.elapsedTime;
@@ -381,49 +459,136 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
             });
         }
 
-        // The static web's colors — a dim, always-on living-swirl tint.
-        // Never brightened on hover — per explicit request, hover only
-        // affects the particles now, not the web itself.
-        const webLineColAttr = webLineRef.current?.geometry.attributes.color as BufferAttribute | undefined;
-        if (webLineColAttr) {
-            for (let n = 0; n < webLinePositions.length / 3; n++) {
-                const x = webLinePositions[n * 3], y = webLinePositions[n * 3 + 1], z = webLinePositions[n * 3 + 2];
-                const local = brainSwirlColor(x, y, z, time);
-                const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
-                const boost = 0.45 / maxChannel;
-                webLineColAttr.setXYZ(n, local[0] * boost, local[1] * boost, local[2] * boost);
-            }
-            webLineColAttr.needsUpdate = true;
-        }
-        const webGlowColAttr = webGlowRef.current?.geometry.attributes.color as BufferAttribute | undefined;
-        if (webGlowColAttr) {
-            for (let n = 0; n < webGlowPositions.length / 3; n++) {
-                const x = webGlowPositions[n * 3], y = webGlowPositions[n * 3 + 1], z = webGlowPositions[n * 3 + 2];
-                const local = brainSwirlColor(x, y, z, time);
-                const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
-                const boost = 0.5 / maxChannel;
-                webGlowColAttr.setXYZ(n, local[0] * boost, local[1] * boost, local[2] * boost);
-            }
-            webGlowColAttr.needsUpdate = true;
-        }
-        const webHazeColAttr = webHazeRef.current?.geometry.attributes.color as BufferAttribute | undefined;
-        if (webHazeColAttr) {
-            for (let n = 0; n < webHazePositions.length / 3; n++) {
-                const x = webHazePositions[n * 3], y = webHazePositions[n * 3 + 1], z = webHazePositions[n * 3 + 2];
-                const local = brainSwirlColor(x, y, z, time);
-                const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
-                const boost = 1 / maxChannel; // value-boost normalized — WEB_HAZE_OPACITY carries the actual intensity
-                webHazeColAttr.setXYZ(n, local[0] * boost, local[1] * boost, local[2] * boost);
-            }
-            webHazeColAttr.needsUpdate = true;
+        // --- Hover pulse timing ---------------------------------------
+        if (active && !wasActive.current) {
+            pulseElapsed.current = 0;
+            cycleIndex.current = -1;
+            wasActive.current = true;
+        } else if (!active) {
+            wasActive.current = false;
         }
 
-        // Advance each particle along its current edge; on reaching the
-        // node at the far end, pick a random edge touching that node
-        // (any of them, including the one it just arrived on — a
-        // legitimate reversal, giving the "back and forth" wandering
-        // look) and continue from there. Position is always exactly on
-        // an edge between two real web nodes, so it never jumps.
+        let pulseProgress = 0;
+        if (active) {
+            pulseElapsed.current += delta;
+            const cycleLength = PULSE_TRAVEL_DURATION + PULSE_PAUSE_DURATION;
+            const thisCycle = Math.floor(pulseElapsed.current / cycleLength);
+            const cycleT = pulseElapsed.current - thisCycle * cycleLength;
+            pulseProgress = Math.min(1, cycleT / PULSE_TRAVEL_DURATION);
+
+            if (thisCycle !== cycleIndex.current) {
+                cycleIndex.current = thisCycle;
+                flareTriggered.current = false;
+            }
+            if (!flareTriggered.current && pulseProgress >= 0.95) {
+                flareTriggered.current = true;
+                flareElapsed.current = 0;
+                flarePaths.current = branchIndices.map((idx) => randomWalk(idx, FLARE_PATH_LENGTH));
+            }
+        }
+        if (flareTriggered.current) flareElapsed.current += delta;
+
+        // --- Sway: 0 at the icon (nodeT=0), growing toward the brain ---
+        const perpX = -Math.sin(angle);
+        const perpY = Math.cos(angle);
+        const swayPhase = time * SWAY_SPEED;
+        const swayedNodes: [number, number, number][] = nodePositions.map((base, i) => {
+            const wob = Math.sin(swayPhase + i * 0.3) * MAX_SWAY * nodeT[i];
+            return [base[0] + perpX * wob, base[1] + perpY * wob, base[2]];
+        });
+
+        // --- Rebuild the web's line/glow/haze/pulse-glow buffers -------
+        const webLinePosAttr = webLineRef.current?.geometry.attributes.position as BufferAttribute | undefined;
+        const webLineColAttr = webLineRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        const webGlowPosAttr = webGlowRef.current?.geometry.attributes.position as BufferAttribute | undefined;
+        const webGlowColAttr = webGlowRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        const webHazePosAttr = webHazeRef.current?.geometry.attributes.position as BufferAttribute | undefined;
+        const webHazeColAttr = webHazeRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        // webPulseGlowPoints is a 1-element array from useMemo (rendered
+        // via <primitive>, not a <points ref>) — read its geometry attrs
+        // via .forEach's callback parameter, not by indexing directly,
+        // same reason as elsewhere in this file (react-hooks/immutability).
+        let pulseGlowPosAttr: BufferAttribute | undefined;
+        let pulseGlowColAttr: BufferAttribute | undefined;
+        webPulseGlowPoints.forEach((pts) => {
+            pulseGlowPosAttr = pts.geometry.attributes.position as BufferAttribute;
+            pulseGlowColAttr = pts.geometry.attributes.color as BufferAttribute;
+        });
+        if (webLinePosAttr && webLineColAttr && webGlowPosAttr && webGlowColAttr && webHazePosAttr && webHazeColAttr && pulseGlowPosAttr && pulseGlowColAttr) {
+            let glowIdx = 0;
+            edges.forEach(([ai, bi], edgeIdx) => {
+                const a = swayedNodes[ai], b = swayedNodes[bi];
+                const aT = nodeT[ai], bT = nodeT[bi];
+
+                webLinePosAttr.setXYZ(edgeIdx * 2, a[0], a[1], a[2]);
+                webLinePosAttr.setXYZ(edgeIdx * 2 + 1, b[0], b[1], b[2]);
+                [[a, aT] as const, [b, bT] as const].forEach(([p, pT], vi) => {
+                    const local = brainSwirlColor(p[0], p[1], p[2], time);
+                    const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
+                    const dimBoost = 0.45 / maxChannel;
+                    const brightBoost = 1 / maxChannel;
+                    const comet = active ? cometBrightness(pT, pulseProgress) : 0;
+                    const boost = dimBoost + (brightBoost - dimBoost) * comet;
+                    webLineColAttr.setXYZ(edgeIdx * 2 + vi, local[0] * boost, local[1] * boost, local[2] * boost);
+                });
+
+                const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, mz = (a[2] + b[2]) / 2;
+                webHazePosAttr.setXYZ(edgeIdx, mx, my, mz);
+                const hazeLocal = brainSwirlColor(mx, my, mz, time);
+                const hazeMax = Math.max(hazeLocal[0], hazeLocal[1], hazeLocal[2], 0.001);
+                const hazeBoost = 1 / hazeMax;
+                webHazeColAttr.setXYZ(edgeIdx, hazeLocal[0] * hazeBoost, hazeLocal[1] * hazeBoost, hazeLocal[2] * hazeBoost);
+
+                for (let s = 0; s < WEB_GLOW_SAMPLES_PER_EDGE; s++) {
+                    const et = s / (WEB_GLOW_SAMPLES_PER_EDGE - 1);
+                    const gx = a[0] + (b[0] - a[0]) * et, gy = a[1] + (b[1] - a[1]) * et, gz = a[2] + (b[2] - a[2]) * et;
+                    const gT = aT + (bT - aT) * et;
+                    webGlowPosAttr.setXYZ(glowIdx, gx, gy, gz);
+                    const local = brainSwirlColor(gx, gy, gz, time);
+                    const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
+                    const dimBoost = 0.5 / maxChannel;
+                    const brightBoost = 1 / maxChannel;
+                    const comet = active ? cometBrightness(gT, pulseProgress) : 0;
+                    const boost = dimBoost + (brightBoost - dimBoost) * comet;
+                    webGlowColAttr.setXYZ(glowIdx, local[0] * boost, local[1] * boost, local[2] * boost);
+
+                    pulseGlowPosAttr!.setXYZ(glowIdx, gx, gy, gz);
+                    const pulseBoostAmt = brightBoost * comet;
+                    pulseGlowColAttr!.setXYZ(glowIdx, local[0] * pulseBoostAmt, local[1] * pulseBoostAmt, local[2] * pulseBoostAmt);
+                    glowIdx++;
+                }
+            });
+            webLinePosAttr.needsUpdate = true;
+            webLineColAttr.needsUpdate = true;
+            webGlowPosAttr.needsUpdate = true;
+            webGlowColAttr.needsUpdate = true;
+            webHazePosAttr.needsUpdate = true;
+            webHazeColAttr.needsUpdate = true;
+            pulseGlowPosAttr.needsUpdate = true;
+            pulseGlowColAttr.needsUpdate = true;
+        }
+        webPulseGlowPoints.forEach((p) => { p.visible = active; });
+
+        // --- Brain-side flare: brief random walks lighting up real brain
+        // nodes near each target, fading out after FLARE_DURATION -------
+        if (flareTriggered.current && flareElapsed.current < FLARE_DURATION) {
+            const envelope = 1 - flareElapsed.current / FLARE_DURATION;
+            flarePaths.current.forEach((path) => {
+                path.forEach((nodeIdx) => {
+                    const px = brainNodes3D[nodeIdx * 3], py = brainNodes3D[nodeIdx * 3 + 1], pz = brainNodes3D[nodeIdx * 3 + 2];
+                    const local = brainSwirlColor(px, py, pz, time);
+                    const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
+                    const boost = envelope / maxChannel;
+                    const cr = local[0] * boost, cg = local[1] * boost, cb = local[2] * boost;
+                    const boostIdx = nodeIdx * 3;
+                    pulseBoost[boostIdx] = Math.max(pulseBoost[boostIdx], cr);
+                    pulseBoost[boostIdx + 1] = Math.max(pulseBoost[boostIdx + 1], cg);
+                    pulseBoost[boostIdx + 2] = Math.max(pulseBoost[boostIdx + 2], cb);
+                });
+            });
+        }
+
+        // --- Ambient particles: random-walk the web's edges -------------
         const particles = particlesRef.current!;
         particles.forEach((p) => {
             p.t += delta * PARTICLE_EDGE_SPEED;
@@ -442,8 +607,8 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
             const posAttr = pts.geometry.attributes.position as BufferAttribute;
             const colAttr = pts.geometry.attributes.color as BufferAttribute;
             particles.forEach((p, i) => {
-                const from = nodePositions[p.fromNode];
-                const to = nodePositions[p.toNode];
+                const from = swayedNodes[p.fromNode];
+                const to = swayedNodes[p.toNode];
                 const x = from[0] + (to[0] - from[0]) * p.t;
                 const y = from[1] + (to[1] - from[1]) * p.t;
                 const z = from[2] + (to[2] - from[2]) * p.t;
@@ -457,43 +622,21 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
             posAttr.needsUpdate = true;
             colAttr.needsUpdate = true;
         });
-
-        hoverGlowPoints.forEach((pts) => {
-            pts.visible = active;
-            if (!active) return;
-            const posAttr = pts.geometry.attributes.position as BufferAttribute;
-            const colAttr = pts.geometry.attributes.color as BufferAttribute;
-            particles.forEach((p, i) => {
-                const from = nodePositions[p.fromNode];
-                const to = nodePositions[p.toNode];
-                const x = from[0] + (to[0] - from[0]) * p.t;
-                const y = from[1] + (to[1] - from[1]) * p.t;
-                const z = from[2] + (to[2] - from[2]) * p.t;
-                posAttr.setXYZ(i, x, y, z);
-
-                const local = brainSwirlColor(x, y, z, time);
-                const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
-                const brightBoost = 1 / maxChannel;
-                colAttr.setXYZ(i, local[0] * brightBoost, local[1] * brightBoost, local[2] * brightBoost);
-            });
-            posAttr.needsUpdate = true;
-            colAttr.needsUpdate = true;
-        });
     });
 
     return (
         <group>
             <lineSegments ref={webLineRef}>
                 <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[webLinePositions, 3]} />
-                    <bufferAttribute attach="attributes-color" args={[webLineColors, 3]} />
+                    <bufferAttribute attach="attributes-position" args={[webLineArrays.positions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[webLineArrays.colors, 3]} />
                 </bufferGeometry>
                 <lineBasicMaterial vertexColors transparent opacity={0.5} blending={AdditiveBlending} />
             </lineSegments>
             <points ref={webGlowRef}>
                 <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[webGlowPositions, 3]} />
-                    <bufferAttribute attach="attributes-color" args={[webGlowColors, 3]} />
+                    <bufferAttribute attach="attributes-position" args={[webGlowArrays.positions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[webGlowArrays.colors, 3]} />
                 </bufferGeometry>
                 <pointsMaterial
                     vertexColors
@@ -508,8 +651,8 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
             </points>
             <points ref={webHazeRef}>
                 <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[webHazePositions, 3]} />
-                    <bufferAttribute attach="attributes-color" args={[webHazeColors, 3]} />
+                    <bufferAttribute attach="attributes-position" args={[webHazeArrays.positions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[webHazeArrays.colors, 3]} />
                 </bufferGeometry>
                 <pointsMaterial
                     vertexColors
@@ -525,8 +668,8 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
             {ambientPoints.map((p, i) => (
                 <primitive key={`a${i}`} object={p} />
             ))}
-            {hoverGlowPoints.map((p, i) => (
-                <primitive key={`hg${i}`} object={p} />
+            {webPulseGlowPoints.map((p, i) => (
+                <primitive key={`pg${i}`} object={p} />
             ))}
         </group>
     );
