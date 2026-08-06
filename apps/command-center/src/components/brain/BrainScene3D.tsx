@@ -1,6 +1,6 @@
 import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import { Canvas } from "@react-three/fiber";
-import { AmbientLight, type Line } from "three";
+import { AmbientLight, type Line, type Points } from "three";
 import BrainSystem3D from "./BrainSystem3D";
 import GlowLayer from "./GlowLayer";
 import OrbitRing3D from "./OrbitRing3D";
@@ -59,11 +59,11 @@ function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number
  * of one. Also fully static per feedback — no drifting particles.
  *
  * Both the brain's internal pulse Line objects (via EnergyLayer's
- * onReady, threaded through BrainSystem3D) AND the icons' hover-pulse
- * Line objects (via OrbitRing3D's onHoverLinesReady) are lifted up here
- * and merged into one selection, purely so GlowLayer's SelectiveBloom
- * can target exactly those objects — see GlowLayer's doc comment for why
- * a plain global-threshold Bloom couldn't do this.
+ * onReady, threaded through BrainSystem3D) AND the icons' hover-glow
+ * Points objects (via OrbitRing3D's onHoverPointsReady) are lifted up
+ * here and merged into one selection, purely so GlowLayer's
+ * SelectiveBloom can target exactly those objects — see GlowLayer's doc
+ * comment for why a plain global-threshold Bloom couldn't do this.
  *
  * Clicking a widget or an orbit icon opens DetailDrawer with that item's
  * full info, anchored right where the clicked thing is on screen —
@@ -79,7 +79,7 @@ function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number
 export default function BrainScene3D() {
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
-    const [hoverLines, setHoverLines] = useState<Line[]>([]);
+    const [hoverPoints, setHoverPoints] = useState<Points[]>([]);
     const [detail, setDetail] = useState<DetailDrawerContent | null>(null);
     // Which orbit icon's drawer is open, if any — kept separate from
     // `detail` itself (which also covers widgets) so OrbitRing3D can use
@@ -204,12 +204,12 @@ export default function BrainScene3D() {
                         <group scale={1.27} position={[0, -0.22, 0]}>
                             <BrainSystem3D onPulseReady={setPulseLines} />
                             <OrbitRing3D
-                                onHoverLinesReady={setHoverLines}
+                                onHoverPointsReady={setHoverPoints}
                                 onModuleClick={handleModuleClick}
                                 activeModuleId={activeModuleId}
                             />
                         </group>
-                        <GlowLayer selection={[...pulseLines, ...hoverLines]} lights={[ambientLight]} />
+                        <GlowLayer selection={[...pulseLines, ...hoverPoints]} lights={[ambientLight]} />
                     </Canvas>
                 </div>
 
