@@ -172,7 +172,7 @@ export default function BrainScene3D() {
                     flex: 1,
                     minHeight: 0,
                     display: "grid",
-                    gridTemplateColumns: "0.85fr 3.1fr 0.85fr",
+                    gridTemplateColumns: "1.15fr 2.5fr 1.15fr",
                     gap: 26,
                     padding: "8px 24px",
                     boxSizing: "border-box",
@@ -203,7 +203,7 @@ export default function BrainScene3D() {
                                 space, a uniform scale here preserves exactly the
                                 same icon-to-brain gap, just bigger, rather than
                                 needing to separately recompute icon distances. */}
-                            <group scale={1.35} position={[0, -0.22, 0]}>
+                            <group scale={1.28} position={[0, -0.1, 0]}>
                                 <BrainSystem3D onPulseReady={setPulseLines} />
                                 <OrbitRing3D
                                     onHoverPointsReady={setHoverPoints}

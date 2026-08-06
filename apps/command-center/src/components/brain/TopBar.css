@@ -54,8 +54,10 @@
     align-items: center;
     gap: 10px;
 
-    flex: 1;
-    justify-content: flex-end;
+    /* Sized to its own content, not stretched — with the voice bar gone
+       from the top bar's center, flex:1 here left a long stretch of
+       empty pill padding before "System Online" actually started. */
+    flex: 0 0 auto;
 
     padding: 9px 16px;
 
