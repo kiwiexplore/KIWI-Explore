@@ -5,6 +5,7 @@ import BrainSystem3D from "./BrainSystem3D";
 import GlowLayer from "./GlowLayer";
 import OrbitRing3D from "./OrbitRing3D";
 import TopBar from "./TopBar";
+import VoiceBar from "./VoiceBar";
 import Widget from "../widget/Widget";
 import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import SignUpForm from "../ui/SignUpForm";
@@ -12,7 +13,7 @@ import ProfileSettings from "../ui/ProfileSettings";
 import InfoPanel from "../ui/InfoPanel";
 import WeatherWidget from "./WeatherWidget";
 import SpaceNewsWidget from "./SpaceNewsWidget";
-import { leftWidgets, rightWidgets, bottomWidgets } from "./sceneWidgets";
+import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import milkyWayPhoto from "../../assets/milky-way-background.jpg";
 import "./BrainScene3D.css";
@@ -171,46 +172,51 @@ export default function BrainScene3D() {
                     flex: 1,
                     minHeight: 0,
                     display: "grid",
-                    gridTemplateColumns: "1.05fr 2.7fr 1.05fr",
+                    gridTemplateColumns: "0.85fr 3.1fr 0.85fr",
                     gap: 26,
                     padding: "8px 24px",
                     boxSizing: "border-box",
                 }}
             >
                 <aside className="side-widget-column">
-                    {leftWidgets.map((w) => (
-                        w.id === "weather"
-                            ? <WeatherWidget key={w.id} onOpenDetail={openDetail} />
-                            : (
-                                <Widget
-                                    key={w.id}
-                                    definition={w}
-                                    onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
-                                />
-                            )
-                    ))}
+                    {leftWidgets.map((w) => {
+                        if (w.id === "weather") return <WeatherWidget key={w.id} onOpenDetail={openDetail} />;
+                        if (w.id === "space-news") return <SpaceNewsWidget key={w.id} onOpenDetail={openDetail} />;
+                        return (
+                            <Widget
+                                key={w.id}
+                                definition={w}
+                                onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                            />
+                        );
+                    })}
                 </aside>
 
-                <div style={{ position: "relative", height: "100%" }}>
-                    <Canvas camera={{ position: [0, 0, 4], fov: 50 }} gl={{ alpha: true }}>
-                        <primitive object={ambientLight} />
-                        {/* Brain + orbit ring scaled up together (not just the
-                            brain alone) so the icons grow/move outward right
-                            along with it — since RADIUS etc. in OrbitRing3D
-                            are defined relative to the brain's own local
-                            space, a uniform scale here preserves exactly the
-                            same icon-to-brain gap, just bigger, rather than
-                            needing to separately recompute icon distances. */}
-                        <group scale={1.27} position={[0, -0.22, 0]}>
-                            <BrainSystem3D onPulseReady={setPulseLines} />
-                            <OrbitRing3D
-                                onHoverPointsReady={setHoverPoints}
-                                onModuleClick={handleModuleClick}
-                                activeModuleId={activeModuleId}
-                            />
-                        </group>
-                        <GlowLayer selection={[...pulseLines, ...hoverPoints]} lights={[ambientLight]} />
-                    </Canvas>
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+                    <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+                        <Canvas camera={{ position: [0, 0, 4], fov: 50 }} gl={{ alpha: true }}>
+                            <primitive object={ambientLight} />
+                            {/* Brain + orbit ring scaled up together (not just the
+                                brain alone) so the icons grow/move outward right
+                                along with it — since RADIUS etc. in OrbitRing3D
+                                are defined relative to the brain's own local
+                                space, a uniform scale here preserves exactly the
+                                same icon-to-brain gap, just bigger, rather than
+                                needing to separately recompute icon distances. */}
+                            <group scale={1.35} position={[0, -0.22, 0]}>
+                                <BrainSystem3D onPulseReady={setPulseLines} />
+                                <OrbitRing3D
+                                    onHoverPointsReady={setHoverPoints}
+                                    onModuleClick={handleModuleClick}
+                                    activeModuleId={activeModuleId}
+                                />
+                            </group>
+                            <GlowLayer selection={[...pulseLines, ...hoverPoints]} lights={[ambientLight]} />
+                        </Canvas>
+                    </div>
+                    <div className="brain-voice-bar-row">
+                        <VoiceBar />
+                    </div>
                 </div>
 
                 <aside className="side-widget-column">
@@ -222,21 +228,6 @@ export default function BrainScene3D() {
                         />
                     ))}
                 </aside>
-            </div>
-
-            <div className="bottom-widget-row">
-                {bottomWidgets.map((w) => (
-                    <div key={w.id} className="bottom-widget-item">
-                        {w.id === "space-news"
-                            ? <SpaceNewsWidget onOpenDetail={openDetail} />
-                            : (
-                                <Widget
-                                    definition={w}
-                                    onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
-                                />
-                            )}
-                    </div>
-                ))}
             </div>
 
             <DetailDrawer content={detail} onClose={closeDetail} />

@@ -1,102 +1,77 @@
-/* The 3 main widgets pinned beside the brain — bigger than the bottom
-   row's, since these are the primary ones (per explicit request).
-   Stretched to fill the whole column height (not just centered as a
-   group) so they grow into whatever vertical space is available instead
-   of leaving dead space above/below them. */
+/* 10 widgets per side column (per explicit request — no more separate
+   bottom row, it felt too cluttered piled on top of the columns).
+   Panels keep their own natural/compact height (NOT stretched to fill
+   the column — an earlier version used flex:1 to grow 3-4 widgets to
+   fill the space, but with 10 that would squeeze them illegibly thin
+   instead of scrolling) so the column's total content height exceeds
+   its available space and the vertical scrollbar below actually
+   engages, letting you page through all 10 at their normal size. */
 .side-widget-column {
 
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 
     overflow-y: auto;
-
-}
-
-.side-widget-column .panel {
-
-    flex: 1;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
-    padding: 20px 22px;
-
-}
-
-.side-widget-column .panel-header {
-
-    font-size: 15px;
-
-}
-
-.side-widget-column .panel-body {
-
-    font-size: 14px;
-
-}
-
-.bottom-widget-row {
-
-    display: flex;
-    gap: 10px;
-
-    /* Shrunk back down — these took too much vertical space away from
-       the brain, per explicit request. Still a bit of top padding to
-       keep a gap from the ring's bottom icon just above this row. */
-    padding: 18px 24px 12px;
-
-    overflow-x: auto;
-    overflow-y: hidden;
 
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
 
 }
 
-.bottom-widget-row::-webkit-scrollbar {
+.side-widget-column::-webkit-scrollbar {
 
-    height: 8px;
+    width: 8px;
 
 }
 
-.bottom-widget-row::-webkit-scrollbar-track {
+.side-widget-column::-webkit-scrollbar-track {
 
     background: transparent;
 
 }
 
-.bottom-widget-row::-webkit-scrollbar-thumb {
+.side-widget-column::-webkit-scrollbar-thumb {
 
     background: var(--border);
     border-radius: 999px;
 
 }
 
-.bottom-widget-row::-webkit-scrollbar-thumb:hover {
+.side-widget-column::-webkit-scrollbar-thumb:hover {
 
     background: var(--primary);
 
 }
 
-.bottom-widget-item {
+.side-widget-column .panel {
 
-    flex: 0 0 200px;
+    flex: 0 0 auto;
 
-    display: flex;
+    padding: 18px 20px;
 
 }
 
-.bottom-widget-item .panel {
+.side-widget-column .panel-header {
 
-    width: 100%;
-    min-height: 76px;
+    font-size: 14px;
+
+}
+
+.side-widget-column .panel-body {
+
+    font-size: 13px;
+
+}
+
+/* The "Hey Kiwi" voice bar, moved here (below the brain) from the top
+   bar — per explicit request, so it has proper room to fit once the
+   bottom widget row is gone. */
+.brain-voice-bar-row {
 
     display: flex;
-    flex-direction: column;
     justify-content: center;
 
-    padding: 12px 16px;
+    padding: 10px 24px 18px;
 
 }

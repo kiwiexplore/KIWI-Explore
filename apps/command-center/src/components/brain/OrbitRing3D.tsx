@@ -19,7 +19,7 @@ import { brainAdjacency } from "./brainTopology";
 import { getDotTexture, getHazeTexture } from "./dotTexture";
 import "./OrbitRing3D.css";
 
-const RADIUS_X = 1.52;
+const RADIUS_X = 1.48;
 // Flattened vertically relative to RADIUS_X — a true oval rather than a
 // near-circle — so the ring's top/bottom icons sit closer to the brain
 // than its left/right icons, fitting inside the available vertical space
@@ -27,7 +27,7 @@ const RADIUS_X = 1.52;
 // downward shift of the whole scene to compensate. Not too flattened
 // though — kept fairly close to RADIUS_X so it still reads as a rounded
 // oval rather than a squashed ellipse.
-const RADIUS_Y = 1.18;
+const RADIUS_Y = 1.16;
 // Nudges the ring + icons up relative to the brain — only the ring's own
 // curve and the icons' anchor points, NOT the brain itself (that lives
 // in a sibling group) and NOT the branch targets (real brain node
@@ -208,10 +208,10 @@ function pointOnBranch(
 // alone reads as basically invisible — same fix RingConnections' own
 // glowPoints uses for the same problem.
 const WEB_GLOW_SAMPLES_PER_EDGE = 3;
-// Half of BrainHaze's own opacity (0.0672) — per explicit request that
-// this web's smoke read as present but clearly secondary to the brain's
-// own haze, not competing with it. Same sprite size as BrainHaze's.
-const WEB_HAZE_OPACITY = 0.0336;
+// A third of BrainHaze's own opacity (0.0672) — reduced further per
+// explicit request that the brain's own connections stand out more
+// against these webs. Same sprite size as BrainHaze's.
+const WEB_HAZE_OPACITY = 0.0224;
 const WEB_HAZE_SIZE = 0.17;
 // How far each particle travels per second, as a fraction of one edge's
 // length — an edge-to-edge hop takes roughly 1/PARTICLE_EDGE_SPEED
@@ -314,13 +314,15 @@ function buildWebGraph(outer: [number, number, number], branches: [number, numbe
     return { nodePositions, edges, adjacency, nodeT };
 }
 
-// Comet shape for the hover pulse — soft leading edge, short fading
-// tail — evaluated per-vertex against that vertex's own nodeT (distance
-// from the icon), so the same formula produces a wavefront expanding
-// outward through the web as pulseProgress goes 0 (icon) to 1 (brain).
+// Comet shape for the hover pulse — soft leading edge, then a SHARP
+// cutoff behind it (not a long fading tail) — evaluated per-vertex
+// against that vertex's own nodeT (distance from the icon), so the same
+// formula produces a narrow wavefront sweeping outward through the web
+// as pulseProgress goes 0 (icon) to 1 (brain), switching off behind
+// itself as it passes rather than leaving a lingering trail.
 function cometBrightness(nodeT: number, pulseProgress: number): number {
     const signedDist = nodeT - pulseProgress;
-    const raw = signedDist > 0 ? Math.max(0, 1 - signedDist * 6) : Math.max(0, 1 + signedDist * 1.2);
+    const raw = signedDist > 0 ? Math.max(0, 1 - signedDist * 6) : Math.max(0, 1 + signedDist * 9);
     return raw * raw * (3 - 2 * raw);
 }
 
@@ -469,11 +471,18 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
         }
 
         let pulseProgress = 0;
+        // Only true during the actual travel window — during the pause
+        // that follows, the pulse stays fully OFF everywhere (not just
+        // dim), per explicit request, rather than lingering near the
+        // brain end where cometBrightness(nodeT≈1, pulseProgress=1)
+        // would otherwise still read as lit.
+        let inTravelPhase = false;
         if (active) {
             pulseElapsed.current += delta;
             const cycleLength = PULSE_TRAVEL_DURATION + PULSE_PAUSE_DURATION;
             const thisCycle = Math.floor(pulseElapsed.current / cycleLength);
             const cycleT = pulseElapsed.current - thisCycle * cycleLength;
+            inTravelPhase = cycleT < PULSE_TRAVEL_DURATION;
             pulseProgress = Math.min(1, cycleT / PULSE_TRAVEL_DURATION);
 
             if (thisCycle !== cycleIndex.current) {
@@ -525,10 +534,20 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
                 [[a, aT] as const, [b, bT] as const].forEach(([p, pT], vi) => {
                     const local = brainSwirlColor(p[0], p[1], p[2], time);
                     const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
-                    const dimBoost = 0.45 / maxChannel;
+                    // Dimmer baseline than before — per explicit request,
+                    // so the brain's own connections stand out more
+                    // against these webs.
+                    const dimBoost = 0.3 / maxChannel;
                     const brightBoost = 1 / maxChannel;
-                    const comet = active ? cometBrightness(pT, pulseProgress) : 0;
-                    const boost = dimBoost + (brightBoost - dimBoost) * comet;
+                    let boost: number;
+                    if (active) {
+                        // While hovered: fully OFF during the pause, or
+                        // the traveling comet's own shape during travel —
+                        // never the ambient dim baseline (see cometBrightness).
+                        boost = inTravelPhase ? dimBoost + (brightBoost - dimBoost) * cometBrightness(pT, pulseProgress) : 0;
+                    } else {
+                        boost = dimBoost;
+                    }
                     webLineColAttr.setXYZ(edgeIdx * 2 + vi, local[0] * boost, local[1] * boost, local[2] * boost);
                 });
 
@@ -546,10 +565,10 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
                     webGlowPosAttr.setXYZ(glowIdx, gx, gy, gz);
                     const local = brainSwirlColor(gx, gy, gz, time);
                     const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
-                    const dimBoost = 0.5 / maxChannel;
+                    const dimBoost = 0.32 / maxChannel;
                     const brightBoost = 1 / maxChannel;
-                    const comet = active ? cometBrightness(gT, pulseProgress) : 0;
-                    const boost = dimBoost + (brightBoost - dimBoost) * comet;
+                    const comet = (active && inTravelPhase) ? cometBrightness(gT, pulseProgress) : 0;
+                    const boost = active ? (inTravelPhase ? dimBoost + (brightBoost - dimBoost) * comet : 0) : dimBoost;
                     webGlowColAttr.setXYZ(glowIdx, local[0] * boost, local[1] * boost, local[2] * boost);
 
                     pulseGlowPosAttr!.setXYZ(glowIdx, gx, gy, gz);
@@ -631,7 +650,7 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
                     <bufferAttribute attach="attributes-position" args={[webLineArrays.positions, 3]} />
                     <bufferAttribute attach="attributes-color" args={[webLineArrays.colors, 3]} />
                 </bufferGeometry>
-                <lineBasicMaterial vertexColors transparent opacity={0.5} blending={AdditiveBlending} />
+                <lineBasicMaterial vertexColors transparent opacity={0.4} blending={AdditiveBlending} />
             </lineSegments>
             <points ref={webGlowRef}>
                 <bufferGeometry>
