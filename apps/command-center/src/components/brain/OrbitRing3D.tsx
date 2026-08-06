@@ -539,15 +539,14 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
                     // against these webs.
                     const dimBoost = 0.3 / maxChannel;
                     const brightBoost = 1 / maxChannel;
-                    let boost: number;
-                    if (active) {
-                        // While hovered: fully OFF during the pause, or
-                        // the traveling comet's own shape during travel —
-                        // never the ambient dim baseline (see cometBrightness).
-                        boost = inTravelPhase ? dimBoost + (brightBoost - dimBoost) * cometBrightness(pT, pulseProgress) : 0;
-                    } else {
-                        boost = dimBoost;
-                    }
+                    // The web ITSELF stays visible always, at its normal
+                    // dim baseline — per explicit request, only the pulse
+                    // effect on top of it should turn off during the
+                    // pause, not the lines themselves. comet is already 0
+                    // outside the travel window, so this naturally falls
+                    // back to the plain dim tone during the pause.
+                    const comet = (active && inTravelPhase) ? cometBrightness(pT, pulseProgress) : 0;
+                    const boost = dimBoost + (brightBoost - dimBoost) * comet;
                     webLineColAttr.setXYZ(edgeIdx * 2 + vi, local[0] * boost, local[1] * boost, local[2] * boost);
                 });
 
@@ -567,8 +566,12 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
                     const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
                     const dimBoost = 0.32 / maxChannel;
                     const brightBoost = 1 / maxChannel;
+                    // Same as the line above — the glow dots stay at
+                    // their normal dim baseline always; only the comet
+                    // portion (naturally 0 outside the travel window)
+                    // turns off during the pause.
                     const comet = (active && inTravelPhase) ? cometBrightness(gT, pulseProgress) : 0;
-                    const boost = active ? (inTravelPhase ? dimBoost + (brightBoost - dimBoost) * comet : 0) : dimBoost;
+                    const boost = dimBoost + (brightBoost - dimBoost) * comet;
                     webGlowColAttr.setXYZ(glowIdx, local[0] * boost, local[1] * boost, local[2] * boost);
 
                     pulseGlowPosAttr!.setXYZ(glowIdx, gx, gy, gz);

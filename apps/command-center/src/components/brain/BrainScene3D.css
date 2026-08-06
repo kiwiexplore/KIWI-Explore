@@ -64,14 +64,31 @@
 
 }
 
+/* The brief "what happened while you were away" summary — sits in the
+   space above the brain, below the top bar. */
+.brain-activity-row {
+
+    display: flex;
+    justify-content: center;
+
+    padding: 4px 24px 0;
+
+}
+
 /* The "Hey Kiwi" voice bar, moved here (below the brain) from the top
    bar — per explicit request, so it has proper room to fit once the
-   bottom widget row is gone. */
+   bottom widget row is gone. Pulled up closer to the brain (negative
+   margin, into the Canvas's own mostly-empty lower area — the brain's
+   visible silhouette doesn't fill its whole camera frame) rather than
+   sitting the usual flex gap below it. Bottom padding kept generous —
+   reserved room for the conversation transcript that'll appear here
+   once voice input is actually wired up, per explicit request. */
 .brain-voice-bar-row {
 
     display: flex;
     justify-content: center;
 
-    padding: 10px 24px 18px;
+    margin-top: -48px;
+    padding: 0 24px 48px;
 
 }
