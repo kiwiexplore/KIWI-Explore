@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import {
     AdditiveBlending, BufferAttribute, BufferGeometry,
-    Line as ThreeLine, LineBasicMaterial,
+    Line as ThreeLine, LineBasicMaterial, LineSegments,
     Points as ThreePoints, PointsMaterial,
 } from "three";
 import { orbitModules } from "../../state/orbitModules";
@@ -19,7 +19,7 @@ import { brainAdjacency } from "./brainTopology";
 import { getDotTexture, getHazeTexture } from "./dotTexture";
 import "./OrbitRing3D.css";
 
-const RADIUS_X = 1.48;
+const RADIUS_X = 1.52;
 // Flattened vertically relative to RADIUS_X — a true oval rather than a
 // near-circle — so the ring's top/bottom icons sit closer to the brain
 // than its left/right icons, fitting inside the available vertical space
@@ -27,7 +27,7 @@ const RADIUS_X = 1.48;
 // downward shift of the whole scene to compensate. Not too flattened
 // though — kept fairly close to RADIUS_X so it still reads as a rounded
 // oval rather than a squashed ellipse.
-const RADIUS_Y = 1.15;
+const RADIUS_Y = 1.18;
 // Nudges the ring + icons up relative to the brain — only the ring's own
 // curve and the icons' anchor points, NOT the brain itself (that lives
 // in a sibling group) and NOT the branch targets (real brain node
@@ -144,6 +144,14 @@ function randomWalk(start: number, length: number): number[] {
     return path;
 }
 
+// A web segment endpoint — a position plus how visible it should be
+// right now (1 for the fixed icon/target anchors, or a live particle's
+// own sin(t*pi) fade otherwise — see writeSegment's doc comment).
+interface WebVertex {
+    p: [number, number, number];
+    fade: number;
+}
+
 interface IconEnergyLinkProps {
     active: boolean;
     outer: [number, number, number];
@@ -196,42 +204,46 @@ function pointOnBranch(
     ];
 }
 
-// Fixed points sampled along the selected branch's own curve (icon to
-// its target), used for the hover comet's trunk — deliberately NOT the
-// drifting ambient particles (whose independent motion would make the
-// comet's speed along the trunk uneven and tie it to particles that keep
-// moving after the comet has passed).
-const TRUNK_SAMPLES = 6;
+// Icon + that branch's own 3 live ambient particles + its target — used
+// for the hover comet's trunk. Deliberately the SAME live positions the
+// web (see writeSegment) is built from, not a separate fixed curve — an
+// earlier version sampled pointOnBranch at fixed t instead, and since
+// the web now visibly travels with the drifting particles, that static
+// trunk read as a separate, disconnected strand sitting apart from the
+// (moving) web around it, per explicit feedback.
+const TRUNK_SAMPLES = 5;
 
-// A particle's progress used to wrap instantly via `% 1` — pointOnBranch
-// at t=0 IS the icon and at t=1 IS the target, so that reset was a real,
-// full-length teleport every cycle, not just a brief flash to hide (an
-// earlier fix tried exactly that: fading brightness to zero right at the
-// wrap — it hid the flash but the underlying jump was still there).
-// Ping-ponging back and forth between 0 and 1 instead of resetting means
-// the particle's position is continuous everywhere, all the time — no
-// instant is a moment where position needs to be hidden, because nothing
-// ever actually jumps.
-function triangleWave(x: number): number {
-    const u = x % 2;
-    const wrapped = u < 0 ? u + 2 : u;
-    return wrapped <= 1 ? wrapped : 2 - wrapped;
-}
+// Samples per web segment for the glow-dot overlay — dense enough that
+// the sprites visually overlap into one continuous band. WebGL line
+// width is unreliable across GPUs (most cap it at 1px), so the thin
+// backing line alone reads as basically invisible — same fix
+// RingConnections' own glowPoints uses for the same problem.
+const WEB_GLOW_SAMPLES_PER_SEGMENT = 3;
+// Half of BrainHaze's own opacity (0.0672) — per explicit request that
+// this web's smoke read as present but clearly secondary to the brain's
+// own haze, not competing with it. Same sprite size as BrainHaze's.
+const WEB_HAZE_OPACITY = 0.0336;
+const WEB_HAZE_SIZE = 0.17;
+
 
 /**
  * One icon's connection into the brain has three parts:
  *
  * 1. A calm, always-on drift of ambient motes along a branching path: a
  *    shared trunk out from the icon, forking partway into three prongs,
- *    each reaching a different real, currently-visible brain node, like
- *    a lightning bolt forking near its end rather than a single wire.
+ *    each reaching a different real, currently-visible brain node.
  *
- * 2. A small always-connected web (see BranchWeb, rendered once for all
- *    icons at the OrbitRing3D level) linking the 3 prongs' actual arrival
- *    nodes to each other — fixed points, so it never fades or disconnects
- *    the way an earlier version tied to the drifting ambient particles
- *    sometimes did.
+ * 2. An always-visible web BOUND TO those same live particles (see the
+ *    particlesLive-driven block in useFrame, below the ambientPoints
+ *    loop) — per branch, a chain from the icon through that branch's own
+ *    3 particles (t-sorted so the chain never crosses itself) to its
+ *    target, plus 3 cross-branch "rungs" linking corresponding sorted
+ *    particles across the 3 branches. Every vertex is a live particle
+ *    position, rebuilt every frame, so the whole net visibly travels
+ *    WITH the particles as they drift — per explicit request — rather
+ *    than sitting on a fixed invisible curve.
  *
+
  * 3. On hover, ONE traveling pulse on a RANDOMLY chosen prong (re-rolled
  *    each hover and each time it loops) — a slow comet moving from the
  *    icon into the brain and looping continuously for as long as the
@@ -269,16 +281,48 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
         return [new ThreePoints(geometry, material)];
     }, []);
 
+    // The web is built from the LIVE ambient particles themselves, not a
+    // fixed invisible curve — the connecting lines are meant to travel
+    // WITH the particles as they drift, per explicit request, so the
+    // whole thing reads as one net that's always moving and always
+    // attached to every particle. Per branch: icon -> its own 3 live
+    // particles (t-sorted so the chain doesn't cross itself) -> target,
+    // 4 segments. Across branches: 3 "rungs" (one per sorted slot)
+    // cross-linking the 3 branches to each other. Buffer SIZES are fixed
+    // (3 branches * 4 chain segments + 3 slots * 3 rung edges = 21
+    // segments), but positions are rewritten every frame in useFrame
+    // below from that frame's live particle positions.
+    const WEB_CHAIN_SEGMENTS = 4; // icon-p0, p0-p1, p1-p2, p2-target
+    const WEB_RUNG_EDGES = 3; // triangle per slot
+    const webSegmentCount = 3 * WEB_CHAIN_SEGMENTS + 3 * WEB_RUNG_EDGES;
+    const webLinePositions = useMemo(() => new Float32Array(webSegmentCount * 2 * 3), [webSegmentCount]);
+    const webLineColors = useMemo(() => new Float32Array(webSegmentCount * 2 * 3), [webSegmentCount]);
+    const webLineRef = useRef<LineSegments>(null);
+    const webGlowPositions = useMemo(() => new Float32Array(webSegmentCount * WEB_GLOW_SAMPLES_PER_SEGMENT * 3), [webSegmentCount]);
+    const webGlowColors = useMemo(() => new Float32Array(webSegmentCount * WEB_GLOW_SAMPLES_PER_SEGMENT * 3), [webSegmentCount]);
+    const webGlowRef = useRef<ThreePoints>(null);
+    // One haze sprite per segment (its midpoint) — see WEB_HAZE_OPACITY.
+    const webHazePositions = useMemo(() => new Float32Array(webSegmentCount * 3), [webSegmentCount]);
+    const webHazeColors = useMemo(() => new Float32Array(webSegmentCount * 3), [webSegmentCount]);
+    const webHazeRef = useRef<ThreePoints>(null);
+
+    // Reused every frame for each branch's own 3 particles' live
+    // positions — declared outside useFrame so it's not reallocated per
+    // frame. particlesLive[branch][slot].
+    const particlesLive = useRef<{ t: number; x: number; y: number; z: number }[][]>(
+        Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => ({ t: 0, x: 0, y: 0, z: 0 }))),
+    );
+
     // ONE traveling pulse per icon, on a RANDOMLY chosen branch (re-rolled
     // each time hover starts and each time it loops) — not all 3 at once,
-    // per explicit request. Path: TRUNK_SAMPLES fixed points along that
-    // branch's own curve (icon to its target — NOT the drifting ambient
-    // particles, so this doesn't inherit their independent motion), then
-    // continuing via a graph-walk past the entry node exactly as before.
-    // A single comet travels the whole thing (trunk included) and loops
-    // continuously for as long as the icon stays hovered/active. Wrapped
-    // in a 1-element array — mutating the raw useMemo result directly
-    // trips the react-hooks/immutability rule.
+    // per explicit request. Path: TRUNK_SAMPLES points along that
+    // branch's own LIVE chain (icon, its 3 live particles, its target —
+    // the same chain the web is built from, see TRUNK_SAMPLES' doc
+    // comment), then continuing via a graph-walk past the entry node
+    // exactly as before. A single comet travels the whole thing (trunk
+    // included) and loops continuously for as long as the icon stays
+    // hovered/active. Wrapped in a 1-element array — mutating the raw
+    // useMemo result directly trips the react-hooks/immutability rule.
     const hoverLines = useMemo(() => {
         const pointCount = TRUNK_SAMPLES + HOVER_PATH_LENGTH;
         const geometry = new BufferGeometry();
@@ -317,10 +361,17 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
 
             for (let i = 0; i < AMBIENT_PARTICLES; i++) {
                 const { phase, branch } = ambientSeeds[i];
-                // Ping-pongs between 0 (icon) and 1 (target) — see
-                // triangleWave's doc comment — instead of resetting via
-                // modulo, so this particle's own position never jumps.
-                const t = triangleWave(phase + time * DRIFT_SPEED);
+                // One-way only (icon -> target), per explicit request —
+                // resets via modulo instead of ping-ponging back. The
+                // reset itself is a real position jump, but `fade` below
+                // has NO brightness floor anymore, so it reaches true
+                // zero at t=0 and t=1 — the particle (and the web lines
+                // touching it, see below) are fully invisible exactly at
+                // the moment of the jump, which is what actually hides it
+                // (an earlier attempt kept a 0.34 floor "just in case",
+                // and that leftover 34% brightness was exactly what made
+                // the jump visible).
+                const t = (phase + time * DRIFT_SPEED) % 1;
                 const wobble = Math.sin(t * Math.PI * 3 + i * 1.7) * 0.1 * (1 - t);
 
                 const [px, py, pz] = pointOnBranch(outer, branches, branch, t);
@@ -331,17 +382,109 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
 
                 const fade = Math.sin(t * Math.PI); // 0 at the icon and at arrival, peak mid-flight
                 const local = brainSwirlColor(x, y, z, time);
-                const boost = (active ? 1.3 : 1) * (0.34 + fade * 0.85);
+                const boost = (active ? 1.3 : 1) * fade;
                 colAttr.setXYZ(
                     i,
                     Math.min(1, local[0] * boost),
                     Math.min(1, local[1] * boost),
                     Math.min(1, local[2] * boost),
                 );
+
+                // This particle's own live position, remembered for the
+                // web below — the connecting lines are meant to travel
+                // WITH the particles, not sit on a fixed invisible curve.
+                const slot = Math.floor(i / 3);
+                particlesLive.current[branch][slot] = { t, x, y, z };
             }
             posAttr.needsUpdate = true;
             colAttr.needsUpdate = true;
         });
+
+        // Build the web's CHAIN segments (icon -> this branch's own 3
+        // live particles -> target) and cross-branch RUNGS (same slot
+        // across the 3 branches), from this frame's live particle
+        // positions — both position AND color are rebuilt every frame,
+        // since the whole point is that this net travels with the
+        // drifting particles instead of staying still. Deliberately NOT
+        // sorted by t — connecting by each particle's fixed identity
+        // (slot index) instead of its current rank kept things smooth;
+        // sorting caused the connected slot to instantly swap between two
+        // different particles whenever their t values crossed, which read
+        // as the line jumping between them.
+        const webLinePosAttr = webLineRef.current?.geometry.attributes.position as BufferAttribute | undefined;
+        const webLineColAttr = webLineRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        const webGlowPosAttr = webGlowRef.current?.geometry.attributes.position as BufferAttribute | undefined;
+        const webGlowColAttr = webGlowRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        const webHazePosAttr = webHazeRef.current?.geometry.attributes.position as BufferAttribute | undefined;
+        const webHazeColAttr = webHazeRef.current?.geometry.attributes.color as BufferAttribute | undefined;
+        if (webLinePosAttr && webLineColAttr && webGlowPosAttr && webGlowColAttr && webHazePosAttr && webHazeColAttr) {
+            let seg = 0;
+            let glow = 0;
+            // Each endpoint carries its own `fade` — 1 for the fixed
+            // icon/target anchors (they never move, nothing to hide), or
+            // that particle's own sin(t*pi) fade otherwise. Since a
+            // one-way particle's reset is a real position jump (see the
+            // ambient loop above), fading THIS vertex's own color to zero
+            // right as it resets hides the jump in the web too, not just
+            // in the particle dot itself.
+            const writeSegment = (a: WebVertex, b: WebVertex) => {
+                webLinePosAttr.setXYZ(seg * 2, a.p[0], a.p[1], a.p[2]);
+                webLinePosAttr.setXYZ(seg * 2 + 1, b.p[0], b.p[1], b.p[2]);
+                [a, b].forEach((v, vi) => {
+                    const local = brainSwirlColor(v.p[0], v.p[1], v.p[2], time);
+                    const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
+                    const boost = (0.45 / maxChannel) * v.fade;
+                    webLineColAttr.setXYZ(seg * 2 + vi, local[0] * boost, local[1] * boost, local[2] * boost);
+                });
+                for (let s = 0; s < WEB_GLOW_SAMPLES_PER_SEGMENT; s++) {
+                    const et = s / (WEB_GLOW_SAMPLES_PER_SEGMENT - 1);
+                    const gx = a.p[0] + (b.p[0] - a.p[0]) * et, gy = a.p[1] + (b.p[1] - a.p[1]) * et, gz = a.p[2] + (b.p[2] - a.p[2]) * et;
+                    const gFade = a.fade + (b.fade - a.fade) * et;
+                    webGlowPosAttr.setXYZ(glow, gx, gy, gz);
+                    const local = brainSwirlColor(gx, gy, gz, time);
+                    const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
+                    const boost = (0.5 / maxChannel) * gFade;
+                    webGlowColAttr.setXYZ(glow, local[0] * boost, local[1] * boost, local[2] * boost);
+                    glow++;
+                }
+                const mx = (a.p[0] + b.p[0]) / 2, my = (a.p[1] + b.p[1]) / 2, mz = (a.p[2] + b.p[2]) / 2;
+                const mFade = (a.fade + b.fade) / 2;
+                webHazePosAttr.setXYZ(seg, mx, my, mz);
+                const hazeLocal = brainSwirlColor(mx, my, mz, time);
+                const hazeMax = Math.max(hazeLocal[0], hazeLocal[1], hazeLocal[2], 0.001);
+                const hazeBoost = (1 / hazeMax) * mFade; // value-boost normalized — WEB_HAZE_OPACITY carries the actual intensity
+                webHazeColAttr.setXYZ(seg, hazeLocal[0] * hazeBoost, hazeLocal[1] * hazeBoost, hazeLocal[2] * hazeBoost);
+                seg++;
+            };
+
+            const FIXED: number = 1;
+            for (let b = 0; b < 3; b++) {
+                const s = particlesLive.current[b];
+                const chain: WebVertex[] = [
+                    { p: outer, fade: FIXED },
+                    { p: [s[0].x, s[0].y, s[0].z], fade: Math.sin(s[0].t * Math.PI) },
+                    { p: [s[1].x, s[1].y, s[1].z], fade: Math.sin(s[1].t * Math.PI) },
+                    { p: [s[2].x, s[2].y, s[2].z], fade: Math.sin(s[2].t * Math.PI) },
+                    { p: branches[b], fade: FIXED },
+                ];
+                for (let i = 0; i < chain.length - 1; i++) writeSegment(chain[i], chain[i + 1]);
+            }
+            for (let slot = 0; slot < 3; slot++) {
+                const v0: WebVertex = { p: [particlesLive.current[0][slot].x, particlesLive.current[0][slot].y, particlesLive.current[0][slot].z], fade: Math.sin(particlesLive.current[0][slot].t * Math.PI) };
+                const v1: WebVertex = { p: [particlesLive.current[1][slot].x, particlesLive.current[1][slot].y, particlesLive.current[1][slot].z], fade: Math.sin(particlesLive.current[1][slot].t * Math.PI) };
+                const v2: WebVertex = { p: [particlesLive.current[2][slot].x, particlesLive.current[2][slot].y, particlesLive.current[2][slot].z], fade: Math.sin(particlesLive.current[2][slot].t * Math.PI) };
+                writeSegment(v0, v1);
+                writeSegment(v1, v2);
+                writeSegment(v2, v0);
+            }
+
+            webLinePosAttr.needsUpdate = true;
+            webLineColAttr.needsUpdate = true;
+            webGlowPosAttr.needsUpdate = true;
+            webGlowColAttr.needsUpdate = true;
+            webHazePosAttr.needsUpdate = true;
+            webHazeColAttr.needsUpdate = true;
+        }
 
         if (active && !wasActive.current) {
             selectedBranch.current = Math.floor(Math.random() * 3);
@@ -385,11 +528,17 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
                 let px: number, py: number, pz: number, nodeIdx = -1;
 
                 if (n < TRUNK_SAMPLES) {
-                    // Fixed points along the selected branch's own curve —
-                    // NOT the drifting ambient particles (see TRUNK_SAMPLES'
-                    // doc comment) — icon (t=0) through to its target (t=1).
-                    const curveT = n / (TRUNK_SAMPLES - 1);
-                    [px, py, pz] = pointOnBranch(outer, branches, branch, curveT);
+                    // The SAME live chain the web uses for this branch —
+                    // icon, its 3 live particles, then its target — see
+                    // TRUNK_SAMPLES' doc comment.
+                    if (n === 0) {
+                        [px, py, pz] = outer;
+                    } else if (n <= 3) {
+                        const live = particlesLive.current[branch][n - 1];
+                        px = live.x; py = live.y; pz = live.z;
+                    } else {
+                        [px, py, pz] = branches[branch];
+                    }
                 } else {
                     const k = n - TRUNK_SAMPLES;
                     nodeIdx = path[k];
@@ -438,6 +587,45 @@ function IconEnergyLink({ active, outer, branchIndices, seed, onHoverLineReady }
 
     return (
         <group>
+            <lineSegments ref={webLineRef}>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[webLinePositions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[webLineColors, 3]} />
+                </bufferGeometry>
+                <lineBasicMaterial vertexColors transparent opacity={0.5} blending={AdditiveBlending} />
+            </lineSegments>
+            <points ref={webGlowRef}>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[webGlowPositions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[webGlowColors, 3]} />
+                </bufferGeometry>
+                <pointsMaterial
+                    vertexColors
+                    map={getDotTexture()}
+                    alphaTest={0.05}
+                    size={0.026}
+                    sizeAttenuation
+                    transparent
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </points>
+            <points ref={webHazeRef}>
+                <bufferGeometry>
+                    <bufferAttribute attach="attributes-position" args={[webHazePositions, 3]} />
+                    <bufferAttribute attach="attributes-color" args={[webHazeColors, 3]} />
+                </bufferGeometry>
+                <pointsMaterial
+                    vertexColors
+                    map={getHazeTexture()}
+                    size={WEB_HAZE_SIZE}
+                    sizeAttenuation
+                    transparent
+                    opacity={WEB_HAZE_OPACITY}
+                    depthWrite={false}
+                    blending={AdditiveBlending}
+                />
+            </points>
             {ambientPoints.map((p, i) => (
                 <primitive key={`a${i}`} object={p} />
             ))}
@@ -621,145 +809,6 @@ function RingConnections({ positioned }: { positioned: Positioned[] }) {
     );
 }
 
-// Half of BrainHaze's own opacity (0.0672) — per explicit request that
-// this web's smoke read as present but clearly secondary to the brain's
-// own haze, not competing with it.
-const WEB_HAZE_OPACITY = 0.0336;
-// Samples per edge for the glow-dot overlay below — dense enough that
-// the sprites visually overlap into one continuous band.
-const WEB_GLOW_SAMPLES = 5;
-
-/**
- * Connects each icon's 3 branch endpoints TO EACH OTHER too — a small
- * triangle per icon — so the whole thing reads as a spider-web sitting
- * where each icon's energy fans into the brain, rather than 3 branches
- * that only ever meet back at the icon. Built from FIXED brain-node
- * positions (the same `branchIndices` layoutModules already computed),
- * not anything that moves or fades, specifically so this web is always
- * fully connected — an earlier version tied to the drifting ambient
- * particles could stretch into a degenerate sliver or fade out
- * unevenly, reading as "disconnecting" (per explicit feedback).
- *
- * Rendered as a thin backing line PLUS a soft-sprite glow overlay
- * sampled along each edge — WebGL line width is unreliable across GPUs
- * (most cap it at 1px, same issue RingConnections' own glowPoints
- * solves), and a bare 1px line at this brightness read as essentially
- * invisible, leaving only the (barely brighter) endpoint vertices
- * visible — the exact "disconnected dots" look this is meant to avoid.
- *
- * A faint haze along these edges (see BrainHaze) at half its intensity
- * ties it visually to the rest of the brain's smoke without overpowering
- * it.
- */
-function BranchWeb({ positioned }: { positioned: Positioned[] }) {
-    const { linePositions, hazePositions, glowPositions } = useMemo(() => {
-        const lines: number[] = [];
-        const haze: number[] = [];
-        const glow: number[] = [];
-        positioned.forEach(({ branchIndices }) => {
-            const pts = branchIndices.map((idx): [number, number, number] => [
-                brainNodes3D[idx * 3], brainNodes3D[idx * 3 + 1], brainNodes3D[idx * 3 + 2],
-            ]);
-            const edges: [number, number][] = [[0, 1], [1, 2], [2, 0]];
-            edges.forEach(([a, b]) => {
-                const [ax, ay, az] = pts[a];
-                const [bx, by, bz] = pts[b];
-                lines.push(ax, ay, az, bx, by, bz);
-                haze.push((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2);
-                for (let s = 0; s < WEB_GLOW_SAMPLES; s++) {
-                    const t = s / (WEB_GLOW_SAMPLES - 1);
-                    glow.push(ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t);
-                }
-            });
-        });
-        return {
-            linePositions: new Float32Array(lines),
-            hazePositions: new Float32Array(haze),
-            glowPositions: new Float32Array(glow),
-        };
-    }, [positioned]);
-
-    const hazeColors = useMemo(() => new Float32Array(hazePositions.length), [hazePositions]);
-    const hazeRef = useRef<ThreePoints>(null);
-    const glowColors = useMemo(() => new Float32Array(glowPositions.length), [glowPositions]);
-    const glowRef = useRef<ThreePoints>(null);
-
-    useFrame((state) => {
-        const time = state.clock.elapsedTime;
-
-        const hazeAttr = hazeRef.current?.geometry.attributes.color as BufferAttribute | undefined;
-        if (hazeAttr) {
-            const count = hazePositions.length / 3;
-            for (let n = 0; n < count; n++) {
-                const x = hazePositions[n * 3], y = hazePositions[n * 3 + 1], z = hazePositions[n * 3 + 2];
-                const base = brainSwirlColor(x, y, z, time);
-                // Same value-boost normalization BrainHaze uses — keeps
-                // every sample the same brightness regardless of hue.
-                const maxChannel = Math.max(base[0], base[1], base[2], 0.001);
-                const boost = 1 / maxChannel;
-                hazeAttr.setXYZ(n, base[0] * boost, base[1] * boost, base[2] * boost);
-            }
-            hazeAttr.needsUpdate = true;
-        }
-
-        const glowAttr = glowRef.current?.geometry.attributes.color as BufferAttribute | undefined;
-        if (glowAttr) {
-            const count = glowPositions.length / 3;
-            for (let n = 0; n < count; n++) {
-                const x = glowPositions[n * 3], y = glowPositions[n * 3 + 1], z = glowPositions[n * 3 + 2];
-                const base = brainSwirlColor(x, y, z, time);
-                const maxChannel = Math.max(base[0], base[1], base[2], 0.001);
-                const boost = 0.6 / maxChannel; // dimmer than full value-boost — a secondary effect, not competing with the branch lines
-                glowAttr.setXYZ(n, base[0] * boost, base[1] * boost, base[2] * boost);
-            }
-            glowAttr.needsUpdate = true;
-        }
-    });
-
-    return (
-        <group>
-            <lineSegments>
-                <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[linePositions, 3]} />
-                </bufferGeometry>
-                <lineBasicMaterial color="#6fd4ff" transparent opacity={0.2} />
-            </lineSegments>
-            <points ref={glowRef}>
-                <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[glowPositions, 3]} />
-                    <bufferAttribute attach="attributes-color" args={[glowColors, 3]} />
-                </bufferGeometry>
-                <pointsMaterial
-                    vertexColors
-                    map={getDotTexture()}
-                    alphaTest={0.05}
-                    size={0.028}
-                    sizeAttenuation
-                    transparent
-                    depthWrite={false}
-                    blending={AdditiveBlending}
-                />
-            </points>
-            <points ref={hazeRef}>
-                <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[hazePositions, 3]} />
-                    <bufferAttribute attach="attributes-color" args={[hazeColors, 3]} />
-                </bufferGeometry>
-                <pointsMaterial
-                    vertexColors
-                    map={getHazeTexture()}
-                    size={0.17}
-                    sizeAttenuation
-                    transparent
-                    opacity={WEB_HAZE_OPACITY}
-                    depthWrite={false}
-                    blending={AdditiveBlending}
-                />
-            </points>
-        </group>
-    );
-}
-
 interface OrbitRing3DProps {
     // All 10 icons' hover-pulse Line objects, reported once fully
     // collected — see IconEnergyLink's onHoverLineReady doc.
@@ -793,7 +842,6 @@ export default function OrbitRing3D({ onHoverLinesReady, onModuleClick, activeMo
         <group>
 
             <RingConnections positioned={positioned} />
-            <BranchWeb positioned={positioned} />
 
             {positioned.map(({ module, outer, branchIndices }, i) => (
                 <IconEnergyLink

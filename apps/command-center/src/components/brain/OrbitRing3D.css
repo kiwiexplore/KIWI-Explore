@@ -124,4 +124,12 @@
 
     text-shadow: 0 0 6px rgba(0, 0, 0, .8);
 
+    /* Wraps onto a 2nd line instead of overflowing sideways past the
+       icon — the longest label ("Communication") was wide enough to
+       spill into the neighboring widget column when the icon sits close
+       to it. overflow-wrap is needed too since it's a single long word
+       with no natural break point otherwise. */
+    max-width: 78px;
+    overflow-wrap: break-word;
+
 }
