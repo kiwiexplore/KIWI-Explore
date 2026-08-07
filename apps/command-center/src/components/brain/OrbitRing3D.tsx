@@ -219,13 +219,18 @@ const WEB_HAZE_SIZE = 0.17;
 // pointOnBranch's t already uses elsewhere in this file).
 const PARTICLE_EDGE_SPEED = 0.35;
 
-// Gentle side-to-side sway — amplitude scales with each node's own
-// nodeT, so it's exactly 0 right at the icon (a fixed "joint") and
-// grows toward the brain, per explicit request.
-const MAX_SWAY = 0.05;
-// Matches the brain's own idle rotation speed (BrainSystem3D's
-// `rotation.y += delta * 0.09`), per explicit request.
-const SWAY_SPEED = 0.09;
+// Side-to-side sway — amplitude scales with each node's own nodeT, so
+// it's exactly 0 right at the icon (a fixed "joint") and grows toward
+// the brain, per explicit request. The brain's own idle rotation
+// (BrainSystem3D's `rotation.y += delta * 0.09`) is slow in raw
+// radians/second but still reads as clearly, continuously moving since
+// it's the whole brain turning — matching that literal 0.09 rad/s
+// number for a small back-and-forth OSCILLATION instead produced a ~70s
+// period at a tiny amplitude, which read as not moving at all. These
+// values are picked so the sway is paced/sized to feel comparably
+// "alive" instead of matching the raw number.
+const MAX_SWAY = 0.12;
+const SWAY_SPEED = 0.5;
 
 // The hover pulse: travels icon -> brain over PULSE_TRAVEL_DURATION,
 // holds for PULSE_PAUSE_DURATION, then repeats — per explicit request
