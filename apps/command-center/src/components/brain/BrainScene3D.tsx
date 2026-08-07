@@ -37,9 +37,12 @@ function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number
 }
 
 /**
- * Test harness for the 3D Brain — Canvas, camera, lights, and the Brain
- * itself (BrainSystem3D = NeuronLayer + ConnectionLayer + EnergyLayer)
- * plus GlowLayer (SelectiveBloom) and the orbiting module icons.
+ * The KIWI HQ dashboard — mounted directly as the app's root (see
+ * App.tsx). Canvas, camera, lights, and the Brain itself (BrainSystem3D
+ * = NeuronLayer + ConnectionLayer + EnergyLayer) plus GlowLayer
+ * (SelectiveBloom) and the orbiting module icons. An earlier, simpler 2D
+ * prototype dashboard (Sprint 001-003) lived at components/layout/ —
+ * removed once this 3D version fully superseded it.
  *
  * No OrbitControls — the camera is fully static (fixed position/FOV, no
  * rotate/pan/zoom). Only BrainSystem3D itself rotates, driven by
@@ -47,11 +50,8 @@ function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number
  * own idle auto-spin when not being dragged.
  *
  * Layout: a TopBar sits above everything, left/right widget columns
- * flank the brain Canvas (a handful of pinned widgets each, per explicit
- * request — Weather/Date left, YouTube right), and the REST of the
- * widgets live in a horizontally-scrollable row below the brain. This is
- * still the isolated 3D preview harness, not the final wired-up
- * Dashboard — see App.tsx.
+ * flank the brain Canvas (10 widgets each, scrolling vertically to fit —
+ * see sceneWidgets.ts), with the voice bar below the brain.
  *
  * Background is a real photo (a static image, CSS background-image
  * behind the transparent Canvas) plus a soft edge vignette. This

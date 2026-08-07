@@ -1,11 +1,11 @@
 import type { WidgetDefinition } from "../../types/widget";
 
 /**
- * Placeholder widgets for the 3D Brain test harness — like
- * state/widgets.ts (same WidgetDefinition shape, same Widget/Panel
- * renderer) but local to this scene rather than the real KIWI HQ
- * dashboard, since this file is still the isolated 3D preview.
- * `body` is placeholder text — real data sources come later.
+ * The KIWI HQ dashboard's widget registry — `body` is placeholder text
+ * for the ones not yet wired to a real source (see WeatherWidget/
+ * SpaceNewsWidget/SpaceMissionsWidget/RecipesWidget for the ones that
+ * are — those override the generic Widget renderer entirely, so their
+ * placeholder `body` here is only ever a fallback).
  *
  * Split two ways now: 10 in the left column, 10 in the right — no more
  * separate bottom row (per explicit request, it felt too cluttered
