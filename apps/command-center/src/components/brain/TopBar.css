@@ -48,6 +48,14 @@
 
 }
 
+.top-bar-center {
+
+    display: flex;
+    justify-content: center;
+    flex: 1.4;
+
+}
+
 .top-bar-status {
 
     display: flex;

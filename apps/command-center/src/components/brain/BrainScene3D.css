@@ -64,17 +64,6 @@
 
 }
 
-/* The brief "what happened while you were away" summary — sits in the
-   space above the brain, below the top bar. */
-.brain-activity-row {
-
-    display: flex;
-    justify-content: center;
-
-    padding: 4px 24px 0;
-
-}
-
 /* The "Hey Kiwi" voice bar, moved here (below the brain) from the top
    bar — per explicit request, so it has proper room to fit once the
    bottom widget row is gone. Pulled up closer to the brain (negative

@@ -19,7 +19,7 @@ import { brainAdjacency } from "./brainTopology";
 import { getDotTexture, getHazeTexture } from "./dotTexture";
 import "./OrbitRing3D.css";
 
-const RADIUS_X = 1.32;
+const RADIUS_X = 1.27;
 // Flattened vertically relative to RADIUS_X — a true oval rather than a
 // near-circle — so the ring's top/bottom icons sit closer to the brain
 // than its left/right icons, fitting inside the available vertical space
@@ -27,7 +27,7 @@ const RADIUS_X = 1.32;
 // downward shift of the whole scene to compensate. Not too flattened
 // though — kept fairly close to RADIUS_X so it still reads as a rounded
 // oval rather than a squashed ellipse.
-const RADIUS_Y = 1.04;
+const RADIUS_Y = 1.0;
 // Nudges the ring + icons up relative to the brain — only the ring's own
 // curve and the icons' anchor points, NOT the brain itself (that lives
 // in a sibling group) and NOT the branch targets (real brain node

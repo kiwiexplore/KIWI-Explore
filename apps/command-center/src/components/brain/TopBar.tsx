@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import { Info, Orbit, Satellite, UserCircle2 } from "lucide-react";
+import ActivitySummary from "./ActivitySummary";
 import "./TopBar.css";
 
 interface TopBarProps {
@@ -10,14 +11,17 @@ interface TopBarProps {
 }
 
 /**
- * Header row above the brain scene — brand mark (left) and a
- * login/system-status area (right). The "Hey Kiwi" voice bar used to
- * live centered here; it's now below the brain instead (see
- * BrainScene3D), where it has proper room now that the bottom widget
- * row is gone. When `nickname` is set the sign-in button is replaced
- * with a profile pill instead — both just fire their click handler with
- * the event so BrainScene3D can anchor a detail card at the button's
- * own position, same as every other card in this scene.
+ * Header row above the brain scene — brand mark (left), the "while you
+ * were away" activity summary (center, same vertical level as the
+ * System Online status pill — moved here from above the brain per
+ * explicit request), and a login/system-status area (right). The
+ * "Hey Kiwi" voice bar used to live centered here too; it's now below
+ * the brain instead (see BrainScene3D), where it has proper room now
+ * that the bottom widget row is gone. When `nickname` is set the
+ * sign-in button is replaced with a profile pill instead — both just
+ * fire their click handler with the event so BrainScene3D can anchor a
+ * detail card at the button's own position, same as every other card in
+ * this scene.
  *
  * The "Space Laboratory" icon is also a placeholder — it's planned to
  * later open a separate, focus-only window for designing/building
@@ -36,6 +40,10 @@ export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfo
                 <span className="top-bar-brand-text">
                     KIWI <span className="top-bar-brand-accent">AI Operation System</span>
                 </span>
+            </div>
+
+            <div className="top-bar-center">
+                <ActivitySummary />
             </div>
 
             <div className="top-bar-status">

@@ -6,9 +6,10 @@
     gap: 16px;
 
     width: 100%;
-    max-width: 420px;
+    max-width: 520px;
 
-    padding: 12px 18px 12px 24px;
+    /* Same panel size as ActivitySummary, per explicit request. */
+    padding: 8px 20px;
 
     background: radial-gradient(circle at 32% 28%, #172848, #0b1220 72%);
 

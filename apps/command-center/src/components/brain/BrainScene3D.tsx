@@ -6,7 +6,6 @@ import GlowLayer from "./GlowLayer";
 import OrbitRing3D from "./OrbitRing3D";
 import TopBar from "./TopBar";
 import VoiceBar from "./VoiceBar";
-import ActivitySummary from "./ActivitySummary";
 import Widget from "../widget/Widget";
 import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import SignUpForm from "../ui/SignUpForm";
@@ -194,9 +193,6 @@ export default function BrainScene3D() {
                 </aside>
 
                 <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-                    <div className="brain-activity-row">
-                        <ActivitySummary />
-                    </div>
                     <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
                         <Canvas camera={{ position: [0, 0, 4], fov: 50 }} gl={{ alpha: true }}>
                             <primitive object={ambientLight} />
@@ -207,7 +203,7 @@ export default function BrainScene3D() {
                                 space, a uniform scale here preserves exactly the
                                 same icon-to-brain gap, just bigger, rather than
                                 needing to separately recompute icon distances. */}
-                            <group scale={1.28} position={[0, -0.1, 0]}>
+                            <group scale={1.28} position={[0, 0.05, 0]}>
                                 <BrainSystem3D onPulseReady={setPulseLines} />
                                 <OrbitRing3D
                                     onHoverPointsReady={setHoverPoints}
