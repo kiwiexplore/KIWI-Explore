@@ -223,7 +223,9 @@ const PARTICLE_EDGE_SPEED = 0.35;
 // nodeT, so it's exactly 0 right at the icon (a fixed "joint") and
 // grows toward the brain, per explicit request.
 const MAX_SWAY = 0.05;
-const SWAY_SPEED = 0.4;
+// Matches the brain's own idle rotation speed (BrainSystem3D's
+// `rotation.y += delta * 0.09`), per explicit request.
+const SWAY_SPEED = 0.09;
 
 // The hover pulse: travels icon -> brain over PULSE_TRAVEL_DURATION,
 // holds for PULSE_PAUSE_DURATION, then repeats — per explicit request

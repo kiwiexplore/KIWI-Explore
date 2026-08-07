@@ -120,7 +120,7 @@ export default function BrainHaze() {
                 size={0.17}
                 sizeAttenuation
                 transparent
-                opacity={0.0672}
+                opacity={0.047}
                 depthWrite={false}
                 blending={AdditiveBlending}
             />
