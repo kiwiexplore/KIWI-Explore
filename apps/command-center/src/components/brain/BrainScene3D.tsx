@@ -13,6 +13,8 @@ import ProfileSettings from "../ui/ProfileSettings";
 import InfoPanel from "../ui/InfoPanel";
 import WeatherWidget from "./WeatherWidget";
 import SpaceNewsWidget from "./SpaceNewsWidget";
+import SpaceMissionsWidget from "./SpaceMissionsWidget";
+import RecipesWidget from "./RecipesWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import milkyWayPhoto from "../../assets/milky-way-background.jpg";
@@ -183,6 +185,7 @@ export default function BrainScene3D() {
                     {leftWidgets.map((w) => {
                         if (w.id === "weather") return <WeatherWidget key={w.id} onOpenDetail={openDetail} />;
                         if (w.id === "space-news") return <SpaceNewsWidget key={w.id} onOpenDetail={openDetail} />;
+                        if (w.id === "space-missions") return <SpaceMissionsWidget key={w.id} onOpenDetail={openDetail} />;
                         return (
                             <Widget
                                 key={w.id}
@@ -221,13 +224,16 @@ export default function BrainScene3D() {
                 </div>
 
                 <aside className="side-widget-column">
-                    {rightWidgets.map((w) => (
-                        <Widget
-                            key={w.id}
-                            definition={w}
-                            onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
-                        />
-                    ))}
+                    {rightWidgets.map((w) => {
+                        if (w.id === "recipes") return <RecipesWidget key={w.id} onOpenDetail={openDetail} />;
+                        return (
+                            <Widget
+                                key={w.id}
+                                definition={w}
+                                onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                            />
+                        );
+                    })}
                 </aside>
             </div>
 

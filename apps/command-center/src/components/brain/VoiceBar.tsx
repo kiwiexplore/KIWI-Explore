@@ -37,6 +37,14 @@ function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
  * "Hey Kiwi..." placeholder live as you speak. Not every browser
  * supports it (Firefox notably doesn't) — the mic button is simply
  * disabled there rather than pretending to work.
+ *
+ * Also a real (if currently inert) text input — typing works too, and
+ * shares the same `transcript` state speech fills in, per explicit
+ * request ("muzu do nej psat a mluvit s nim?"). Disabled while actively
+ * listening so the two input methods can't fight over the same field.
+ * Neither one goes anywhere yet — there's no AI behind this to reply to
+ * what you type or say, only capturing the text itself, per explicit
+ * request to land that step first.
  */
 export default function VoiceBar() {
     const [listening, setListening] = useState(false);
@@ -93,7 +101,16 @@ export default function VoiceBar() {
         <div className="voice-bar">
             <div className="voice-bar-left">
                 <Search size={18} color="#8fd6ff" strokeWidth={1.75} />
-                <span className="voice-bar-text">{transcript || "Hey Kiwi..."}</span>
+                <input
+                    type="text"
+                    className="voice-bar-text"
+                    value={transcript}
+                    onChange={(e) => setTranscript(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                    placeholder="Hey Kiwi..."
+                    disabled={listening}
+                    aria-label="Message Kiwi"
+                />
             </div>
             <button
                 type="button"
