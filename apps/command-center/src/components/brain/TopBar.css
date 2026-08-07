@@ -48,11 +48,16 @@
 
 }
 
+/* Truly centered on the whole top bar (not just within its own flex
+   slot) — since the brand and status areas aren't the same width,
+   centering it within a flex slot between them left it visibly off to
+   one side. Absolute positioning relative to .top-bar sidesteps that. */
 .top-bar-center {
 
-    display: flex;
-    justify-content: center;
-    flex: 1.4;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
 
 }
 

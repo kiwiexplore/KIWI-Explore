@@ -8,7 +8,7 @@ import {
 import {
     AdditiveBlending, BufferAttribute, BufferGeometry,
     Line as ThreeLine, LineBasicMaterial, LineSegments,
-    Points as ThreePoints, PointsMaterial,
+    type Object3D, Points as ThreePoints, PointsMaterial,
 } from "three";
 import { orbitModules } from "../../state/orbitModules";
 import { pulseBoost } from "./pulseField";
@@ -138,13 +138,13 @@ interface IconEnergyLinkProps {
     active: boolean;
     outer: [number, number, number];
     branchIndices: [number, number, number];
-    // Hands the hover-glow Points object up once, so GlowLayer's
-    // SelectiveBloom can include it in the same selection as the brain's
-    // own internal pulses — otherwise hovering never actually makes the
-    // particles glow, just draws their (already bright) vertex colors
-    // flat. A Points object, not a Line — per explicit request, hover
-    // brightens the traveling PARTICLES now, not a line.
-    onHoverPointsReady?: (points: ThreePoints) => void;
+    // Hands bloom-eligible objects up once each (the hover-glow Points,
+    // plus the 3 brain-side flare Lines — see IconEnergyLink's doc
+    // comment), so GlowLayer's SelectiveBloom can include them in the
+    // same selection as the brain's own internal pulses — otherwise
+    // neither ever actually glows, just draws its (already bright)
+    // vertex colors flat.
+    onGlowObjectReady?: (object: Object3D) => void;
 }
 
 // Position along one of the three prongs at parameter t (0 = icon,
@@ -356,7 +356,7 @@ interface WebParticle {
  *    graph from each of the 3 targets, nudging pulseBoost like
  *    EnergyLayer's own pulses do.
  */
-function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: IconEnergyLinkProps) {
+function IconEnergyLink({ active, outer, branchIndices, onGlowObjectReady }: IconEnergyLinkProps) {
     const branches = useMemo<[number, number, number][]>(
         () => branchIndices.map((idx) => [brainNodes3D[idx * 3], brainNodes3D[idx * 3 + 1], brainNodes3D[idx * 3 + 2]]),
         [branchIndices],
@@ -387,7 +387,7 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
     // The hover pulse's own bright twin of the glow-dots above — same
     // sample layout, but comet-brightness ONLY (no ambient baseline) and
     // only visible while active, so it's safe to add to GlowLayer's
-    // bloom selection without blooming at rest (see onHoverPointsReady).
+    // bloom selection without blooming at rest (see onGlowObjectReady).
     const webPulseGlowArrays = useMemo(() => ({
         positions: new Float32Array(edges.length * WEB_GLOW_SAMPLES_PER_EDGE * 3),
         colors: new Float32Array(edges.length * WEB_GLOW_SAMPLES_PER_EDGE * 3),
@@ -432,9 +432,27 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
         return [new ThreePoints(geometry, material)];
     }, [webPulseGlowArrays]);
 
+    // The brain-side "flare" — one bright Line per target, drawn through
+    // its own random-walked path, same technique as EnergyLayer's own
+    // internal pulses (a real Line object, not just brightening the node
+    // dots via pulseBoost — a dot-only version read as barely visible,
+    // per explicit feedback that this effect was "missing"). Visible
+    // only while the flare is burning (see the useFrame block below).
+    const flareLines = useMemo(
+        () => Array.from({ length: 3 }, () => {
+            const geometry = new BufferGeometry();
+            geometry.setAttribute("position", new BufferAttribute(new Float32Array(FLARE_PATH_LENGTH * 3), 3));
+            geometry.setAttribute("color", new BufferAttribute(new Float32Array(FLARE_PATH_LENGTH * 3), 3));
+            const material = new LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.9, blending: AdditiveBlending });
+            return new ThreeLine(geometry, material);
+        }),
+        [],
+    );
+
     useEffect(() => {
-        webPulseGlowPoints.forEach((p) => onHoverPointsReady?.(p));
-    }, [webPulseGlowPoints, onHoverPointsReady]);
+        webPulseGlowPoints.forEach((p) => onGlowObjectReady?.(p));
+        flareLines.forEach((ln) => onGlowObjectReady?.(ln));
+    }, [webPulseGlowPoints, flareLines, onGlowObjectReady]);
 
     // Hover-pulse cycle state: elapsed time since hover started, which
     // cycle of travel+pause we're in, and whether this cycle's brain-side
@@ -592,23 +610,34 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
         webPulseGlowPoints.forEach((p) => { p.visible = active; });
 
         // --- Brain-side flare: brief random walks lighting up real brain
-        // nodes near each target, fading out after FLARE_DURATION -------
-        if (flareTriggered.current && flareElapsed.current < FLARE_DURATION) {
-            const envelope = 1 - flareElapsed.current / FLARE_DURATION;
-            flarePaths.current.forEach((path) => {
-                path.forEach((nodeIdx) => {
-                    const px = brainNodes3D[nodeIdx * 3], py = brainNodes3D[nodeIdx * 3 + 1], pz = brainNodes3D[nodeIdx * 3 + 2];
-                    const local = brainSwirlColor(px, py, pz, time);
-                    const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
-                    const boost = envelope / maxChannel;
-                    const cr = local[0] * boost, cg = local[1] * boost, cb = local[2] * boost;
-                    const boostIdx = nodeIdx * 3;
-                    pulseBoost[boostIdx] = Math.max(pulseBoost[boostIdx], cr);
-                    pulseBoost[boostIdx + 1] = Math.max(pulseBoost[boostIdx + 1], cg);
-                    pulseBoost[boostIdx + 2] = Math.max(pulseBoost[boostIdx + 2], cb);
-                });
+        // nodes AND the lines through them, fading out after FLARE_DURATION.
+        const flareActive = flareTriggered.current && flareElapsed.current < FLARE_DURATION;
+        const flareEnvelope = flareActive ? 1 - flareElapsed.current / FLARE_DURATION : 0;
+        flareLines.forEach((ln, branchIdx) => {
+            ln.visible = flareActive;
+            if (!flareActive) return;
+            const path = flarePaths.current[branchIdx];
+            const posAttr = ln.geometry.attributes.position as BufferAttribute;
+            const colAttr = ln.geometry.attributes.color as BufferAttribute;
+            path.forEach((nodeIdx, n) => {
+                const px = brainNodes3D[nodeIdx * 3], py = brainNodes3D[nodeIdx * 3 + 1], pz = brainNodes3D[nodeIdx * 3 + 2];
+                posAttr.setXYZ(n, px, py, pz);
+                const local = brainSwirlColor(px, py, pz, time);
+                const maxChannel = Math.max(local[0], local[1], local[2], 0.001);
+                const boost = flareEnvelope / maxChannel;
+                const cr = local[0] * boost, cg = local[1] * boost, cb = local[2] * boost;
+                colAttr.setXYZ(n, cr, cg, cb);
+
+                // Also light up the actual neuron dot at this node, same
+                // technique as EnergyLayer's own internal pulses.
+                const boostIdx = nodeIdx * 3;
+                pulseBoost[boostIdx] = Math.max(pulseBoost[boostIdx], cr);
+                pulseBoost[boostIdx + 1] = Math.max(pulseBoost[boostIdx + 1], cg);
+                pulseBoost[boostIdx + 2] = Math.max(pulseBoost[boostIdx + 2], cb);
             });
-        }
+            posAttr.needsUpdate = true;
+            colAttr.needsUpdate = true;
+        });
 
         // --- Ambient particles: random-walk the web's edges -------------
         const particles = particlesRef.current!;
@@ -692,6 +721,9 @@ function IconEnergyLink({ active, outer, branchIndices, onHoverPointsReady }: Ic
             ))}
             {webPulseGlowPoints.map((p, i) => (
                 <primitive key={`pg${i}`} object={p} />
+            ))}
+            {flareLines.map((ln, i) => (
+                <primitive key={`fl${i}`} object={ln} />
             ))}
         </group>
     );
@@ -871,9 +903,10 @@ function RingConnections({ positioned }: { positioned: Positioned[] }) {
 }
 
 interface OrbitRing3DProps {
-    // All 10 icons' hover-glow Points objects, reported once fully
-    // collected — see IconEnergyLink's onHoverPointsReady doc.
-    onHoverPointsReady?: (points: ThreePoints[]) => void;
+    // All 10 icons' bloom-eligible objects (hover-glow Points + 3
+    // brain-side flare Lines each), reported once fully collected — see
+    // IconEnergyLink's onGlowObjectReady doc.
+    onGlowObjectsReady?: (objects: Object3D[]) => void;
     // Fired when an icon itself is clicked (not hovered) — opens that
     // module's detail card, anchored at the icon's own screen position
     // (see BrainScene3D / DetailDrawer).
@@ -885,16 +918,19 @@ interface OrbitRing3DProps {
     activeModuleId?: string | null;
 }
 
-export default function OrbitRing3D({ onHoverPointsReady, onModuleClick, activeModuleId }: OrbitRing3DProps) {
+// 1 hover-glow Points object + 3 brain-side flare Lines per icon — see
+// IconEnergyLink's onGlowObjectReady registrations.
+const GLOW_OBJECTS_PER_ICON = 4;
+
+export default function OrbitRing3D({ onGlowObjectsReady, onModuleClick, activeModuleId }: OrbitRing3DProps) {
     const positioned = useMemo(() => layoutModules(), []);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
-    const collectedHoverPoints = useRef<ThreePoints[]>([]);
+    const collectedGlowObjects = useRef<Object3D[]>([]);
 
-    const handleHoverPointsReady = (points: ThreePoints) => {
-        collectedHoverPoints.current.push(points);
-        // 1 hover-glow Points object per icon — see IconEnergyLink.
-        if (collectedHoverPoints.current.length === positioned.length) {
-            onHoverPointsReady?.(collectedHoverPoints.current);
+    const handleGlowObjectReady = (object: Object3D) => {
+        collectedGlowObjects.current.push(object);
+        if (collectedGlowObjects.current.length === positioned.length * GLOW_OBJECTS_PER_ICON) {
+            onGlowObjectsReady?.(collectedGlowObjects.current);
         }
     };
 
@@ -909,7 +945,7 @@ export default function OrbitRing3D({ onHoverPointsReady, onModuleClick, activeM
                     active={hoveredId === module.id || activeModuleId === module.id}
                     outer={outer}
                     branchIndices={branchIndices}
-                    onHoverPointsReady={handleHoverPointsReady}
+                    onGlowObjectReady={handleGlowObjectReady}
                 />
             ))}
 
