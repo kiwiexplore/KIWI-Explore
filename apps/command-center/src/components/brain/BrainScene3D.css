@@ -80,4 +80,11 @@
     margin-top: -80px;
     padding: 0 24px 48px;
 
+    /* Pulled up into the Canvas's own bounding box above (see the
+       comment) — without this, the (invisible but still hit-testable)
+       Canvas element sitting earlier in paint order could intercept
+       clicks meant for the mic button underneath the overlap. */
+    position: relative;
+    z-index: 2;
+
 }

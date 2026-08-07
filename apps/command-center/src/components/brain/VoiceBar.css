@@ -33,6 +33,17 @@
     align-items: center;
     gap: 12px;
 
+    min-width: 0;
+    flex: 1;
+
+}
+
+.voice-bar-text {
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
 }
 
 .voice-bar-mic {
@@ -40,6 +51,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 
     background: none;
     border: none;
@@ -59,9 +71,16 @@
 
 }
 
-/* Stands in for real speech activity — see VoiceBar's doc comment — a
-   continuous gentle bounce/pulse while the mock "listening" state is on,
-   rather than a static icon, so the button visibly reads as "live". */
+.voice-bar-mic:disabled {
+
+    color: var(--border);
+    cursor: not-allowed;
+
+}
+
+/* Real speech activity now (Web Speech API) — a continuous gentle
+   bounce/pulse while actually listening, so the button visibly reads as
+   "live" while it's capturing audio. */
 .voice-bar-mic-active {
 
     color: #6EF3A5;
