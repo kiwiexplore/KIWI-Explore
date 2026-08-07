@@ -47,7 +47,7 @@ export default function GlowLayer({ selection, lights }: GlowLayerProps) {
             <SelectiveBloom
                 selection={selection}
                 lights={lights}
-                intensity={6.2}
+                intensity={4.5}
                 luminanceThreshold={0.05}
                 luminanceSmoothing={0.4}
                 mipmapBlur
