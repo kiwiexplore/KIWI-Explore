@@ -1,0 +1,97 @@
+.project-grid-page {
+
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    padding: 40px 40px 60px;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+
+}
+
+.project-grid-header {
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+
+}
+
+.project-grid-eyebrow {
+
+    display: block;
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+
+    color: var(--primary);
+    text-shadow: 0 0 12px rgba(73, 199, 255, .4);
+
+}
+
+.project-grid-header h1 {
+
+    margin: 6px 0 0;
+
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.project-grid-new {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+    padding: 10px 18px;
+
+    background: var(--primary);
+    border: none;
+    border-radius: 999px;
+
+    color: #06131f;
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.project-grid-new:hover {
+
+    box-shadow: 0 0 18px rgba(73, 199, 255, .5);
+
+}
+
+.project-grid {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+
+}
+
+.project-grid-empty {
+
+    padding: 48px 24px;
+
+    text-align: center;
+
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+
+    color: var(--text-muted);
+    font-size: 14px;
+
+}

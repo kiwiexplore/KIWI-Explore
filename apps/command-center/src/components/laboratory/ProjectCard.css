@@ -1,0 +1,167 @@
+.project-card {
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    padding: 18px 20px;
+
+    background: rgba(16, 25, 46, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    text-align: left;
+    font: inherit;
+    color: inherit;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.project-card:hover {
+
+    border-color: var(--primary);
+    box-shadow: 0 0 20px rgba(73, 199, 255, .18);
+    transform: translateY(-2px);
+
+}
+
+.project-card-top {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+}
+
+.project-card-category {
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.project-card-status {
+
+    padding: 2px 10px;
+
+    border: 1px solid;
+    border-radius: 999px;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+
+}
+
+.project-card-name {
+
+    margin: 0;
+
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.project-card-description {
+
+    margin: -6px 0 0;
+
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-muted);
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+}
+
+.project-card-progress {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+}
+
+.project-card-progress-track {
+
+    flex: 1;
+    height: 4px;
+
+    background: rgba(255, 255, 255, .08);
+    border-radius: 999px;
+
+    overflow: hidden;
+
+}
+
+.project-card-progress-fill {
+
+    height: 100%;
+
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    border-radius: 999px;
+
+}
+
+.project-card-progress-label {
+
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+
+}
+
+.project-card-footer {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    margin-top: 2px;
+
+}
+
+.project-card-tags {
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+}
+
+.project-card-tag {
+
+    padding: 2px 8px;
+
+    background: rgba(117, 102, 255, .12);
+    border: 1px solid rgba(117, 102, 255, .3);
+    border-radius: 999px;
+
+    font-size: 10px;
+    color: var(--accent);
+
+}
+
+.project-card-activity {
+
+    flex-shrink: 0;
+
+    font-size: 11px;
+    color: var(--text-muted);
+
+}

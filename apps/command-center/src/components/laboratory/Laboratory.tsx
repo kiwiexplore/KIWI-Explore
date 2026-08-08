@@ -1,5 +1,8 @@
 import { useState } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
+import ProjectGrid from "./ProjectGrid";
+import ProjectWorkspace from "./ProjectWorkspace";
+import { MOCK_PROJECTS, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
 import { resolveBackgroundImage, DEFAULT_BACKGROUND } from "../../state/backgrounds";
 import "./Laboratory.css";
 
@@ -17,23 +20,33 @@ interface LaboratoryProps {
  * here touches the Dashboard's own working files, and nothing in the
  * Dashboard depends on this existing.
  *
- * This is step 1 of a staged build: routing + the top bar + the KIWI
- * Core badge (the same brain used on the Dashboard, minus OrbitRing3D
- * — see KiwiCoreBadge). The actual workspace (Projects grid, project
- * detail, the Hey Kiwi panel) lands in the steps after this one, once
- * this foundation is confirmed working.
+ * Own top-level state for the project list and which one (if any) is
+ * open — mock/in-memory only, same as everything else in the account
+ * system (no backend yet). Selecting a project swaps ProjectGrid for
+ * ProjectWorkspace entirely, rather than layering a drawer on top —
+ * this is meant to feel like walking into a project, not glancing at a
+ * card, per explicit request ("Laboratory = tvorba + soustředění").
  *
- * Known gap for now: the profile pill shows a local placeholder name,
- * not whatever's actually signed in on the Dashboard — BrainScene3D's
- * account state (nickname/avatar/plan/...) is local to that component,
- * and lifting it into something both scenes can share is its own step,
- * not bundled into this one.
+ * Known gap for now: the profile pill (see LaboratoryTopBar) shows a
+ * local placeholder name, not whatever's actually signed in on the
+ * Dashboard — BrainScene3D's account state (nickname/avatar/plan/...)
+ * is local to that component, and lifting it into something both
+ * scenes can share is its own step, not bundled into this one.
  */
 export default function Laboratory({ onBack }: LaboratoryProps) {
     // Not wired to anything yet — KiwiPanel (which will actually drive
     // this) is a later step. Kept here so KiwiCoreBadge already reacts
     // the moment that panel exists, without touching this file again.
     const [listening] = useState(false);
+    const [projects, setProjects] = useState<LaboratoryProject[]>(MOCK_PROJECTS);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const selectedProject = projects.find((p) => p.id === selectedId) ?? null;
+
+    const handleCreateProject = () => {
+        const project = createMockProject();
+        setProjects((prev) => [project, ...prev]);
+        setSelectedId(project.id);
+    };
 
     return (
         <div
@@ -43,11 +56,11 @@ export default function Laboratory({ onBack }: LaboratoryProps) {
             <LaboratoryTopBar onBack={onBack} listening={listening} />
 
             <main className="laboratory-main">
-                <div className="laboratory-placeholder">
-                    <span className="laboratory-placeholder-eyebrow">Laboratory</span>
-                    <h1>Your workspace is taking shape</h1>
-                    <p>Projects, research, and the Hey Kiwi panel land here next.</p>
-                </div>
+                {selectedProject ? (
+                    <ProjectWorkspace project={selectedProject} onBack={() => setSelectedId(null)} />
+                ) : (
+                    <ProjectGrid projects={projects} onSelectProject={setSelectedId} onCreateProject={handleCreateProject} />
+                )}
             </main>
         </div>
     );

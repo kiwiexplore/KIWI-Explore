@@ -2,11 +2,11 @@
 
     position: relative;
 
-    width: 60px;
-    height: 60px;
+    width: 180px;
+    height: 180px;
     flex-shrink: 0;
 
-    border-radius: 16px;
+    border-radius: 32px;
 
     background: radial-gradient(circle at 32% 28%, #172848, #0b1220 72%);
     border: 1px solid var(--border);
