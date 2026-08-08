@@ -2,6 +2,8 @@ import { useState } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
+import KiwiPanel from "./KiwiPanel";
+import { useKiwiChat } from "../../lib/useKiwiChat";
 import { MOCK_PROJECTS, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
 import { resolveBackgroundImage, DEFAULT_BACKGROUND } from "../../state/backgrounds";
 import "./Laboratory.css";
@@ -27,6 +29,11 @@ interface LaboratoryProps {
  * this is meant to feel like walking into a project, not glancing at a
  * card, per explicit request ("Laboratory = tvorba + soustředění").
  *
+ * useKiwiChat is called here (not inside KiwiPanel) so the same
+ * `listening` value can drive both KiwiPanel itself AND
+ * KiwiCoreBadge's rotation-pause/glow-boost reaction, exactly like
+ * BrainScene3D does for VoiceBar/the Dashboard's own brain.
+ *
  * Known gap for now: the profile pill (see LaboratoryTopBar) shows a
  * local placeholder name, not whatever's actually signed in on the
  * Dashboard — BrainScene3D's account state (nickname/avatar/plan/...)
@@ -34,13 +41,11 @@ interface LaboratoryProps {
  * scenes can share is its own step, not bundled into this one.
  */
 export default function Laboratory({ onBack }: LaboratoryProps) {
-    // Not wired to anything yet — KiwiPanel (which will actually drive
-    // this) is a later step. Kept here so KiwiCoreBadge already reacts
-    // the moment that panel exists, without touching this file again.
-    const [listening] = useState(false);
     const [projects, setProjects] = useState<LaboratoryProject[]>(MOCK_PROJECTS);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const selectedProject = projects.find((p) => p.id === selectedId) ?? null;
+    const [kiwiOpen, setKiwiOpen] = useState(false);
+    const kiwiChat = useKiwiChat();
 
     const handleCreateProject = () => {
         const project = createMockProject();
@@ -53,7 +58,7 @@ export default function Laboratory({ onBack }: LaboratoryProps) {
             className="laboratory"
             style={{ backgroundImage: `linear-gradient(rgba(2,6,17,0.55), rgba(2,6,17,0.55)), ${resolveBackgroundImage(DEFAULT_BACKGROUND)}` }}
         >
-            <LaboratoryTopBar onBack={onBack} listening={listening} />
+            <LaboratoryTopBar onBack={onBack} listening={kiwiChat.listening} onOpenKiwi={() => setKiwiOpen(true)} />
 
             <main className="laboratory-main">
                 {selectedProject ? (
@@ -62,6 +67,8 @@ export default function Laboratory({ onBack }: LaboratoryProps) {
                     <ProjectGrid projects={projects} onSelectProject={setSelectedId} onCreateProject={handleCreateProject} />
                 )}
             </main>
+
+            {kiwiOpen && <KiwiPanel onClose={() => setKiwiOpen(false)} {...kiwiChat} />}
         </div>
     );
 }

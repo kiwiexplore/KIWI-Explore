@@ -1,44 +1,12 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AudioLines, ChevronDown, Search, SendHorizontal } from "lucide-react";
+import { useKiwiChat } from "../../lib/useKiwiChat";
 import "./VoiceBar.css";
-
-// The Web Speech API isn't part of TypeScript's standard DOM lib, so
-// these are just the minimal shapes actually used here rather than a
-// full ambient declaration.
-interface SpeechRecognitionResultLike {
-    isFinal: boolean;
-    [index: number]: { transcript: string };
-}
-interface SpeechRecognitionEventLike extends Event {
-    resultIndex: number;
-    results: ArrayLike<SpeechRecognitionResultLike>;
-}
-interface SpeechRecognitionLike extends EventTarget {
-    continuous: boolean;
-    interimResults: boolean;
-    lang: string;
-    start: () => void;
-    stop: () => void;
-    onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-    onend: (() => void) | null;
-    onerror: (() => void) | null;
-}
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
-
-function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
-    const w = window as unknown as { SpeechRecognition?: SpeechRecognitionCtor; webkitSpeechRecognition?: SpeechRecognitionCtor };
-    return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
-}
 
 // Caps the textarea's own auto-grow (see the input effect below) — past
 // this it scrolls internally instead of pushing the row (and the canvas
 // above it) any taller.
 const MAX_TEXTAREA_HEIGHT = 72;
-
-interface Message {
-    id: number;
-    text: string;
-}
 
 /**
  * Real browser speech-to-TEXT (Web Speech API) — no backend, no API key.
@@ -48,7 +16,9 @@ interface Message {
  * rather than pretending to work. Also a real text input — typing works
  * too, sharing the same `transcript` state speech fills in. Disabled
  * while actively listening so the two input methods can't fight over
- * the same field.
+ * the same field. The actual chat state/logic lives in useKiwiChat
+ * (shared with Laboratory's KiwiPanel) — this component is just its
+ * floating-bar-below-the-brain presentation.
  *
  * Focusing the input (or starting to listen, or sending a message)
  * expands the bar into a taller card: a conversation area floats
@@ -70,51 +40,10 @@ interface VoiceBarProps {
 }
 
 export default function VoiceBar({ onListeningChange }: VoiceBarProps) {
-    const [listening, setListening] = useState(false);
-    const [transcript, setTranscript] = useState("");
+    const { listening, transcript, setTranscript, messages, supported, toggleListening, sendMessage } = useKiwiChat(onListeningChange);
     const [expanded, setExpanded] = useState(false);
-    const [messages, setMessages] = useState<Message[]>([]);
-    // Computed once, lazily, rather than set from inside the effect below
-    // (calling setState synchronously in an effect body trips the
-    // react-hooks/set-state-in-effect rule) — whether the browser has
-    // this API never changes over the component's lifetime anyway.
-    const [supported] = useState(() => Boolean(getSpeechRecognitionCtor()));
-    const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-    const finalTextRef = useRef("");
-    const nextMessageId = useRef(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const conversationRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const Ctor = getSpeechRecognitionCtor();
-        if (!Ctor) return;
-        const recognition = new Ctor();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = navigator.language || "en-US";
-
-        recognition.onresult = (event) => {
-            let interim = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                const result = event.results[i];
-                if (result.isFinal) {
-                    finalTextRef.current = `${finalTextRef.current} ${result[0].transcript}`.trim();
-                } else {
-                    interim += result[0].transcript;
-                }
-            }
-            setTranscript(`${finalTextRef.current} ${interim}`.trim());
-        };
-        recognition.onend = () => setListening(false);
-        recognition.onerror = () => setListening(false);
-
-        recognitionRef.current = recognition;
-        return () => recognition.stop();
-    }, []);
-
-    useEffect(() => {
-        onListeningChange?.(listening);
-    }, [listening, onListeningChange]);
 
     // Auto-grows the textarea with its content, up to MAX_TEXTAREA_HEIGHT,
     // then leaves it to scroll internally.
@@ -131,26 +60,9 @@ export default function VoiceBar({ onListeningChange }: VoiceBarProps) {
         if (el) el.scrollTop = el.scrollHeight;
     }, [messages]);
 
-    const toggleListening = () => {
-        if (!recognitionRef.current) return;
-        if (listening) {
-            recognitionRef.current.stop();
-            setListening(false);
-        } else {
-            finalTextRef.current = "";
-            setTranscript("");
-            recognitionRef.current.start();
-            setListening(true);
-            setExpanded(true);
-        }
-    };
-
-    const sendMessage = () => {
-        const text = transcript.trim();
-        if (!text) return;
-        setMessages((prev) => [...prev, { id: nextMessageId.current++, text }]);
-        finalTextRef.current = "";
-        setTranscript("");
+    const handleToggleListening = () => {
+        toggleListening();
+        if (!listening) setExpanded(true);
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -209,7 +121,7 @@ export default function VoiceBar({ onListeningChange }: VoiceBarProps) {
                 <button
                     type="button"
                     className={`voice-bar-mic${listening ? " voice-bar-mic-active" : ""}`}
-                    onClick={toggleListening}
+                    onClick={handleToggleListening}
                     disabled={!supported}
                     aria-label={supported ? "Voice input" : "Voice input isn't supported in this browser"}
                     aria-pressed={listening}

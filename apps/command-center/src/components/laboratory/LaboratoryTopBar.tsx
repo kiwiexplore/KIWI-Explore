@@ -14,6 +14,7 @@ const NAV_TABS = [
 interface LaboratoryTopBarProps {
     onBack: () => void;
     listening?: boolean;
+    onOpenKiwi?: () => void;
 }
 
 /**
@@ -25,15 +26,16 @@ interface LaboratoryTopBarProps {
  * version let it spill into the page below, but that read as broken
  * rather than deliberate). The "Dashboard" back button and
  * KIWI/LABORATORY wordmark sit to its right. A nav tab row stands in
- * for the activity summary, and a "Hey Kiwi" trigger sits next to the
- * profile pill (not wired to anything yet — KiwiPanel is a later
- * step). Kept as its own component (not a TopBar variant) since the
- * two bars' contents genuinely diverge — the profile pill's markup/CSS
- * is deliberately duplicated here rather than importing TopBar.css, to
- * keep Laboratory decoupled from the Dashboard's own files (see
- * Laboratory.tsx's doc comment).
+ * for the activity summary, and a "Hey Kiwi" trigger opens KiwiPanel
+ * (a right-side sheet — see Laboratory.tsx, which owns the shared chat
+ * state via useKiwiChat) next to the profile pill. Kept as its own
+ * component (not a TopBar variant) since the two bars' contents
+ * genuinely diverge — the profile pill's markup/CSS is deliberately
+ * duplicated here rather than importing TopBar.css, to keep Laboratory
+ * decoupled from the Dashboard's own files (see Laboratory.tsx's doc
+ * comment).
  */
-export default function LaboratoryTopBar({ onBack, listening }: LaboratoryTopBarProps) {
+export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi }: LaboratoryTopBarProps) {
     const [activeTab, setActiveTab] = useState("projects");
     // Local placeholder identity — Laboratory doesn't share BrainScene3D's
     // account state yet (see Laboratory.tsx's doc comment for why).
@@ -72,7 +74,7 @@ export default function LaboratoryTopBar({ onBack, listening }: LaboratoryTopBar
             </nav>
 
             <div className="lab-topbar-account">
-                <button type="button" className="lab-topbar-kiwi-btn">
+                <button type="button" className="lab-topbar-kiwi-btn" onClick={onOpenKiwi}>
                     <AudioLines size={15} strokeWidth={1.75} />
                     Hey Kiwi
                 </button>

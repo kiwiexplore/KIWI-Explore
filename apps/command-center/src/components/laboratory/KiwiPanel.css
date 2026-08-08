@@ -1,0 +1,294 @@
+.kiwi-panel-scrim {
+
+    position: fixed;
+    inset: 0;
+
+    /* Deliberately no dimming — same reasoning as DetailDrawer: the
+       workspace stays fully visible/usable, this is just an invisible
+       click-catcher so clicking outside the panel closes it. */
+    background: transparent;
+
+    z-index: 30;
+
+}
+
+.kiwi-panel {
+
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    width: 360px;
+    max-width: 90vw;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 20px;
+    gap: 16px;
+
+    background: rgba(8, 13, 28, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border-left: 1px solid var(--border);
+    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.45);
+
+    z-index: 31;
+
+    animation: kiwi-panel-slide-in .2s ease;
+
+}
+
+@keyframes kiwi-panel-slide-in {
+
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+
+}
+
+.kiwi-panel-header {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+}
+
+.kiwi-panel-title {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    color: var(--primary);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+}
+
+.kiwi-panel-close {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 30px;
+    height: 30px;
+
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.kiwi-panel-close:hover {
+
+    border-color: var(--primary);
+    color: #eaf6ff;
+
+}
+
+.kiwi-panel-body {
+
+    flex: 1;
+    min-height: 0;
+
+    overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
+
+}
+
+.kiwi-panel-greeting {
+
+    margin: 4px 0 16px;
+
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-actions {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+}
+
+.kiwi-panel-action {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 10px 14px;
+
+    background: rgba(16, 25, 46, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.kiwi-panel-action:hover {
+
+    border-color: var(--primary);
+    color: #eaf6ff;
+    box-shadow: 0 0 12px rgba(73, 199, 255, .18);
+
+}
+
+.kiwi-panel-action svg {
+
+    flex-shrink: 0;
+    color: var(--accent);
+
+}
+
+.kiwi-panel-messages {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+}
+
+.kiwi-panel-message {
+
+    align-self: flex-end;
+    max-width: 88%;
+
+    padding: 9px 13px;
+
+    background: rgba(73, 199, 255, .14);
+    border: 1px solid rgba(73, 199, 255, .3);
+    border-radius: 14px 14px 4px 14px;
+
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+
+    overflow-wrap: break-word;
+
+}
+
+.kiwi-panel-input-row {
+
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+
+    padding: 10px 12px;
+
+    background: rgba(5, 8, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+
+}
+
+.kiwi-panel-input {
+
+    flex: 1;
+    min-width: 0;
+
+    height: 20px;
+    max-height: 90px;
+    overflow-y: auto;
+    resize: none;
+
+    background: none;
+    border: none;
+    outline: none;
+
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    line-height: 1.4;
+
+}
+
+.kiwi-panel-input::placeholder {
+
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-input:disabled {
+
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-mic,
+.kiwi-panel-send {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 28px;
+    height: 28px;
+
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color .2s ease;
+
+}
+
+.kiwi-panel-send {
+
+    color: var(--primary);
+
+}
+
+.kiwi-panel-mic:hover:not(:disabled) {
+
+    color: var(--primary);
+
+}
+
+.kiwi-panel-mic:disabled,
+.kiwi-panel-send:disabled {
+
+    color: var(--border);
+    cursor: not-allowed;
+
+}
+
+.kiwi-panel-mic-active {
+
+    color: #6EF3A5;
+    animation: kiwi-panel-mic-pulse 0.9s ease-in-out infinite;
+
+}
+
+@keyframes kiwi-panel-mic-pulse {
+
+    0%, 100% { transform: scale(1); opacity: .8; }
+    50% { transform: scale(1.15); opacity: 1; }
+
+}
