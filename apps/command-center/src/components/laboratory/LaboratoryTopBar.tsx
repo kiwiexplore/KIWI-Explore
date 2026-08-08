@@ -19,14 +19,21 @@ interface LaboratoryTopBarProps {
 /**
  * Laboratory's own top bar — mirrors TopBar's three-zone shape (brand /
  * center / account) but with different content: KIWI Core (the mini
- * brain, see KiwiCoreBadge) plus an explicit back button return to the
- * Dashboard, a nav tab row stands in for the activity summary, and a
- * "Hey Kiwi" trigger sits next to the profile pill (not wired to
- * anything yet — KiwiPanel is a later step). Kept as its own component
- * (not a TopBar variant) since the two bars' contents genuinely
- * diverge — the profile pill's markup/CSS is deliberately duplicated
- * here rather than importing TopBar.css, to keep Laboratory decoupled
- * from the Dashboard's own files (see Laboratory.tsx's doc comment).
+ * brain, see KiwiCoreBadge) sits flush in the corner with nothing
+ * before it, deliberately oversized and NOT constrained to the bar's
+ * own (slim, like the Dashboard's TopBar) height — it's absolutely
+ * positioned so it visually floats/overflows down past the bar's own
+ * bottom edge into the page below, rather than stretching the whole
+ * bar taller just to contain it. The "Dashboard" back button and
+ * KIWI/LABORATORY wordmark sit to its right (space reserved via
+ * .lab-topbar-brand's own padding-left). A nav tab row stands in for
+ * the activity summary, and a "Hey Kiwi" trigger sits next to the
+ * profile pill (not wired to anything yet — KiwiPanel is a later
+ * step). Kept as its own component (not a TopBar variant) since the
+ * two bars' contents genuinely diverge — the profile pill's markup/CSS
+ * is deliberately duplicated here rather than importing TopBar.css, to
+ * keep Laboratory decoupled from the Dashboard's own files (see
+ * Laboratory.tsx's doc comment).
  */
 export default function LaboratoryTopBar({ onBack, listening }: LaboratoryTopBarProps) {
     const [activeTab, setActiveTab] = useState("projects");
@@ -37,11 +44,13 @@ export default function LaboratoryTopBar({ onBack, listening }: LaboratoryTopBar
     return (
         <header className="lab-topbar">
             <div className="lab-topbar-brand">
+                <div className="lab-topbar-core-anchor">
+                    <KiwiCoreBadge listening={listening} />
+                </div>
                 <button type="button" className="lab-topbar-back" onClick={onBack} aria-label="Back to Dashboard">
                     <ArrowLeft size={16} strokeWidth={2} />
                     Dashboard
                 </button>
-                <KiwiCoreBadge listening={listening} />
                 <span className="lab-topbar-brand-text">
                     KIWI
                     <span className="lab-topbar-brand-sub">

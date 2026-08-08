@@ -6,12 +6,4 @@
     height: 180px;
     flex-shrink: 0;
 
-    border-radius: 32px;
-
-    background: radial-gradient(circle at 32% 28%, #172848, #0b1220 72%);
-    border: 1px solid var(--border);
-    box-shadow: inset 0 0 12px rgba(73, 199, 255, .12);
-
-    overflow: hidden;
-
 }
