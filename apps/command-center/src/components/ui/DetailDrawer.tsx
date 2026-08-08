@@ -27,6 +27,10 @@ export interface DetailDrawerContent {
     // comfortably under the default cap — forms like SignUpForm need
     // more room to avoid an unnecessary internal scrollbar.
     maxHeight?: number;
+    // Most cards are fine at the default width — content with real
+    // paragraphs (InfoPanel's About page) reads better wider instead of
+    // wrapping into a tall, narrow column.
+    width?: number;
 }
 
 interface DetailDrawerProps {
@@ -58,18 +62,20 @@ export default function DetailDrawer({ content, onClose }: DetailDrawerProps) {
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         const { x, y } = content.anchor;
+        const width = content.width ?? CARD_WIDTH;
         const maxHeight = content.maxHeight ?? DEFAULT_MAX_HEIGHT;
         const estimatedHeight = Math.min(maxHeight, ESTIMATED_HEIGHT);
 
-        const fitsRight = x + 16 + CARD_WIDTH <= vw - MARGIN;
+        const fitsRight = x + 16 + width <= vw - MARGIN;
         const fitsBelow = y + 16 + estimatedHeight <= vh - MARGIN;
 
-        const left = fitsRight ? x + 16 : x - CARD_WIDTH - 16;
+        const left = fitsRight ? x + 16 : x - width - 16;
         const top = fitsBelow ? y + 16 : y - estimatedHeight - 16;
 
         style = {
-            left: Math.min(Math.max(MARGIN, left), vw - CARD_WIDTH - MARGIN),
+            left: Math.min(Math.max(MARGIN, left), vw - width - MARGIN),
             top: Math.min(Math.max(MARGIN, top), vh - Math.min(maxHeight, vh - 2 * MARGIN) - MARGIN),
+            width,
             maxHeight,
         };
     }

@@ -97,6 +97,18 @@
 
 }
 
+.info-panel-text p {
+
+    margin: 0 0 12px;
+
+}
+
+.info-panel-text p:last-child {
+
+    margin-bottom: 0;
+
+}
+
 .info-panel-form {
 
     display: flex;

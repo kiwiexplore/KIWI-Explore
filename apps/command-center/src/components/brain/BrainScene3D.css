@@ -70,14 +70,15 @@
    margin, into the Canvas's own mostly-empty lower area — the brain's
    visible silhouette doesn't fill its whole camera frame) rather than
    sitting the usual flex gap below it. Bottom padding kept generous —
-   reserved room for the conversation transcript that'll appear here
-   once voice input is actually wired up, per explicit request. */
+   reserved room for the conversation panel, which floats above the
+   input row itself (see VoiceBar.css's .voice-bar-panel) so opening it
+   doesn't reflow this row's own height. */
 .brain-voice-bar-row {
 
     display: flex;
     justify-content: center;
 
-    margin-top: -80px;
+    margin-top: -110px;
     padding: 0 24px 48px;
 
     /* Pulled up into the Canvas's own bounding box above (see the

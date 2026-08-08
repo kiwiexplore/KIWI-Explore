@@ -1,20 +1,32 @@
+.voice-bar-wrap {
+
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    width: 100%;
+
+}
+
 .voice-bar {
 
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
-    gap: 16px;
+    gap: 10px;
 
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
 
     /* Same panel size as ActivitySummary, per explicit request. */
-    padding: 8px 20px;
+    padding: 8px 10px 8px 20px;
 
     background: radial-gradient(circle at 32% 28%, #172848, #0b1220 72%);
 
     border: 1px solid var(--primary);
-    border-radius: 999px;
+    border-radius: 26px;
 
     box-shadow:
         0 0 14px rgba(73, 199, 255, .35),
@@ -23,18 +35,20 @@
     color: var(--text-muted);
     font-size: 14px;
 
-    white-space: nowrap;
+    transition: border-radius .2s ease;
 
 }
 
 .voice-bar-left {
 
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 12px;
 
     min-width: 0;
     flex: 1;
+
+    padding: 7px 0;
 
 }
 
@@ -43,12 +57,15 @@
     flex: 1;
     min-width: 0;
 
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* A real <textarea> (was a single-line <input>) — grows a couple of
+       lines tall as you type (see the auto-grow effect in VoiceBar.tsx),
+       up to MAX_TEXTAREA_HEIGHT, then scrolls internally rather than
+       growing forever. */
+    height: 22px;
+    max-height: 72px;
+    overflow-y: auto;
+    resize: none;
 
-    /* A real <input> now (was a plain <span>) — stripped back down to
-       look exactly the same as the static text did. */
     background: none;
     border: none;
     outline: none;
@@ -58,6 +75,7 @@
     color: var(--text);
     font-size: inherit;
     font-family: inherit;
+    line-height: 1.4;
 
 }
 
@@ -74,6 +92,40 @@
 
 }
 
+.voice-bar-send {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 32px;
+    height: 32px;
+
+    background: none;
+    border: none;
+
+    color: var(--primary);
+    cursor: pointer;
+
+    border-radius: 999px;
+    transition: var(--transition);
+
+}
+
+.voice-bar-send:hover:not(:disabled) {
+
+    background: rgba(73, 199, 255, .15);
+
+}
+
+.voice-bar-send:disabled {
+
+    color: var(--border);
+    cursor: default;
+
+}
+
 .voice-bar-mic {
 
     display: flex;
@@ -81,9 +133,11 @@
     justify-content: center;
     flex-shrink: 0;
 
+    width: 32px;
+    height: 32px;
+
     background: none;
     border: none;
-    padding: 4px;
 
     color: var(--text-muted);
     cursor: pointer;
@@ -120,5 +174,105 @@
 
     0%, 100% { transform: scaleY(1); opacity: .8; }
     50% { transform: scaleY(1.4); opacity: 1; }
+
+}
+
+/* The conversation panel — floats ABOVE the input row (not in normal
+   document flow) so opening it grows into the canvas's own mostly-empty
+   space above rather than pushing the brain/layout around. Anchored to
+   the bottom of .voice-bar-wrap, which is itself position:relative. */
+.voice-bar-panel {
+
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: min(600px, 92vw);
+
+    padding: 14px 16px 10px;
+
+    background: rgba(11, 18, 36, 0.82);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border: 1px solid var(--primary);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+
+}
+
+.voice-bar-collapse {
+
+    position: absolute;
+    top: 8px;
+    right: 8px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 22px;
+    height: 22px;
+
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.voice-bar-collapse:hover {
+
+    border-color: var(--primary);
+    color: #eaf6ff;
+
+}
+
+.voice-bar-conversation {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    /* Only so much room to work with above the brain — past this it
+       scrolls internally instead of growing the panel off-screen. */
+    max-height: 260px;
+    overflow-y: auto;
+
+    padding-right: 4px;
+
+}
+
+.voice-bar-placeholder {
+
+    padding: 6px 2px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+    line-height: 1.5;
+
+}
+
+.voice-bar-message {
+
+    align-self: flex-end;
+    max-width: 85%;
+
+    padding: 8px 12px;
+
+    background: rgba(73, 199, 255, .14);
+    border: 1px solid rgba(73, 199, 255, .3);
+    border-radius: 14px 14px 4px 14px;
+
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+
+    overflow-wrap: break-word;
 
 }

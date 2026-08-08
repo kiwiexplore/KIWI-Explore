@@ -187,7 +187,8 @@ export default function BrainScene3D() {
         setDetail({
             title: "Info",
             anchor,
-            maxHeight: 480,
+            width: 440,
+            maxHeight: 700,
             body: <InfoPanel />,
         });
     };
