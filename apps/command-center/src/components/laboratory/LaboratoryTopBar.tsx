@@ -1,20 +1,22 @@
-import { useState } from "react";
-import { ArrowLeft, AudioLines, ChevronDown } from "lucide-react";
+import { AudioLines, ArrowLeft, ChevronDown } from "lucide-react";
 import KiwiCoreBadge from "./KiwiCoreBadge";
 import AvatarGlyph from "../ui/AvatarGlyph";
 import { DEFAULT_AVATAR } from "../../state/avatars";
+import type { LaboratorySection } from "./Laboratory";
 import "./LaboratoryTopBar.css";
 
-const NAV_TABS = [
-    { id: "projects", label: "Projects", enabled: true },
-    { id: "research", label: "Research", enabled: false },
-    { id: "notes", label: "Notes", enabled: false },
+const NAV_TABS: { id: LaboratorySection; label: string }[] = [
+    { id: "projects", label: "Projects" },
+    { id: "research", label: "Research" },
+    { id: "notes", label: "Notes" },
 ];
 
 interface LaboratoryTopBarProps {
     onBack: () => void;
     listening?: boolean;
     onOpenKiwi?: () => void;
+    section: LaboratorySection;
+    onSectionChange: (section: LaboratorySection) => void;
 }
 
 /**
@@ -22,21 +24,20 @@ interface LaboratoryTopBarProps {
  * center / account) but with different content: KIWI Core (the mini
  * brain, see KiwiCoreBadge) sits flush in the corner with nothing
  * before it, sized so the bar itself grows tall enough to fully
- * contain it (no overflow past the bar's own bottom edge — an earlier
- * version let it spill into the page below, but that read as broken
- * rather than deliberate). The "Dashboard" back button and
- * KIWI/LABORATORY wordmark sit to its right. A nav tab row stands in
- * for the activity summary, and a "Hey Kiwi" trigger opens KiwiPanel
- * (a right-side sheet — see Laboratory.tsx, which owns the shared chat
- * state via useKiwiChat) next to the profile pill. Kept as its own
- * component (not a TopBar variant) since the two bars' contents
- * genuinely diverge — the profile pill's markup/CSS is deliberately
- * duplicated here rather than importing TopBar.css, to keep Laboratory
- * decoupled from the Dashboard's own files (see Laboratory.tsx's doc
- * comment).
+ * contain it. The "Dashboard" back button and KIWI/LABORATORY wordmark
+ * sit to its right. The nav tab row is controlled from Laboratory.tsx
+ * (via `section`/`onSectionChange`) rather than owning its own local
+ * state, since which section is active determines what the whole page
+ * renders below, not just this bar's own look. A "Hey Kiwi" trigger
+ * opens KiwiPanel (a right-side sheet — see Laboratory.tsx, which owns
+ * the shared chat state via useKiwiChat) next to the profile pill.
+ * Kept as its own component (not a TopBar variant) since the two
+ * bars' contents genuinely diverge — the profile pill's markup/CSS is
+ * deliberately duplicated here rather than importing TopBar.css, to
+ * keep Laboratory decoupled from the Dashboard's own files (see
+ * Laboratory.tsx's doc comment).
  */
-export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi }: LaboratoryTopBarProps) {
-    const [activeTab, setActiveTab] = useState("projects");
+export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi, section, onSectionChange }: LaboratoryTopBarProps) {
     // Local placeholder identity — Laboratory doesn't share BrainScene3D's
     // account state yet (see Laboratory.tsx's doc comment for why).
     const nickname = "Explorer";
@@ -63,12 +64,10 @@ export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi }: Labo
                     <button
                         key={tab.id}
                         type="button"
-                        className={`lab-topbar-tab${activeTab === tab.id ? " lab-topbar-tab-active" : ""}`}
-                        onClick={() => tab.enabled && setActiveTab(tab.id)}
-                        disabled={!tab.enabled}
+                        className={`lab-topbar-tab${section === tab.id ? " lab-topbar-tab-active" : ""}`}
+                        onClick={() => onSectionChange(tab.id)}
                     >
                         {tab.label}
-                        {!tab.enabled && <span className="lab-topbar-tab-badge">Soon</span>}
                     </button>
                 ))}
             </nav>

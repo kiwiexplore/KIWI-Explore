@@ -1,0 +1,147 @@
+.research-detail {
+
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+
+    padding: 32px 40px 60px;
+    box-sizing: border-box;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+}
+
+.research-detail-back {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    align-self: flex-start;
+
+    padding: 6px 4px;
+
+    background: none;
+    border: none;
+
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+}
+
+.research-detail-title {
+
+    background: none;
+    border: none;
+    outline: none;
+
+    padding: 0;
+
+    color: var(--text);
+    font-size: 26px;
+    font-weight: 700;
+    font-family: inherit;
+
+}
+
+.research-detail-title::placeholder {
+
+    color: var(--text-muted);
+
+}
+
+.research-detail-meta {
+
+    display: flex;
+    gap: 10px;
+
+}
+
+.research-detail-tag,
+.research-detail-source {
+
+    padding: 9px 12px;
+
+    background: rgba(5, 8, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+
+    outline: none;
+    transition: var(--transition);
+
+}
+
+.research-detail-tag {
+
+    flex: 0 0 200px;
+
+}
+
+.research-detail-source {
+
+    flex: 1;
+    min-width: 0;
+
+}
+
+.research-detail-tag:focus,
+.research-detail-source:focus {
+
+    border-color: var(--primary);
+
+}
+
+.research-detail-tag::placeholder,
+.research-detail-source::placeholder {
+
+    color: var(--text-muted);
+
+}
+
+.research-detail-summary {
+
+    flex: 1;
+    min-height: 260px;
+
+    padding: 20px;
+
+    background: rgba(16, 25, 46, 0.36);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    outline: none;
+    resize: none;
+
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.7;
+    font-family: inherit;
+
+    transition: var(--transition);
+
+}
+
+.research-detail-summary:focus {
+
+    border-color: var(--primary);
+
+}
+
+.research-detail-summary::placeholder {
+
+    color: var(--text-muted);
+
+}

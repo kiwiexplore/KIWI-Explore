@@ -145,16 +145,9 @@
 
 }
 
-.lab-topbar-tab:hover:not(:disabled) {
+.lab-topbar-tab:hover {
 
     color: #eaf6ff;
-
-}
-
-.lab-topbar-tab:disabled {
-
-    cursor: default;
-    opacity: .55;
 
 }
 
@@ -164,21 +157,6 @@
     border-color: var(--primary);
     color: #eaf6ff;
     box-shadow: 0 0 10px rgba(73, 199, 255, .25);
-
-}
-
-.lab-topbar-tab-badge {
-
-    padding: 1px 6px;
-
-    background: rgba(255, 255, 255, .06);
-    border-radius: 999px;
-
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: .5px;
-    text-transform: uppercase;
-    color: var(--text-muted);
 
 }
 
