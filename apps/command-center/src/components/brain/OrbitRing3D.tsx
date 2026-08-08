@@ -1022,7 +1022,7 @@ export default function OrbitRing3D({ onGlowObjectsReady, onModuleClick, activeM
                                 }}
                             >
 
-                                {Icon && <Icon size={34} color="#eaf6ff" strokeWidth={1.75} />}
+                                {Icon && <Icon size={23} color="#eaf6ff" strokeWidth={1.75} />}
 
                                 {module.badgeCount !== undefined && (
                                     <span className="orbit3d-badge">{module.badgeCount}</span>

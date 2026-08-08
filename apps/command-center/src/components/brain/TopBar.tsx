@@ -1,6 +1,8 @@
 import type { MouseEvent } from "react";
 import { Info, Orbit, Satellite, UserCircle2 } from "lucide-react";
 import ActivitySummary from "./ActivitySummary";
+import AvatarGlyph from "../ui/AvatarGlyph";
+import { DEFAULT_AVATAR, type AvatarChoice } from "../../state/avatars";
 import "./TopBar.css";
 
 interface TopBarProps {
@@ -12,6 +14,9 @@ interface TopBarProps {
     // entirely below that tier rather than shown-but-disabled, since
     // there's no destination behind it yet either way.
     hasLab?: boolean;
+    // Mirrors whatever's picked in Profile & settings (see AvatarGlyph)
+    // so the pill here always matches the drawer's own avatar.
+    avatar?: AvatarChoice;
 }
 
 /**
@@ -36,7 +41,7 @@ interface TopBarProps {
  * scene (About/Terms/Privacy/Updates — see InfoPanel), anchored at its
  * own position, same pattern as Sign in/Profile.
  */
-export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick, hasLab }: TopBarProps) {
+export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick, hasLab, avatar }: TopBarProps) {
     return (
         <header className="top-bar">
             <div className="top-bar-brand">
@@ -66,7 +71,7 @@ export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfo
                 </button>
                 {nickname ? (
                     <button type="button" className="top-bar-profile" onClick={onProfileClick}>
-                        <UserCircle2 size={18} strokeWidth={1.75} />
+                        <AvatarGlyph avatar={avatar ?? DEFAULT_AVATAR} size={18} iconSize={18} />
                         {nickname}
                     </button>
                 ) : (

@@ -18,6 +18,7 @@ import RecipesWidget from "./RecipesWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import { PLANS, type PlanId } from "../../state/plans";
+import { DEFAULT_AVATAR, type AvatarChoice } from "../../state/avatars";
 import { DEFAULT_BACKGROUND, resolveBackgroundImage, type BackgroundChoice } from "../../state/backgrounds";
 import type { PickerItem } from "../ui/ItemPicker";
 import "./BrainScene3D.css";
@@ -110,6 +111,7 @@ export default function BrainScene3D() {
     const [activeLeftWidgetIds, setActiveLeftWidgetIds] = useState<string[]>(leftWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
     const [activeRightWidgetIds, setActiveRightWidgetIds] = useState<string[]>(rightWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
     const [background, setBackground] = useState<BackgroundChoice>(DEFAULT_BACKGROUND);
+    const [avatar, setAvatar] = useState<AvatarChoice>(DEFAULT_AVATAR);
     // The profile drawer's anchor only — its body is built fresh below
     // (not stored in `detail`), since it needs to keep reflecting plan/
     // icon/widget/background state that changes *from inside itself*
@@ -195,13 +197,15 @@ export default function BrainScene3D() {
     const profileDetail: DetailDrawerContent | null = profileAnchor ? {
         title: "Profile & settings",
         anchor: profileAnchor,
-        maxHeight: 420,
+        maxHeight: 620,
         body: (
             <ProfileSettings
                 nickname={nickname ?? ""}
                 onSignOut={() => { setNickname(null); closeDetail(); }}
                 plan={plan}
                 onPlanChange={handlePlanChange}
+                avatar={avatar}
+                onAvatarChange={setAvatar}
                 iconOptions={ICON_OPTIONS}
                 activeIconIds={activeIconIds}
                 onActiveIconIdsChange={setActiveIconIds}
@@ -233,7 +237,7 @@ export default function BrainScene3D() {
                 overflow: "hidden",
             }}
         >
-            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} hasLab={plan === "max"} />
+            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} hasLab={plan === "max"} avatar={avatar} />
 
             <div
                 style={{
