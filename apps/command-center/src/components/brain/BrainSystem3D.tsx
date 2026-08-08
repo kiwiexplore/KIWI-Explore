@@ -13,6 +13,13 @@ interface BrainSystemProps {
     // through here because GlowLayer (which needs these objects for
     // SelectiveBloom) is a sibling of this whole group, not a descendant.
     onPulseReady?: (lines: Line[]) => void;
+    // True while Hey Kiwi is actively listening — pauses the idle
+    // auto-rotation (same as an active drag), reading as the brain
+    // "paying attention" instead of continuing to idly spin while the
+    // user is mid-sentence. Resumes the moment listening stops. See
+    // BrainScene3D, which lifts VoiceBar's own `listening` state up to
+    // here (and to GlowLayer, for the matching glow boost).
+    listening?: boolean;
 }
 
 /**
@@ -30,14 +37,14 @@ interface BrainSystemProps {
  * down or shows an odd top-down angle. Idle auto-rotation resumes once
  * the drag ends.
  */
-export default function BrainSystem({ onPulseReady }: BrainSystemProps) {
+export default function BrainSystem({ onPulseReady, listening }: BrainSystemProps) {
     const groupRef = useRef<Group>(null);
     const dragging = useRef(false);
     const lastPointer = useRef({ x: 0, y: 0 });
 
     useFrame((state, delta) => {
         if (groupRef.current) {
-            if (!dragging.current) {
+            if (!dragging.current && !listening) {
                 groupRef.current.rotation.y += delta * 0.09;
             }
             const breathe = 1 + Math.sin(state.clock.elapsedTime * 0.5) * 0.02;

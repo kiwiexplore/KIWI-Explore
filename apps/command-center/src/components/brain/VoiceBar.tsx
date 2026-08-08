@@ -62,7 +62,14 @@ interface Message {
  * own bubbles, with a plain note where Kiwi's replies will show up
  * once that's wired up, rather than faking a response.
  */
-export default function VoiceBar() {
+interface VoiceBarProps {
+    // Fired whenever `listening` changes — lets BrainScene3D pause the
+    // brain's idle rotation and boost its glow while Hey Kiwi is
+    // actively listening, then return to normal the moment it stops.
+    onListeningChange?: (listening: boolean) => void;
+}
+
+export default function VoiceBar({ onListeningChange }: VoiceBarProps) {
     const [listening, setListening] = useState(false);
     const [transcript, setTranscript] = useState("");
     const [expanded, setExpanded] = useState(false);
@@ -104,6 +111,10 @@ export default function VoiceBar() {
         recognitionRef.current = recognition;
         return () => recognition.stop();
     }, []);
+
+    useEffect(() => {
+        onListeningChange?.(listening);
+    }, [listening, onListeningChange]);
 
     // Auto-grows the textarea with its content, up to MAX_TEXTAREA_HEIGHT,
     // then leaves it to scroll internally.

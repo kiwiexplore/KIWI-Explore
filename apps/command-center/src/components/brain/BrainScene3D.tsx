@@ -94,6 +94,11 @@ export default function BrainScene3D() {
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
     const [glowObjects, setGlowObjects] = useState<Object3D[]>([]);
+    // Lifted from VoiceBar (see its own onListeningChange doc) so the
+    // brain can pause its rotation and glow brighter while Hey Kiwi is
+    // actively listening — both BrainSystem3D and GlowLayer are its
+    // siblings here, not descendants, so this has to live up here.
+    const [kiwiListening, setKiwiListening] = useState(false);
     const [detail, setDetail] = useState<DetailDrawerContent | null>(null);
     // Which orbit icon's drawer is open, if any — kept separate from
     // `detail` itself (which also covers widgets) so OrbitRing3D can use
@@ -281,7 +286,7 @@ export default function BrainScene3D() {
                                 same icon-to-brain gap, just bigger, rather than
                                 needing to separately recompute icon distances. */}
                             <group scale={0.96} position={[0, 0.14, 0]}>
-                                <BrainSystem3D onPulseReady={setPulseLines} />
+                                <BrainSystem3D onPulseReady={setPulseLines} listening={kiwiListening} />
                                 <OrbitRing3D
                                     onGlowObjectsReady={setGlowObjects}
                                     onModuleClick={handleModuleClick}
@@ -289,11 +294,11 @@ export default function BrainScene3D() {
                                     activeIconIds={activeIconIds}
                                 />
                             </group>
-                            <GlowLayer selection={[...pulseLines, ...glowObjects]} lights={[ambientLight]} />
+                            <GlowLayer selection={[...pulseLines, ...glowObjects]} lights={[ambientLight]} boosted={kiwiListening} />
                         </Canvas>
                     </div>
                     <div className="brain-voice-bar-row">
-                        <VoiceBar />
+                        <VoiceBar onListeningChange={setKiwiListening} />
                     </div>
                 </div>
 

@@ -6,7 +6,15 @@ interface GlowLayerProps {
     // and the light(s) SelectiveBloom needs to render its isolated pass.
     selection: Object3D[];
     lights: Object3D[];
+    // True while Hey Kiwi is actively listening — bumps bloom intensity
+    // up so the brain visibly "lights up more" while it's paying
+    // attention, alongside BrainSystem3D pausing its rotation for the
+    // same reason. Back to BASE_INTENSITY the moment listening stops.
+    boosted?: boolean;
 }
+
+const BASE_INTENSITY = 3.6;
+const BOOSTED_INTENSITY = 6.2;
 
 /**
  * Bloom postprocessing on its own — split out from BrainScene3D so it's a
@@ -41,13 +49,13 @@ interface GlowLayerProps {
  * conflict; not a visible quality loss since none of this scene relies
  * on MSAA edge smoothing to look right (points/lines, not polygon edges).
  */
-export default function GlowLayer({ selection, lights }: GlowLayerProps) {
+export default function GlowLayer({ selection, lights, boosted }: GlowLayerProps) {
     return (
         <EffectComposer multisampling={0}>
             <SelectiveBloom
                 selection={selection}
                 lights={lights}
-                intensity={3.6}
+                intensity={boosted ? BOOSTED_INTENSITY : BASE_INTENSITY}
                 luminanceThreshold={0.05}
                 luminanceSmoothing={0.4}
                 mipmapBlur
