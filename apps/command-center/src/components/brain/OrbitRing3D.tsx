@@ -120,14 +120,31 @@ function layoutModules(): Positioned[] {
 
 // Same technique as EnergyLayer's internal pulses: a random walk across
 // real graph adjacency, so the hover pulse's arrival "flare" actually
-// follows the brain's own connections rather than a straight line.
-function randomWalk(start: number, length: number): number[] {
+// follows the brain's own connections rather than a straight line. Kept
+// within FLARE_MAX_DIST of the walk's own starting node (the branch's
+// entry point) at every step — some of the brain's real adjacency edges
+// are long synthetic "gap-fill" bridges (see connectionGeometry.ts),
+// added purely to keep sparse areas connected, not because they're
+// visually close together. An unconstrained walk could hop across one of
+// those and end up lighting up a node/line far from the icon's actual
+// connection point, reading as a stray line detached from the brain —
+// per explicit feedback. Falls back to any neighbor (even a distant one)
+// only if literally every neighbor at the current step is too far, so
+// the walk never just stops dead in a sparse pocket.
+const FLARE_MAX_DIST = 0.4;
+function randomWalkNearby(start: number, length: number): number[] {
+    const sx = brainNodes3D[start * 3], sy = brainNodes3D[start * 3 + 1], sz = brainNodes3D[start * 3 + 2];
     let current = start;
     const path = [current];
     for (let i = 0; i < length - 1; i++) {
         const neighbors = brainAdjacency.get(current);
         if (!neighbors || neighbors.length === 0) break;
-        current = neighbors[Math.floor(Math.random() * neighbors.length)];
+        const nearby = neighbors.filter((n) => {
+            const dx = brainNodes3D[n * 3] - sx, dy = brainNodes3D[n * 3 + 1] - sy, dz = brainNodes3D[n * 3 + 2] - sz;
+            return dx * dx + dy * dy + dz * dz <= FLARE_MAX_DIST * FLARE_MAX_DIST;
+        });
+        const candidates = nearby.length > 0 ? nearby : neighbors;
+        current = candidates[Math.floor(Math.random() * candidates.length)];
         path.push(current);
     }
     while (path.length < length) path.push(path[path.length - 1]);
@@ -517,7 +534,7 @@ function IconEnergyLink({ active, outer, branchIndices, onGlowObjectReady }: Ico
             if (!flareTriggered.current && pulseProgress >= 0.95) {
                 flareTriggered.current = true;
                 flareElapsed.current = 0;
-                flarePaths.current = branchIndices.map((idx) => randomWalk(idx, FLARE_PATH_LENGTH));
+                flarePaths.current = branchIndices.map((idx) => randomWalkNearby(idx, FLARE_PATH_LENGTH));
             }
         }
         if (flareTriggered.current) flareElapsed.current += delta;
