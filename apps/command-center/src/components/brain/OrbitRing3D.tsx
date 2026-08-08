@@ -990,7 +990,26 @@ export default function OrbitRing3D({ onGlowObjectsReady, onModuleClick, activeM
                 const Icon = ICONS[module.id];
 
                 return (
-                    <Html key={module.id} position={outer} center distanceFactor={6}>
+                    // No distanceFactor here on purpose — drei's Html only
+                    // recomputes that scale on frames where the icon's
+                    // screen position actually moved by more than its
+                    // epsilon, so whenever activeIconIds changes (add/
+                    // remove/reorder), any icon that happens to land back
+                    // on a position it already occupied gets skipped and
+                    // stays stuck at its unscaled fallback size while the
+                    // icons that did move snap to the "real" scaled size —
+                    // a visible, confirmed size mismatch. All icons sit on
+                    // the same flat ring (z=0) at a fixed camera distance
+                    // anyway, so a real per-icon perspective scale was
+                    // never doing meaningful work here — baked the
+                    // equivalent fixed size into the CSS instead (see
+                    // orbit3d-circle/orbit3d-label), which can't desync.
+                    // zIndexRange kept low so these icons (rendered by
+                    // drei outside the normal DOM z-index scale, default
+                    // range reaches into the millions) stay under
+                    // DetailDrawer (z-index 40/41) and TopBar (5) instead
+                    // of covering an open widget/module card.
+                    <Html key={module.id} position={outer} center zIndexRange={[1, 0]}>
                         <div className="orbit3d-node">
 
                             <div
@@ -1003,7 +1022,7 @@ export default function OrbitRing3D({ onGlowObjectsReady, onModuleClick, activeM
                                 }}
                             >
 
-                                {Icon && <Icon size={23} color="#eaf6ff" strokeWidth={1.75} />}
+                                {Icon && <Icon size={34} color="#eaf6ff" strokeWidth={1.75} />}
 
                                 {module.badgeCount !== undefined && (
                                     <span className="orbit3d-badge">{module.badgeCount}</span>

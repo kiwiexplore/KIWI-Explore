@@ -4,7 +4,7 @@
     flex-direction: column;
     align-items: center;
 
-    width: 90px;
+    width: 135px;
     text-align: center;
 
     pointer-events: none;
@@ -15,8 +15,8 @@
 
     position: relative;
 
-    width: 54px;
-    height: 54px;
+    width: 81px;
+    height: 81px;
 
     border-radius: 50%;
 
@@ -49,7 +49,7 @@
 
     content: "";
     position: absolute;
-    inset: -6px;
+    inset: -9px;
 
     border-radius: 50%;
     padding: 2px;
@@ -92,20 +92,20 @@
 
     position: absolute;
 
-    top: -5px;
-    right: -5px;
+    top: -7px;
+    right: -7px;
 
-    min-width: 16px;
-    height: 16px;
+    min-width: 24px;
+    height: 24px;
 
-    padding: 0 3px;
+    padding: 0 4px;
 
-    border-radius: 8px;
+    border-radius: 12px;
 
     background: #6EF3A5;
     color: #0b1220;
 
-    font-size: 9px;
+    font-size: 13px;
     font-weight: bold;
 
     display: flex;
@@ -116,9 +116,9 @@
 
 .orbit3d-label {
 
-    margin-top: 6px;
+    margin-top: 9px;
 
-    font-size: 11px;
+    font-size: 16px;
     font-weight: bold;
     color: white;
 
@@ -129,7 +129,7 @@
        spill into the neighboring widget column when the icon sits close
        to it. overflow-wrap is needed too since it's a single long word
        with no natural break point otherwise. */
-    max-width: 78px;
+    max-width: 117px;
     overflow-wrap: break-word;
 
 }
