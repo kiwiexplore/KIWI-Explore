@@ -249,7 +249,7 @@ export default function BrainScene3D({ onOpenLaboratory }: BrainScene3DProps) {
                 overflow: "hidden",
             }}
         >
-            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} hasLab={plan === "max"} onLaboratoryClick={onOpenLaboratory} avatar={avatar} />
+            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} onLaboratoryClick={onOpenLaboratory} avatar={avatar} />
 
             <div
                 style={{

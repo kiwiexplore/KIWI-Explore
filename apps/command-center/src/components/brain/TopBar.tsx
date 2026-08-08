@@ -10,9 +10,6 @@ interface TopBarProps {
     onSignInClick?: (event: MouseEvent<HTMLElement>) => void;
     onProfileClick?: (event: MouseEvent<HTMLElement>) => void;
     onInfoClick?: (event: MouseEvent<HTMLElement>) => void;
-    // Space Laboratory is a Max-plan perk (see state/plans.ts) — hidden
-    // entirely below that tier rather than shown-but-disabled.
-    hasLab?: boolean;
     onLaboratoryClick?: () => void;
     // Mirrors whatever's picked in Profile & settings (see AvatarGlyph)
     // so the pill here always matches the drawer's own avatar.
@@ -32,16 +29,19 @@ interface TopBarProps {
  * detail card at the button's own position, same as every other card in
  * this scene.
  *
- * The "Space Laboratory" icon opens Laboratory — a separate, focus-only
+ * The "Laboratory" icon opens Laboratory — a separate, focus-only
  * workspace for designing/building projects, deliberately kept apart
  * from this HQ dashboard (see App.tsx's view switch and
- * components/laboratory/Laboratory.tsx).
+ * components/laboratory/Laboratory.tsx). Left ungated (visible
+ * regardless of sign-in/plan) for now, while it's still being built —
+ * `state/plans.ts` already models it as a Max-plan perk for later, once
+ * there's a real reason to keep re-testing that gate.
  *
  * The "Info" icon opens the same DetailDrawer as everything else in this
  * scene (About/Terms/Privacy/Updates — see InfoPanel), anchored at its
  * own position, same pattern as Sign in/Profile.
  */
-export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick, hasLab, onLaboratoryClick, avatar }: TopBarProps) {
+export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick, onLaboratoryClick, avatar }: TopBarProps) {
     return (
         <header className="top-bar">
             <div className="top-bar-brand">
@@ -59,12 +59,10 @@ export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfo
                 <span className="top-bar-status-dot" />
                 <span className="top-bar-status-text">System Online</span>
                 <span className="top-bar-status-divider" />
-                {hasLab && (
-                    <button type="button" className="top-bar-icon-btn" aria-label="Space Laboratory" onClick={onLaboratoryClick}>
-                        <Satellite size={18} strokeWidth={1.75} />
-                        <span className="top-bar-tooltip">Space Laboratory</span>
-                    </button>
-                )}
+                <button type="button" className="top-bar-icon-btn" aria-label="Laboratory" onClick={onLaboratoryClick}>
+                    <Satellite size={18} strokeWidth={1.75} />
+                    <span className="top-bar-tooltip">Laboratory</span>
+                </button>
                 <button type="button" className="top-bar-icon-btn" aria-label="Info" onClick={onInfoClick}>
                     <Info size={18} strokeWidth={1.75} />
                     <span className="top-bar-tooltip">Info</span>
