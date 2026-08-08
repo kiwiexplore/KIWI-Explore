@@ -8,6 +8,10 @@ interface TopBarProps {
     onSignInClick?: (event: MouseEvent<HTMLElement>) => void;
     onProfileClick?: (event: MouseEvent<HTMLElement>) => void;
     onInfoClick?: (event: MouseEvent<HTMLElement>) => void;
+    // Space Laboratory is a Max-plan perk (see state/plans.ts) — hidden
+    // entirely below that tier rather than shown-but-disabled, since
+    // there's no destination behind it yet either way.
+    hasLab?: boolean;
 }
 
 /**
@@ -32,7 +36,7 @@ interface TopBarProps {
  * scene (About/Terms/Privacy/Updates — see InfoPanel), anchored at its
  * own position, same pattern as Sign in/Profile.
  */
-export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick }: TopBarProps) {
+export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick, hasLab }: TopBarProps) {
     return (
         <header className="top-bar">
             <div className="top-bar-brand">
@@ -50,10 +54,12 @@ export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfo
                 <span className="top-bar-status-dot" />
                 <span className="top-bar-status-text">System Online</span>
                 <span className="top-bar-status-divider" />
-                <button type="button" className="top-bar-icon-btn" aria-label="Space Laboratory">
-                    <Satellite size={18} strokeWidth={1.75} />
-                    <span className="top-bar-tooltip">Space Laboratory</span>
-                </button>
+                {hasLab && (
+                    <button type="button" className="top-bar-icon-btn" aria-label="Space Laboratory">
+                        <Satellite size={18} strokeWidth={1.75} />
+                        <span className="top-bar-tooltip">Space Laboratory</span>
+                    </button>
+                )}
                 <button type="button" className="top-bar-icon-btn" aria-label="Info" onClick={onInfoClick}>
                     <Info size={18} strokeWidth={1.75} />
                     <span className="top-bar-tooltip">Info</span>

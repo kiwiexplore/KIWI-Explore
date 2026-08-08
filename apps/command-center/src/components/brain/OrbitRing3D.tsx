@@ -90,11 +90,15 @@ function ringPointAt(angle: number): [number, number] {
     return [Math.cos(angle) * RADIUS_X, Math.sin(angle) * RADIUS_Y + RING_Y_OFFSET];
 }
 
-function layoutModules(): Positioned[] {
-    const n = orbitModules.length;
-    const step = (2 * Math.PI) / n;
+// `activeModules` is a caller-chosen, ordered subset of the full
+// `orbitModules` registry (per-user icon selection — see
+// ProfileSettings) — evenly spaced around the ring regardless of how
+// many there are, same as before when it was always the full 10.
+function layoutModules(activeModules: typeof orbitModules): Positioned[] {
+    const n = activeModules.length;
+    const step = n > 0 ? (2 * Math.PI) / n : 0;
 
-    return orbitModules.map((module, i) => {
+    return activeModules.map((module, i) => {
         const angle = step * i - Math.PI / 2;
         const yFactor = Math.sin(angle);
         const [ox, oy] = ringPointAt(angle);
@@ -940,14 +944,23 @@ interface OrbitRing3DProps {
     // drawer), only clearing once the drawer closes AND the mouse isn't
     // over it either. Set by BrainScene3D.
     activeModuleId?: string | null;
+    // Caller-chosen, ordered subset of orbitModules' ids — per-user
+    // icon selection (see ProfileSettings). Falls back to the full
+    // registry, in its default order, when omitted.
+    activeIconIds?: string[];
 }
 
 // 1 hover-glow Points object + 3 brain-side flare Lines per icon — see
 // IconEnergyLink's onGlowObjectReady registrations.
 const GLOW_OBJECTS_PER_ICON = 4;
 
-export default function OrbitRing3D({ onGlowObjectsReady, onModuleClick, activeModuleId }: OrbitRing3DProps) {
-    const positioned = useMemo(() => layoutModules(), []);
+export default function OrbitRing3D({ onGlowObjectsReady, onModuleClick, activeModuleId, activeIconIds }: OrbitRing3DProps) {
+    const activeModules = useMemo(() => {
+        if (!activeIconIds) return orbitModules;
+        const byId = new Map(orbitModules.map((module) => [module.id, module]));
+        return activeIconIds.map((id) => byId.get(id)).filter((module): module is (typeof orbitModules)[number] => Boolean(module));
+    }, [activeIconIds]);
+    const positioned = useMemo(() => layoutModules(activeModules), [activeModules]);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const collectedGlowObjects = useRef<Object3D[]>([]);
 

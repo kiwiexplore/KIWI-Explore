@@ -17,19 +17,28 @@ import SpaceMissionsWidget from "./SpaceMissionsWidget";
 import RecipesWidget from "./RecipesWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
-import milkyWayPhoto from "../../assets/milky-way-background.jpg";
+import { PLANS, type PlanId } from "../../state/plans";
+import { DEFAULT_BACKGROUND, resolveBackgroundImage, type BackgroundChoice } from "../../state/backgrounds";
+import type { PickerItem } from "../ui/ItemPicker";
 import "./BrainScene3D.css";
 
 // A uniform dark scrim over the whole photo (it was too bright/busy for
 // the brain's thin cyan lines to read clearly against it), plus a soft
 // edge vignette on top (transparent in the middle, darker at the very
 // edges — NOT a centered bright-to-dark radial, which read as a glowing
-// "bubble" behind the brain in an earlier procedural version).
-const BACKGROUND_LAYERS = [
-    "linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32))",
-    "radial-gradient(ellipse 140% 120% at 50% 50%, transparent 50%, rgba(0,0,0,0.35) 100%)",
-    `url(${milkyWayPhoto})`,
-].join(", ");
+// "bubble" behind the brain in an earlier procedural version). The photo
+// itself is now the user's chosen background (see ProfileSettings).
+function backgroundLayers(resolvedImage: string): string {
+    return [
+        "linear-gradient(rgba(0,0,0,0.32), rgba(0,0,0,0.32))",
+        "radial-gradient(ellipse 140% 120% at 50% 50%, transparent 50%, rgba(0,0,0,0.35) 100%)",
+        resolvedImage,
+    ].join(", ");
+}
+
+const ICON_OPTIONS: PickerItem[] = orbitModules.map((m) => ({ id: m.id, label: m.label, icon: m.icon }));
+const LEFT_WIDGET_OPTIONS: PickerItem[] = leftWidgets.map((w) => ({ id: w.id, label: w.title }));
+const RIGHT_WIDGET_OPTIONS: PickerItem[] = rightWidgets.map((w) => ({ id: w.id, label: w.title }));
 
 function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number } {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -92,15 +101,45 @@ export default function BrainScene3D() {
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
     const [nickname, setNickname] = useState<string | null>(null);
 
+    // Per-user customization — client-side only for now (see
+    // ProfileSettings' own doc comment), defaulted to the Standard plan's
+    // limits (first N of each registry, in their existing order).
+    const [plan, setPlan] = useState<PlanId>("standard");
+    const standardPlan = PLANS[0];
+    const [activeIconIds, setActiveIconIds] = useState<string[]>(orbitModules.slice(0, standardPlan.iconCount).map((m) => m.id));
+    const [activeLeftWidgetIds, setActiveLeftWidgetIds] = useState<string[]>(leftWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
+    const [activeRightWidgetIds, setActiveRightWidgetIds] = useState<string[]>(rightWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
+    const [background, setBackground] = useState<BackgroundChoice>(DEFAULT_BACKGROUND);
+    // The profile drawer's anchor only — its body is built fresh below
+    // (not stored in `detail`), since it needs to keep reflecting plan/
+    // icon/widget/background state that changes *from inside itself*
+    // while it stays open. Storing a pre-rendered <ProfileSettings/>
+    // node in `detail.body` (like every other drawer here does) would
+    // freeze those props at click-time: React bails out of re-rendering
+    // that subtree on later parent state changes since the element
+    // reference in state never changes, so the picker/plan cards would
+    // silently go stale the moment you interact with them.
+    const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number } | null>(null);
+
+    const handlePlanChange = (nextPlan: PlanId) => {
+        setPlan(nextPlan);
+        const info = PLANS.find((p) => p.id === nextPlan) ?? PLANS[0];
+        setActiveIconIds((ids) => ids.slice(0, info.iconCount));
+        setActiveLeftWidgetIds((ids) => ids.slice(0, info.widgetCount));
+        setActiveRightWidgetIds((ids) => ids.slice(0, info.widgetCount));
+    };
+
     const closeDetail = () => {
         setDetail(null);
         setActiveModuleId(null);
+        setProfileAnchor(null);
     };
 
     const handleModuleClick = (moduleId: string, anchor: { x: number; y: number }) => {
         const module = orbitModules.find((m) => m.id === moduleId);
         if (!module) return;
         setActiveModuleId(moduleId);
+        setProfileAnchor(null);
         setDetail({
             title: module.label,
             subtitle: module.description,
@@ -112,6 +151,7 @@ export default function BrainScene3D() {
     };
 
     const handleWidgetClick = (w: { title: string }, anchor: { x: number; y: number }, body: ReactNode) => {
+        setProfileAnchor(null);
         setDetail({ title: w.title, body, anchor });
     };
 
@@ -119,11 +159,13 @@ export default function BrainScene3D() {
     // their own detail body (forecast/article list) internally, unlike
     // the placeholder widgets above whose body is just static text.
     const openDetail = (title: string, anchor: { x: number; y: number }, body: ReactNode, maxHeight?: number) => {
+        setProfileAnchor(null);
         setDetail({ title, anchor, body, maxHeight });
     };
 
     const handleSignInClick = (event: MouseEvent<HTMLElement>) => {
         const anchor = anchorFromEvent(event);
+        setProfileAnchor(null);
         setDetail({
             title: "Create your account",
             anchor,
@@ -133,17 +175,13 @@ export default function BrainScene3D() {
     };
 
     const handleProfileClick = (event: MouseEvent<HTMLElement>) => {
-        const anchor = anchorFromEvent(event);
-        setDetail({
-            title: "Profile & settings",
-            anchor,
-            maxHeight: 420,
-            body: <ProfileSettings nickname={nickname ?? ""} onSignOut={() => { setNickname(null); closeDetail(); }} />,
-        });
+        setDetail(null);
+        setProfileAnchor(anchorFromEvent(event));
     };
 
     const handleInfoClick = (event: MouseEvent<HTMLElement>) => {
         const anchor = anchorFromEvent(event);
+        setProfileAnchor(null);
         setDetail({
             title: "Info",
             anchor,
@@ -152,13 +190,40 @@ export default function BrainScene3D() {
         });
     };
 
+    // Built fresh on every render (see profileAnchor's own comment) so
+    // it always reflects the latest plan/icon/widget/background state.
+    const profileDetail: DetailDrawerContent | null = profileAnchor ? {
+        title: "Profile & settings",
+        anchor: profileAnchor,
+        maxHeight: 420,
+        body: (
+            <ProfileSettings
+                nickname={nickname ?? ""}
+                onSignOut={() => { setNickname(null); closeDetail(); }}
+                plan={plan}
+                onPlanChange={handlePlanChange}
+                iconOptions={ICON_OPTIONS}
+                activeIconIds={activeIconIds}
+                onActiveIconIdsChange={setActiveIconIds}
+                leftWidgetOptions={LEFT_WIDGET_OPTIONS}
+                activeLeftWidgetIds={activeLeftWidgetIds}
+                onActiveLeftWidgetIdsChange={setActiveLeftWidgetIds}
+                rightWidgetOptions={RIGHT_WIDGET_OPTIONS}
+                activeRightWidgetIds={activeRightWidgetIds}
+                onActiveRightWidgetIdsChange={setActiveRightWidgetIds}
+                background={background}
+                onBackgroundChange={setBackground}
+            />
+        ),
+    } : null;
+
     return (
         <div
             style={{
                 width: "100vw",
                 height: "100vh",
                 backgroundColor: "#050816",
-                backgroundImage: BACKGROUND_LAYERS,
+                backgroundImage: backgroundLayers(resolveBackgroundImage(background)),
                 backgroundSize: "auto, auto, cover",
                 backgroundPosition: "center, center, center",
                 backgroundRepeat: "no-repeat, no-repeat, no-repeat",
@@ -168,7 +233,7 @@ export default function BrainScene3D() {
                 overflow: "hidden",
             }}
         >
-            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} />
+            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} hasLab={plan === "max"} />
 
             <div
                 style={{
@@ -182,18 +247,21 @@ export default function BrainScene3D() {
                 }}
             >
                 <aside className="side-widget-column">
-                    {leftWidgets.map((w) => {
-                        if (w.id === "weather") return <WeatherWidget key={w.id} onOpenDetail={openDetail} />;
-                        if (w.id === "space-news") return <SpaceNewsWidget key={w.id} onOpenDetail={openDetail} />;
-                        if (w.id === "space-missions") return <SpaceMissionsWidget key={w.id} onOpenDetail={openDetail} />;
-                        return (
-                            <Widget
-                                key={w.id}
-                                definition={w}
-                                onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
-                            />
-                        );
-                    })}
+                    {activeLeftWidgetIds
+                        .map((id) => leftWidgets.find((w) => w.id === id))
+                        .filter((w): w is (typeof leftWidgets)[number] => Boolean(w))
+                        .map((w) => {
+                            if (w.id === "weather") return <WeatherWidget key={w.id} onOpenDetail={openDetail} />;
+                            if (w.id === "space-news") return <SpaceNewsWidget key={w.id} onOpenDetail={openDetail} />;
+                            if (w.id === "space-missions") return <SpaceMissionsWidget key={w.id} onOpenDetail={openDetail} />;
+                            return (
+                                <Widget
+                                    key={w.id}
+                                    definition={w}
+                                    onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                                />
+                            );
+                        })}
                 </aside>
 
                 <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
@@ -213,6 +281,7 @@ export default function BrainScene3D() {
                                     onGlowObjectsReady={setGlowObjects}
                                     onModuleClick={handleModuleClick}
                                     activeModuleId={activeModuleId}
+                                    activeIconIds={activeIconIds}
                                 />
                             </group>
                             <GlowLayer selection={[...pulseLines, ...glowObjects]} lights={[ambientLight]} />
@@ -224,20 +293,23 @@ export default function BrainScene3D() {
                 </div>
 
                 <aside className="side-widget-column">
-                    {rightWidgets.map((w) => {
-                        if (w.id === "recipes") return <RecipesWidget key={w.id} onOpenDetail={openDetail} />;
-                        return (
-                            <Widget
-                                key={w.id}
-                                definition={w}
-                                onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
-                            />
-                        );
-                    })}
+                    {activeRightWidgetIds
+                        .map((id) => rightWidgets.find((w) => w.id === id))
+                        .filter((w): w is (typeof rightWidgets)[number] => Boolean(w))
+                        .map((w) => {
+                            if (w.id === "recipes") return <RecipesWidget key={w.id} onOpenDetail={openDetail} />;
+                            return (
+                                <Widget
+                                    key={w.id}
+                                    definition={w}
+                                    onClick={(e) => handleWidgetClick(w, anchorFromEvent(e), w.body)}
+                                />
+                            );
+                        })}
                 </aside>
             </div>
 
-            <DetailDrawer content={detail} onClose={closeDetail} />
+            <DetailDrawer content={profileDetail ?? detail} onClose={closeDetail} />
         </div>
     );
 }
