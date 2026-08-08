@@ -90,7 +90,13 @@ function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number
  * lives in local state so the logged-in-vs-not UI flow can be reviewed
  * before real auth exists.
  */
-export default function BrainScene3D() {
+interface BrainScene3DProps {
+    // Fired by TopBar's Space Laboratory icon — App.tsx swaps this whole
+    // scene out for components/laboratory/Laboratory when set.
+    onOpenLaboratory?: () => void;
+}
+
+export default function BrainScene3D({ onOpenLaboratory }: BrainScene3DProps) {
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
     const [glowObjects, setGlowObjects] = useState<Object3D[]>([]);
@@ -243,7 +249,7 @@ export default function BrainScene3D() {
                 overflow: "hidden",
             }}
         >
-            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} hasLab={plan === "max"} avatar={avatar} />
+            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} hasLab={plan === "max"} onLaboratoryClick={onOpenLaboratory} avatar={avatar} />
 
             <div
                 style={{
