@@ -13,11 +13,31 @@
     justify-content: space-between;
     gap: 12px;
 
+    width: 100%;
+    box-sizing: border-box;
+
     padding: 12px 14px;
 
     background: rgba(5, 8, 22, 0.45);
     border: 1px solid var(--border);
     border-radius: 12px;
+
+    text-align: left;
+    font: inherit;
+    color: inherit;
+
+}
+
+.info-panel-section-clickable {
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.info-panel-section-clickable:hover {
+
+    border-color: var(--primary);
 
 }
 
@@ -33,9 +53,127 @@
 
 }
 
-.info-panel-section-hint {
+.info-panel-chevron {
 
-    font-size: 11px;
     color: var(--text-muted);
+    flex-shrink: 0;
+
+}
+
+.info-panel-back {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    align-self: flex-start;
+
+    padding: 6px 4px;
+
+    background: none;
+    border: none;
+
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+}
+
+.info-panel-text {
+
+    margin: 0;
+
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+
+}
+
+.info-panel-text a {
+
+    color: var(--primary);
+
+}
+
+.info-panel-form {
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+}
+
+.info-panel-field {
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+}
+
+.info-panel-field label {
+
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+
+}
+
+.info-panel-field input,
+.info-panel-field textarea {
+
+    padding: 9px 12px;
+
+    background: rgba(5, 8, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+
+    outline: none;
+    resize: vertical;
+    transition: var(--transition);
+
+}
+
+.info-panel-field input:focus,
+.info-panel-field textarea:focus {
+
+    border-color: var(--primary);
+
+}
+
+.info-panel-error {
+
+    font-size: 12px;
+    color: var(--danger);
+
+}
+
+.info-panel-submit {
+
+    margin-top: 4px;
+    padding: 10px 16px;
+
+    background: var(--primary);
+    border: none;
+    border-radius: 10px;
+
+    color: #06131f;
+    font-size: 14px;
+    font-weight: 700;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.info-panel-submit:hover {
+
+    box-shadow: 0 0 14px rgba(73, 199, 255, .5);
 
 }
