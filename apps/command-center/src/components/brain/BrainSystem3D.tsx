@@ -20,6 +20,14 @@ interface BrainSystemProps {
     // BrainScene3D, which lifts VoiceBar's own `listening` state up to
     // here (and to GlowLayer, for the matching glow boost).
     listening?: boolean;
+    // Whether dragging directly on the brain manually rotates it — on
+    // by default (the Dashboard's own big brain). Off for the small
+    // Laboratory KIWI Core badge (see KiwiCoreBadge), where there's no
+    // room/reason for that interaction — this skips rendering the
+    // invisible hit-sphere entirely, rather than just ignoring drags,
+    // so it doesn't eat pointer events meant for whatever sits near it
+    // (e.g. the "Dashboard" back button).
+    interactive?: boolean;
 }
 
 /**
@@ -37,7 +45,7 @@ interface BrainSystemProps {
  * down or shows an odd top-down angle. Idle auto-rotation resumes once
  * the drag ends.
  */
-export default function BrainSystem({ onPulseReady, listening }: BrainSystemProps) {
+export default function BrainSystem({ onPulseReady, listening, interactive = true }: BrainSystemProps) {
     const groupRef = useRef<Group>(null);
     const dragging = useRef(false);
     const lastPointer = useRef({ x: 0, y: 0 });
@@ -78,15 +86,17 @@ export default function BrainSystem({ onPulseReady, listening }: BrainSystemProp
             <ConnectionLayer />
             <NeuronLayer />
             <EnergyLayer onReady={onPulseReady} />
-            <mesh
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerUp}
-            >
-                <sphereGeometry args={[1.1, 16, 16]} />
-                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-            </mesh>
+            {interactive && (
+                <mesh
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                >
+                    <sphereGeometry args={[1.1, 16, 16]} />
+                    <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+                </mesh>
+            )}
         </group>
     );
 }

@@ -7,7 +7,12 @@
     width: 100%;
     box-sizing: border-box;
 
-    padding: 12px 28px;
+    /* Tight on the left/top, where KIWI Core sits flush in the corner —
+       normal padding on the right, where the nav/account controls need
+       their usual breathing room. The bar's own height just grows to
+       whatever fits the badge (see KiwiCoreBadge.css) — no fixed height
+       here. */
+    padding: 6px 28px 6px 8px;
     gap: 24px;
 
     border-bottom: 1px solid var(--border);
@@ -22,32 +27,12 @@
 
 .lab-topbar-brand {
 
-    position: relative;
-
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
 
     flex: 1;
     min-width: 0;
-
-    /* Reserves room for .lab-topbar-core-anchor, which is absolutely
-       positioned and therefore out of this flex row's normal flow — see
-       the component's own doc comment for why. */
-    padding-left: 196px;
-
-}
-
-/* Deliberately NOT part of the bar's own flex flow (see the component
-   doc comment) — this is what lets the badge stay large without
-   forcing the whole bar taller. Anchored near the bar's own top edge
-   so it only overflows DOWNWARD past the bar's bottom border, never
-   upward past the viewport's own top edge. */
-.lab-topbar-core-anchor {
-
-    position: absolute;
-    left: 0;
-    top: 6px;
 
 }
 

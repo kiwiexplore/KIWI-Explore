@@ -22,7 +22,9 @@ interface KiwiCoreBadgeProps {
  * deliberately identical to BrainScene3D's own Canvas — shrinking only
  * the CSS container (see KiwiCoreBadge.css) keeps the same framing/
  * composition just physically smaller, rather than needing to retune
- * the geometry itself for a second context.
+ * the geometry itself for a second context. Not draggable/rotatable
+ * here (interactive=false) — there's no room or reason for that
+ * interaction on a small corner badge, per explicit request.
  */
 export default function KiwiCoreBadge({ listening }: KiwiCoreBadgeProps) {
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
@@ -33,7 +35,7 @@ export default function KiwiCoreBadge({ listening }: KiwiCoreBadgeProps) {
             <Canvas camera={{ position: [0, 0, 4], fov: 50 }} gl={{ alpha: true }}>
                 <primitive object={ambientLight} />
                 <group scale={0.96} position={[0, 0.14, 0]}>
-                    <BrainSystem3D onPulseReady={setPulseLines} listening={listening} />
+                    <BrainSystem3D onPulseReady={setPulseLines} listening={listening} interactive={false} />
                 </group>
                 <GlowLayer selection={pulseLines} lights={[ambientLight]} boosted={listening} />
             </Canvas>
