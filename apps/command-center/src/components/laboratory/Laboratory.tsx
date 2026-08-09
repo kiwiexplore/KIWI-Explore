@@ -2,6 +2,8 @@ import { useState, type MouseEvent } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
 import LaboratorySidebar from "./LaboratorySidebar";
 import LaboratoryQuickBar from "./LaboratoryQuickBar";
+import LaboratorySearch from "./LaboratorySearch";
+import CalendarPanel from "./CalendarPanel";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -17,6 +19,7 @@ import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratory
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
 import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { AccountState } from "../../state/account";
+import type { CalendarState } from "../../state/calendar";
 import "./Laboratory.css";
 
 export type LaboratorySection = "projects" | "research" | "notes";
@@ -24,6 +27,7 @@ export type LaboratorySection = "projects" | "research" | "notes";
 interface LaboratoryProps {
     onBack: () => void;
     account: AccountState;
+    calendar: CalendarState;
 }
 
 /**
@@ -36,13 +40,13 @@ interface LaboratoryProps {
  * here touches the Dashboard's own working files, and nothing in the
  * Dashboard depends on this existing.
  *
- * Three top-level sections (Projects/Research/Notes, switched via
- * LaboratoryTopBar's nav) each follow the same grid -> detail shape:
- * pick an item, walk into its own page, come back. Research and Notes
- * here are deliberately GLOBAL/cross-project (a scratchpad and a
- * findings list that don't belong to any one project yet) — each
- * project also has its own "Research"/"Notes" MODULE tab inside
- * ProjectWorkspace, which is a separate, still-placeholder concept.
+ * Three top-level sections (Projects/Research/Notes, switched from the
+ * left sidebar) each follow the same grid -> detail shape: pick an
+ * item, walk into its own page, come back. Research and Notes here are
+ * deliberately GLOBAL/cross-project (a scratchpad and a findings list
+ * that don't belong to any one project yet) — each project also has
+ * its own "Research"/"Notes" MODULE tab inside ProjectWorkspace, which
+ * is a separate, still-placeholder concept.
  *
  * Own top-level state for all three lists and which item (if any) is
  * open in each — mock/in-memory only, same as everything else in the
@@ -64,8 +68,12 @@ interface LaboratoryProps {
  * stale-closure bug — see profileAnchor below). Background is also
  * account state now, so this page's own backdrop reflects whatever the
  * user picked from either scene, not a fixed default.
+ *
+ * `calendar` is likewise owned by App.tsx (state/calendar.ts) — the
+ * exact same event list the Dashboard's Upcoming Events widget reads,
+ * so an event added from CalendarPanel here shows up there too.
  */
-export default function Laboratory({ onBack, account }: LaboratoryProps) {
+export default function Laboratory({ onBack, account, calendar }: LaboratoryProps) {
     const [section, setSection] = useState<LaboratorySection>("projects");
 
     const [projects, setProjects] = useState<LaboratoryProject[]>(MOCK_PROJECTS);
@@ -82,6 +90,8 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
 
     const [kiwiOpen, setKiwiOpen] = useState(false);
     const kiwiChat = useKiwiChat();
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     // Same "build fresh every render" approach as BrainScene3D's own
     // profileAnchor — storing a pre-rendered <ProfileSettings/> node
@@ -131,6 +141,12 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
         setResearchEntries((prev) => prev.map((r) => (r.id === id ? { ...r, ...changes, savedAt: "Just now" } : r)));
     };
 
+    const handleSearchSelect = (kind: "project" | "note" | "research", id: string) => {
+        if (kind === "project") { setSection("projects"); setSelectedProjectId(id); }
+        else if (kind === "note") { setSection("notes"); setSelectedNoteId(id); }
+        else { setSection("research"); setSelectedResearchId(id); }
+    };
+
     return (
         <div
             className="laboratory"
@@ -140,11 +156,15 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
                 onBack={onBack}
                 listening={kiwiChat.listening}
                 onOpenKiwi={() => setKiwiOpen(true)}
-                section={section}
-                onSectionChange={setSection}
+                onOpenSearch={() => setSearchOpen(true)}
+                onOpenCalendar={() => setCalendarOpen(true)}
                 nickname={account.nickname}
                 avatar={account.avatar}
                 onProfileClick={handleProfileClick}
+                projectCount={projects.length}
+                activeProjectCount={projects.filter((p) => p.status === "active").length}
+                noteCount={notes.length}
+                researchCount={researchEntries.length}
             />
 
             <div className="laboratory-body">
@@ -189,6 +209,25 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
                     onClose={() => setKiwiOpen(false)}
                     {...kiwiChat}
                     project={section === "projects" ? selectedProject : null}
+                />
+            )}
+
+            {searchOpen && (
+                <LaboratorySearch
+                    onClose={() => setSearchOpen(false)}
+                    projects={projects}
+                    notes={notes}
+                    researchEntries={researchEntries}
+                    onSelect={handleSearchSelect}
+                />
+            )}
+
+            {calendarOpen && (
+                <CalendarPanel
+                    onClose={() => setCalendarOpen(false)}
+                    events={calendar.events}
+                    onAddEvent={calendar.addEvent}
+                    onRemoveEvent={calendar.removeEvent}
                 />
             )}
 

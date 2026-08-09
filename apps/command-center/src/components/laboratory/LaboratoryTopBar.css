@@ -121,52 +121,6 @@
 
 }
 
-.lab-topbar-nav {
-
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    flex-shrink: 0;
-
-}
-
-.lab-topbar-tab {
-
-    display: flex;
-    align-items: center;
-    gap: 6px;
-
-    padding: 7px 14px;
-
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 999px;
-
-    color: var(--text-muted);
-    font-size: 13px;
-    font-weight: 600;
-
-    cursor: pointer;
-    transition: var(--transition);
-
-}
-
-.lab-topbar-tab:hover {
-
-    color: #eaf6ff;
-
-}
-
-.lab-topbar-tab-active {
-
-    background: rgba(73, 199, 255, .12);
-    border-color: var(--primary);
-    color: #eaf6ff;
-    box-shadow: 0 0 10px rgba(73, 199, 255, .25);
-
-}
-
 .lab-topbar-account {
 
     display: flex;
@@ -200,6 +154,35 @@
 }
 
 .lab-topbar-kiwi-btn:hover {
+
+    border-color: var(--primary);
+    color: #eaf6ff;
+    box-shadow: 0 0 10px rgba(73, 199, 255, .3);
+
+}
+
+.lab-topbar-icon-btn {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    color: var(--text-muted);
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.lab-topbar-icon-btn:hover {
 
     border-color: var(--primary);
     color: #eaf6ff;

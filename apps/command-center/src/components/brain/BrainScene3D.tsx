@@ -15,10 +15,12 @@ import WeatherWidget from "./WeatherWidget";
 import SpaceNewsWidget from "./SpaceNewsWidget";
 import SpaceMissionsWidget from "./SpaceMissionsWidget";
 import RecipesWidget from "./RecipesWidget";
+import UpcomingEventsWidget from "./UpcomingEventsWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { AccountState } from "../../state/account";
+import type { CalendarState } from "../../state/calendar";
 import "./BrainScene3D.css";
 
 // A uniform dark scrim over the whole photo (it was too bright/busy for
@@ -89,9 +91,10 @@ interface BrainScene3DProps {
     // scene out for components/laboratory/Laboratory when set.
     onOpenLaboratory?: () => void;
     account: AccountState;
+    calendar: CalendarState;
 }
 
-export default function BrainScene3D({ onOpenLaboratory, account }: BrainScene3DProps) {
+export default function BrainScene3D({ onOpenLaboratory, account, calendar }: BrainScene3DProps) {
     const { nickname, setNickname, avatar, activeIconIds, activeLeftWidgetIds, activeRightWidgetIds, background } = account;
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
@@ -226,6 +229,7 @@ export default function BrainScene3D({ onOpenLaboratory, account }: BrainScene3D
                             if (w.id === "weather") return <WeatherWidget key={w.id} onOpenDetail={openDetail} />;
                             if (w.id === "space-news") return <SpaceNewsWidget key={w.id} onOpenDetail={openDetail} />;
                             if (w.id === "space-missions") return <SpaceMissionsWidget key={w.id} onOpenDetail={openDetail} />;
+                            if (w.id === "upcoming-events") return <UpcomingEventsWidget key={w.id} events={calendar.events} onOpenDetail={openDetail} />;
                             return (
                                 <Widget
                                     key={w.id}

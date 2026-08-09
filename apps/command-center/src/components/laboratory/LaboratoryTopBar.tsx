@@ -1,26 +1,24 @@
 import type { MouseEvent } from "react";
-import { AudioLines, ArrowLeft, ChevronDown, UserCircle2 } from "lucide-react";
+import { AudioLines, ArrowLeft, Calendar, ChevronDown, Search, UserCircle2 } from "lucide-react";
 import KiwiCoreBadge from "./KiwiCoreBadge";
+import LaboratoryStats from "./LaboratoryStats";
 import AvatarGlyph from "../ui/AvatarGlyph";
 import { DEFAULT_AVATAR, type AvatarChoice } from "../../state/avatars";
-import type { LaboratorySection } from "./Laboratory";
 import "./LaboratoryTopBar.css";
-
-const NAV_TABS: { id: LaboratorySection; label: string }[] = [
-    { id: "projects", label: "Projects" },
-    { id: "research", label: "Research" },
-    { id: "notes", label: "Notes" },
-];
 
 interface LaboratoryTopBarProps {
     onBack: () => void;
     listening?: boolean;
     onOpenKiwi?: () => void;
-    section: LaboratorySection;
-    onSectionChange: (section: LaboratorySection) => void;
+    onOpenSearch?: () => void;
+    onOpenCalendar?: () => void;
     nickname: string | null;
     avatar: AvatarChoice;
     onProfileClick?: (event: MouseEvent<HTMLElement>) => void;
+    projectCount: number;
+    activeProjectCount: number;
+    noteCount: number;
+    researchCount: number;
 }
 
 /**
@@ -29,12 +27,14 @@ interface LaboratoryTopBarProps {
  * brain, see KiwiCoreBadge) sits flush in the corner with nothing
  * before it, sized so the bar itself grows tall enough to fully
  * contain it. The "Dashboard" back button and KIWI/LABORATORY wordmark
- * sit to its right. The nav tab row is controlled from Laboratory.tsx
- * (via `section`/`onSectionChange`) rather than owning its own local
- * state, since which section is active determines what the whole page
- * renders below, not just this bar's own look. A "Hey Kiwi" trigger
- * opens KiwiPanel (a right-side sheet — see Laboratory.tsx, which owns
- * the shared chat state via useKiwiChat) next to the profile pill.
+ * sit to its right. The center used to have Projects/Research/Notes
+ * nav tabs, but those just duplicated the left sidebar's own items
+ * with nothing extra to offer — per explicit feedback, replaced with
+ * LaboratoryStats (an at-a-glance summary) instead. Search and
+ * Calendar sit next to Hey Kiwi and the profile pill; Search opens a
+ * quick cross-section lookup (LaboratorySearch), Calendar opens
+ * CalendarPanel — both owned by Laboratory.tsx, same pattern as
+ * KiwiPanel/ProfileSettings.
  *
  * `nickname`/`avatar` come from App.tsx's shared account state (see
  * state/account.ts) — signing in/changing your avatar on the Dashboard
@@ -51,7 +51,10 @@ interface LaboratoryTopBarProps {
  * keep Laboratory decoupled from the Dashboard's own files (see
  * Laboratory.tsx's doc comment).
  */
-export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi, section, onSectionChange, nickname, avatar, onProfileClick }: LaboratoryTopBarProps) {
+export default function LaboratoryTopBar({
+    onBack, listening, onOpenKiwi, onOpenSearch, onOpenCalendar, nickname, avatar, onProfileClick,
+    projectCount, activeProjectCount, noteCount, researchCount,
+}: LaboratoryTopBarProps) {
     return (
         <header className="lab-topbar">
             <div className="lab-topbar-brand">
@@ -69,23 +72,23 @@ export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi, sectio
                 </span>
             </div>
 
-            <nav className="lab-topbar-nav">
-                {NAV_TABS.map((tab) => (
-                    <button
-                        key={tab.id}
-                        type="button"
-                        className={`lab-topbar-tab${section === tab.id ? " lab-topbar-tab-active" : ""}`}
-                        onClick={() => onSectionChange(tab.id)}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </nav>
+            <LaboratoryStats
+                projectCount={projectCount}
+                activeProjectCount={activeProjectCount}
+                noteCount={noteCount}
+                researchCount={researchCount}
+            />
 
             <div className="lab-topbar-account">
                 <button type="button" className="lab-topbar-kiwi-btn" onClick={onOpenKiwi}>
                     <AudioLines size={15} strokeWidth={1.75} />
                     Hey Kiwi
+                </button>
+                <button type="button" className="lab-topbar-icon-btn" onClick={onOpenSearch} aria-label="Search">
+                    <Search size={16} strokeWidth={1.75} />
+                </button>
+                <button type="button" className="lab-topbar-icon-btn" onClick={onOpenCalendar} aria-label="Calendar">
+                    <Calendar size={16} strokeWidth={1.75} />
                 </button>
                 {nickname ? (
                     <button type="button" className="lab-topbar-profile" onClick={onProfileClick}>

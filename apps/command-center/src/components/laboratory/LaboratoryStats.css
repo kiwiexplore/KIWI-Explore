@@ -1,0 +1,41 @@
+.lab-stats {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 9px 18px;
+
+    background: rgba(16, 25, 46, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    white-space: nowrap;
+
+}
+
+.lab-stats-item {
+
+    font-size: 12px;
+    color: var(--text-muted);
+
+}
+
+.lab-stats-item strong {
+
+    color: #eaf6ff;
+    font-weight: 700;
+
+}
+
+.lab-stats-divider {
+
+    width: 1px;
+    height: 14px;
+
+    background: var(--border);
+
+}
