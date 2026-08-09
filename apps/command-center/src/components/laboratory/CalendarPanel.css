@@ -11,10 +11,14 @@
 
 .cal-panel {
 
+    /* Floating — inset from all four edges (matched to the top bar's
+       72px + the quick bar's own height) rather than a flush
+       full-height sheet, so it never covers either of them. Same
+       treatment as KiwiPanel, for consistency. */
     position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
+    top: 88px;
+    right: 20px;
+    bottom: 88px;
 
     width: 360px;
     max-width: 90vw;
@@ -26,12 +30,13 @@
     padding: 20px;
     gap: 16px;
 
-    background: rgba(8, 13, 28, 0.72);
+    background: rgba(8, 13, 28, 0.78);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
 
-    border-left: 1px solid var(--border);
-    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 
     z-index: 31;
 
