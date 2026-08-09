@@ -73,6 +73,10 @@
     align-items: flex-start;
     gap: 2px;
 
+    /* Extra room specifically between the Dashboard button and this
+       wordmark, on top of .lab-topbar-brand's own flex gap. */
+    margin-left: 6px;
+
     font-size: 16px;
     font-weight: 700;
     letter-spacing: 1.5px;
