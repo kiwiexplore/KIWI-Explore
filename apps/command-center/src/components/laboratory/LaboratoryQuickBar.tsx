@@ -22,7 +22,9 @@ const QUICK_TOOLS: QuickTool[] = [
     { label: "Reports", icon: FileBarChart },
 ];
 
-function formatElapsed(totalSeconds: number): string {
+const DURATION_OPTIONS = [15, 25, 45, 60];
+
+function formatRemaining(totalSeconds: number): string {
     const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
     const seconds = (totalSeconds % 60).toString().padStart(2, "0");
     return `${minutes}:${seconds}`;
@@ -31,33 +33,42 @@ function formatElapsed(totalSeconds: number): string {
 /**
  * The bottom bar from the reference mockup — a row of quick-tool
  * shortcuts (all placeholders, "Soon" badged, same as the sidebar's
- * own not-yet-built modules) plus a real Focus Mode timer. The timer
- * itself is genuinely functional (counts up while active, no backend
- * needed for that) even though nothing else here is — it's a simple
- * self-contained stopwatch, not tied to any project/task yet.
+ * own not-yet-built modules) plus a real Focus Mode timer. Pick a
+ * duration first (15/25/45/60 min, so you actually know how long
+ * you're committing to before starting — per explicit request), then
+ * it counts DOWN from there and stops itself on its own once it hits
+ * zero. Not tied to any project/task yet, just a standalone session
+ * timer — no backend needed for any of this.
  */
 export default function LaboratoryQuickBar() {
+    const [durationMinutes, setDurationMinutes] = useState(25);
     const [focusActive, setFocusActive] = useState(false);
-    const [elapsed, setElapsed] = useState(0);
+    const [remaining, setRemaining] = useState(0);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         if (focusActive) {
-            intervalRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+            intervalRef.current = setInterval(() => {
+                setRemaining((seconds) => {
+                    if (seconds <= 1) {
+                        setFocusActive(false);
+                        return 0;
+                    }
+                    return seconds - 1;
+                });
+            }, 1000);
         }
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
     }, [focusActive]);
 
-    const toggleFocus = () => {
-        if (focusActive) {
-            setFocusActive(false);
-        } else {
-            setElapsed(0);
-            setFocusActive(true);
-        }
+    const startFocus = () => {
+        setRemaining(durationMinutes * 60);
+        setFocusActive(true);
     };
+
+    const stopFocus = () => setFocusActive(false);
 
     return (
         <footer className="lab-quickbar">
@@ -71,21 +82,30 @@ export default function LaboratoryQuickBar() {
                 ))}
             </div>
 
-            <button
-                type="button"
-                className={`lab-quickbar-focus${focusActive ? " lab-quickbar-focus-active" : ""}`}
-                onClick={toggleFocus}
-            >
-                {focusActive ? <Pause size={14} strokeWidth={2} /> : <Play size={14} strokeWidth={2} />}
-                {focusActive ? (
-                    <>
-                        <Timer size={14} strokeWidth={2} />
-                        {formatElapsed(elapsed)}
-                    </>
-                ) : (
-                    "Start Focus"
-                )}
-            </button>
+            {focusActive ? (
+                <button type="button" className="lab-quickbar-focus lab-quickbar-focus-active" onClick={stopFocus}>
+                    <Pause size={14} strokeWidth={2} />
+                    <Timer size={14} strokeWidth={2} />
+                    {formatRemaining(remaining)}
+                </button>
+            ) : (
+                <div className="lab-quickbar-focus-setup">
+                    <select
+                        className="lab-quickbar-duration"
+                        value={durationMinutes}
+                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                        aria-label="Focus duration"
+                    >
+                        {DURATION_OPTIONS.map((minutes) => (
+                            <option key={minutes} value={minutes}>{minutes} min</option>
+                        ))}
+                    </select>
+                    <button type="button" className="lab-quickbar-focus" onClick={startFocus}>
+                        <Play size={14} strokeWidth={2} />
+                        Start Focus
+                    </button>
+                </div>
+            )}
         </footer>
     );
 }

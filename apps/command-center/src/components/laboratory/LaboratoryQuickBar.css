@@ -115,3 +115,38 @@
     box-shadow: 0 0 10px rgba(110, 243, 165, .4);
 
 }
+
+.lab-quickbar-focus-setup {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+}
+
+.lab-quickbar-duration {
+
+    padding: 8px 10px;
+
+    background: rgba(5, 8, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.lab-quickbar-duration:hover,
+.lab-quickbar-duration:focus {
+
+    border-color: var(--primary);
+    outline: none;
+
+}
