@@ -83,6 +83,10 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
         setSelectedProjectId(project.id);
     };
 
+    const handleProjectChange = (id: string, changes: Partial<Pick<LaboratoryProject, "name" | "category" | "description">>) => {
+        setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...changes, lastActivity: "Just now" } : p)));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -121,7 +125,7 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
             <main className="laboratory-main">
                 {section === "projects" && (
                     selectedProject ? (
-                        <ProjectWorkspace project={selectedProject} onBack={() => setSelectedProjectId(null)} />
+                        <ProjectWorkspace project={selectedProject} onBack={() => setSelectedProjectId(null)} onChange={handleProjectChange} />
                     ) : (
                         <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />
                     )

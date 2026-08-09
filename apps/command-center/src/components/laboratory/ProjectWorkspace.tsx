@@ -12,9 +12,17 @@ const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks"
 interface ProjectWorkspaceProps {
     project: LaboratoryProject;
     onBack: () => void;
+    onChange: (id: string, changes: Partial<Pick<LaboratoryProject, "name" | "category" | "description">>) => void;
 }
 
-export default function ProjectWorkspace({ project, onBack }: ProjectWorkspaceProps) {
+/**
+ * Name/category/description are editable in place (same "updates as
+ * you type, no explicit save" mock philosophy as NoteEditor/
+ * ResearchDetail) — a freshly created project starts as "Untitled
+ * Project N" with no way to rename it otherwise, which is the very
+ * first thing you'd want to fix on walking into it.
+ */
+export default function ProjectWorkspace({ project, onBack, onChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const status = STATUS_META[project.status];
 
@@ -26,10 +34,28 @@ export default function ProjectWorkspace({ project, onBack }: ProjectWorkspacePr
             </button>
 
             <div className="project-workspace-header">
-                <div>
-                    <span className="project-workspace-category">{project.category}</span>
-                    <h1>{project.name}</h1>
-                    <p>{project.description}</p>
+                <div className="project-workspace-header-fields">
+                    <input
+                        type="text"
+                        className="project-workspace-category-input"
+                        value={project.category}
+                        onChange={(e) => onChange(project.id, { category: e.target.value })}
+                        placeholder="Category"
+                    />
+                    <input
+                        type="text"
+                        className="project-workspace-title"
+                        value={project.name}
+                        onChange={(e) => onChange(project.id, { name: e.target.value })}
+                        placeholder="Untitled project"
+                    />
+                    <textarea
+                        className="project-workspace-description"
+                        value={project.description}
+                        onChange={(e) => onChange(project.id, { description: e.target.value })}
+                        placeholder="What is this project about?"
+                        rows={2}
+                    />
                 </div>
                 <span className="project-workspace-status" style={{ color: status.color, borderColor: status.color }}>
                     {status.label}
