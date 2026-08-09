@@ -1,6 +1,7 @@
 import { useState, type MouseEvent } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
 import LaboratorySidebar from "./LaboratorySidebar";
+import LaboratoryQuickBar from "./LaboratoryQuickBar";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -180,6 +181,8 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
                     )}
                 </main>
             </div>
+
+            <LaboratoryQuickBar />
 
             {kiwiOpen && (
                 <KiwiPanel

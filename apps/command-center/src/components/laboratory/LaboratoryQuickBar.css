@@ -1,0 +1,117 @@
+.lab-quickbar {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-shrink: 0;
+
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 10px 24px;
+
+    border-top: 1px solid var(--border);
+    background: rgba(5, 8, 22, 0.4);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    position: relative;
+    z-index: 4;
+
+}
+
+.lab-quickbar-tools {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    overflow-x: auto;
+
+}
+
+.lab-quickbar-tool {
+
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+
+    padding: 7px 12px;
+
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    cursor: default;
+    opacity: .7;
+    transition: var(--transition);
+
+}
+
+.lab-quickbar-tool-badge {
+
+    padding: 1px 6px;
+
+    background: rgba(255, 255, 255, .06);
+    border-radius: 999px;
+
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.lab-quickbar-focus {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+    padding: 8px 16px;
+
+    background: transparent;
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+
+    color: #eaf6ff;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.lab-quickbar-focus:hover {
+
+    background: rgba(73, 199, 255, .15);
+    box-shadow: 0 0 10px rgba(73, 199, 255, .4);
+
+}
+
+.lab-quickbar-focus-active {
+
+    background: rgba(110, 243, 165, .12);
+    border-color: var(--secondary);
+    color: var(--secondary);
+
+}
+
+.lab-quickbar-focus-active:hover {
+
+    background: rgba(110, 243, 165, .2);
+    box-shadow: 0 0 10px rgba(110, 243, 165, .4);
+
+}
