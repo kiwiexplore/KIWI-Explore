@@ -9,6 +9,12 @@
  */
 export type ProjectStatus = "active" | "research" | "paused" | "completed";
 
+export interface ProjectTask {
+    id: string;
+    title: string;
+    done: boolean;
+}
+
 export interface LaboratoryProject {
     id: string;
     name: string;
@@ -18,6 +24,7 @@ export interface LaboratoryProject {
     progress: number; // 0-100
     tags: string[];
     lastActivity: string; // human-readable, static for now — no real activity feed yet
+    tasks: ProjectTask[];
 }
 
 export const STATUS_META: Record<ProjectStatus, { label: string; color: string }> = {
@@ -40,6 +47,11 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         progress: 42,
         tags: ["Software", "AI"],
         lastActivity: "Just now",
+        tasks: [
+            { id: "task-1", title: "Wire the shared calendar into the Dashboard widget", done: true },
+            { id: "task-2", title: "Build a real Tasks module", done: true },
+            { id: "task-3", title: "Design the Files module", done: false },
+        ],
     },
     {
         id: "debut-ep",
@@ -50,6 +62,10 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         progress: 18,
         tags: ["Audio", "Production"],
         lastActivity: "2 days ago",
+        tasks: [
+            { id: "task-4", title: "Finish lyrics for track 3", done: false },
+            { id: "task-5", title: "Book studio time", done: false },
+        ],
     },
     {
         id: "materials-study",
@@ -60,6 +76,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         progress: 60,
         tags: ["Science", "Prototype"],
         lastActivity: "1 week ago",
+        tasks: [],
     },
 ];
 
@@ -76,5 +93,6 @@ export function createMockProject(): LaboratoryProject {
         progress: 0,
         tags: [],
         lastActivity: "Just now",
+        tasks: [],
     };
 }

@@ -121,6 +121,30 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...changes, lastActivity: "Just now" } : p)));
     };
 
+    const handleAddTask = (projectId: string, title: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, tasks: [...p.tasks, { id: `task-${Date.now()}`, title, done: false }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleToggleTask = (projectId: string, taskId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)), lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveTask = (projectId: string, taskId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, tasks: p.tasks.filter((t) => t.id !== taskId) }
+                : p
+        )));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -178,7 +202,14 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                 <main className="laboratory-main">
                     {section === "projects" && (
                         selectedProject ? (
-                            <ProjectWorkspace project={selectedProject} onBack={() => setSelectedProjectId(null)} onChange={handleProjectChange} />
+                            <ProjectWorkspace
+                            project={selectedProject}
+                            onBack={() => setSelectedProjectId(null)}
+                            onChange={handleProjectChange}
+                            onAddTask={handleAddTask}
+                            onToggleTask={handleToggleTask}
+                            onRemoveTask={handleRemoveTask}
+                        />
                         ) : (
                             <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />
                         )
