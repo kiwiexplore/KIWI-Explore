@@ -227,3 +227,31 @@
     box-shadow: 0 0 10px rgba(73, 199, 255, .4);
 
 }
+
+.lab-topbar-signin {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 5px 12px;
+
+    background: transparent;
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+
+    color: #eaf6ff;
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.lab-topbar-signin:hover {
+
+    background: rgba(73, 199, 255, .15);
+    box-shadow: 0 0 10px rgba(73, 199, 255, .4);
+
+}

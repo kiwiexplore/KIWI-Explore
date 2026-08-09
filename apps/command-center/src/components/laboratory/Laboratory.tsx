@@ -12,12 +12,14 @@ import { MOCK_PROJECTS, createMockProject, type LaboratoryProject } from "../../
 import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratoryNotes";
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
 import { resolveBackgroundImage, DEFAULT_BACKGROUND } from "../../state/backgrounds";
+import type { AccountState } from "../../state/account";
 import "./Laboratory.css";
 
 export type LaboratorySection = "projects" | "research" | "notes";
 
 interface LaboratoryProps {
     onBack: () => void;
+    account: AccountState;
 }
 
 /**
@@ -50,13 +52,14 @@ interface LaboratoryProps {
  * KiwiCoreBadge's rotation-pause/glow-boost reaction, exactly like
  * BrainScene3D does for VoiceBar/the Dashboard's own brain.
  *
- * Known gap for now: the profile pill (see LaboratoryTopBar) shows a
- * local placeholder name, not whatever's actually signed in on the
- * Dashboard — BrainScene3D's account state (nickname/avatar/plan/...)
- * is local to that component, and lifting it into something both
- * scenes can share is its own step, not bundled into this one.
+ * `account` (nickname/avatar/plan) is owned by App.tsx and passed down
+ * here too — see LaboratoryTopBar, whose profile pill reflects whoever
+ * is actually signed in on the Dashboard instead of a fixed
+ * placeholder name. Editing the account (sign in/out, change avatar or
+ * plan) still only happens from the Dashboard's own ProfileSettings —
+ * Laboratory's pill is a read-only reflection of it for now.
  */
-export default function Laboratory({ onBack }: LaboratoryProps) {
+export default function Laboratory({ onBack, account }: LaboratoryProps) {
     const [section, setSection] = useState<LaboratorySection>("projects");
 
     const [projects, setProjects] = useState<LaboratoryProject[]>(MOCK_PROJECTS);
@@ -111,6 +114,8 @@ export default function Laboratory({ onBack }: LaboratoryProps) {
                 onOpenKiwi={() => setKiwiOpen(true)}
                 section={section}
                 onSectionChange={setSection}
+                nickname={account.nickname}
+                avatar={account.avatar}
             />
 
             <main className="laboratory-main">

@@ -18,8 +18,8 @@ import RecipesWidget from "./RecipesWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import { PLANS, type PlanId } from "../../state/plans";
-import { DEFAULT_AVATAR, type AvatarChoice } from "../../state/avatars";
 import { DEFAULT_BACKGROUND, resolveBackgroundImage, type BackgroundChoice } from "../../state/backgrounds";
+import type { AccountState } from "../../state/account";
 import type { PickerItem } from "../ui/ItemPicker";
 import "./BrainScene3D.css";
 
@@ -86,17 +86,19 @@ function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number
  * doc comment). Sign-in/profile use the exact same DetailDrawer, just
  * with a form or settings list as the body instead of widget text — see
  * handleSignInClick/handleProfileClick below. There's no real backend
- * behind any of this yet (see SignUpForm's own note) — `nickname` just
- * lives in local state so the logged-in-vs-not UI flow can be reviewed
- * before real auth exists.
+ * behind any of this yet (see SignUpForm's own note) — `account`
+ * (nickname/avatar/plan) is owned by App.tsx now, passed down as a
+ * prop, so it survives switching to Laboratory and back.
  */
 interface BrainScene3DProps {
     // Fired by TopBar's Space Laboratory icon — App.tsx swaps this whole
     // scene out for components/laboratory/Laboratory when set.
     onOpenLaboratory?: () => void;
+    account: AccountState;
 }
 
-export default function BrainScene3D({ onOpenLaboratory }: BrainScene3DProps) {
+export default function BrainScene3D({ onOpenLaboratory, account }: BrainScene3DProps) {
+    const { nickname, setNickname, avatar, setAvatar, plan, setPlan } = account;
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
     const [glowObjects, setGlowObjects] = useState<Object3D[]>([]);
@@ -111,18 +113,18 @@ export default function BrainScene3D({ onOpenLaboratory }: BrainScene3DProps) {
     // it to keep that one icon's hover glow lit even once the mouse has
     // moved away, e.g. toward the drawer's content.
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-    const [nickname, setNickname] = useState<string | null>(null);
 
     // Per-user customization — client-side only for now (see
     // ProfileSettings' own doc comment), defaulted to the Standard plan's
-    // limits (first N of each registry, in their existing order).
-    const [plan, setPlan] = useState<PlanId>("standard");
+    // limits (first N of each registry, in their existing order). Icons/
+    // widgets/background stay local here (Laboratory doesn't render any
+    // of this) — only nickname/avatar/plan are lifted to App.tsx (see
+    // the `account` prop above).
     const standardPlan = PLANS[0];
     const [activeIconIds, setActiveIconIds] = useState<string[]>(orbitModules.slice(0, standardPlan.iconCount).map((m) => m.id));
     const [activeLeftWidgetIds, setActiveLeftWidgetIds] = useState<string[]>(leftWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
     const [activeRightWidgetIds, setActiveRightWidgetIds] = useState<string[]>(rightWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
     const [background, setBackground] = useState<BackgroundChoice>(DEFAULT_BACKGROUND);
-    const [avatar, setAvatar] = useState<AvatarChoice>(DEFAULT_AVATAR);
     // The profile drawer's anchor only — its body is built fresh below
     // (not stored in `detail`), since it needs to keep reflecting plan/
     // icon/widget/background state that changes *from inside itself*
