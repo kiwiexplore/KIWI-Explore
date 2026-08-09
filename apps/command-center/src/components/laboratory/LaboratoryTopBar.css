@@ -5,14 +5,16 @@
     justify-content: space-between;
 
     width: 100%;
+    height: 60px;
     box-sizing: border-box;
 
-    /* Tight on the left/top, where KIWI Core sits flush in the corner —
-       normal padding on the right, where the nav/account controls need
-       their usual breathing room. The bar's own height just grows to
-       whatever fits the badge (see KiwiCoreBadge.css) — no fixed height
-       here. */
-    padding: 6px 28px 6px 8px;
+    /* A fixed height now, independent of KiwiCoreBadge's own size —
+       the badge is sized/framed (see KiwiCoreBadge.tsx) to exactly
+       fill this height rather than the other way around. Tight on the
+       left, where it sits flush in the corner; normal padding on the
+       right, where the nav/account controls need their usual breathing
+       room. */
+    padding: 0 28px 0 8px;
     gap: 24px;
 
     border-bottom: 1px solid var(--border);
