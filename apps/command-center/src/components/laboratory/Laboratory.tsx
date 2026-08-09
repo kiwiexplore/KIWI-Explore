@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
@@ -7,11 +7,13 @@ import NoteEditor from "./NoteEditor";
 import ResearchGrid from "./ResearchGrid";
 import ResearchDetail from "./ResearchDetail";
 import KiwiPanel from "./KiwiPanel";
+import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
+import ProfileSettings from "../ui/ProfileSettings";
 import { useKiwiChat } from "../../lib/useKiwiChat";
 import { MOCK_PROJECTS, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
 import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratoryNotes";
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
-import { resolveBackgroundImage, DEFAULT_BACKGROUND } from "../../state/backgrounds";
+import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { AccountState } from "../../state/account";
 import "./Laboratory.css";
 
@@ -52,12 +54,14 @@ interface LaboratoryProps {
  * KiwiCoreBadge's rotation-pause/glow-boost reaction, exactly like
  * BrainScene3D does for VoiceBar/the Dashboard's own brain.
  *
- * `account` (nickname/avatar/plan) is owned by App.tsx and passed down
- * here too — see LaboratoryTopBar, whose profile pill reflects whoever
- * is actually signed in on the Dashboard instead of a fixed
- * placeholder name. Editing the account (sign in/out, change avatar or
- * plan) still only happens from the Dashboard's own ProfileSettings —
- * Laboratory's pill is a read-only reflection of it for now.
+ * `account` is owned by App.tsx and passed down here too — the profile
+ * pill (see LaboratoryTopBar) reflects whoever is actually signed in
+ * on the Dashboard, and clicking it opens the exact same
+ * ProfileSettings drawer (same DetailDrawer pattern as BrainScene3D,
+ * including the "build the body fresh every render" fix for the same
+ * stale-closure bug — see profileAnchor below). Background is also
+ * account state now, so this page's own backdrop reflects whatever the
+ * user picked from either scene, not a fixed default.
  */
 export default function Laboratory({ onBack, account }: LaboratoryProps) {
     const [section, setSection] = useState<LaboratorySection>("projects");
@@ -76,6 +80,23 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
 
     const [kiwiOpen, setKiwiOpen] = useState(false);
     const kiwiChat = useKiwiChat();
+
+    // Same "build fresh every render" approach as BrainScene3D's own
+    // profileAnchor — storing a pre-rendered <ProfileSettings/> node
+    // would freeze its props at click-time (see that file's own
+    // comment for the full explanation of the stale-closure bug this
+    // avoids).
+    const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number } | null>(null);
+    const handleProfileClick = (event: MouseEvent<HTMLElement>) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setProfileAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    };
+    const profileDetail: DetailDrawerContent | null = profileAnchor ? {
+        title: "Profile & settings",
+        anchor: profileAnchor,
+        maxHeight: 620,
+        body: <ProfileSettings account={account} onSignOut={() => { account.setNickname(null); setProfileAnchor(null); }} />,
+    } : null;
 
     const handleCreateProject = () => {
         const project = createMockProject();
@@ -110,7 +131,7 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
     return (
         <div
             className="laboratory"
-            style={{ backgroundImage: `linear-gradient(rgba(2,6,17,0.55), rgba(2,6,17,0.55)), ${resolveBackgroundImage(DEFAULT_BACKGROUND)}` }}
+            style={{ backgroundImage: `linear-gradient(rgba(2,6,17,0.55), rgba(2,6,17,0.55)), ${resolveBackgroundImage(account.background)}` }}
         >
             <LaboratoryTopBar
                 onBack={onBack}
@@ -120,6 +141,7 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
                 onSectionChange={setSection}
                 nickname={account.nickname}
                 avatar={account.avatar}
+                onProfileClick={handleProfileClick}
             />
 
             <main className="laboratory-main">
@@ -149,6 +171,8 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
             </main>
 
             {kiwiOpen && <KiwiPanel onClose={() => setKiwiOpen(false)} {...kiwiChat} />}
+
+            <DetailDrawer content={profileDetail} onClose={() => setProfileAnchor(null)} />
         </div>
     );
 }

@@ -3,31 +3,17 @@ import {
     ArrowLeft, Check, ChevronRight, CreditCard, Grid2x2, Image as ImageIcon,
     Lock, LogOut, Orbit, Sparkles, Upload,
 } from "lucide-react";
-import ItemPicker, { type PickerItem } from "./ItemPicker";
+import ItemPicker from "./ItemPicker";
 import AvatarGlyph from "./AvatarGlyph";
-import { AVATAR_PRESETS, type AvatarChoice } from "../../state/avatars";
-import { BACKGROUND_PRESETS, type BackgroundChoice } from "../../state/backgrounds";
-import { PLANS, type PlanId } from "../../state/plans";
+import { AVATAR_PRESETS } from "../../state/avatars";
+import { BACKGROUND_PRESETS } from "../../state/backgrounds";
+import { PLANS } from "../../state/plans";
+import { ICON_OPTIONS, LEFT_WIDGET_OPTIONS, RIGHT_WIDGET_OPTIONS, type AccountState } from "../../state/account";
 import "./ProfileSettings.css";
 
 interface ProfileSettingsProps {
-    nickname: string;
+    account: AccountState;
     onSignOut: () => void;
-    plan: PlanId;
-    onPlanChange: (plan: PlanId) => void;
-    avatar: AvatarChoice;
-    onAvatarChange: (choice: AvatarChoice) => void;
-    iconOptions: PickerItem[];
-    activeIconIds: string[];
-    onActiveIconIdsChange: (ids: string[]) => void;
-    leftWidgetOptions: PickerItem[];
-    activeLeftWidgetIds: string[];
-    onActiveLeftWidgetIdsChange: (ids: string[]) => void;
-    rightWidgetOptions: PickerItem[];
-    activeRightWidgetIds: string[];
-    onActiveRightWidgetIdsChange: (ids: string[]) => void;
-    background: BackgroundChoice;
-    onBackgroundChange: (choice: BackgroundChoice) => void;
 }
 
 type Page = "menu" | "avatar" | "icons" | "widgets" | "background" | "subscription";
@@ -54,16 +40,24 @@ function UpgradeHint({ nextPlan, kind, onOpenSubscription }: {
 
 /**
  * Account settings — opened by clicking the profile pill once "signed
- * in" (see SignUpForm/BrainScene3D). A small internal menu → sub-page
- * navigation (not drag-and-drop, not a router) since a floating,
- * backdrop-blurred drawer over a live 3D canvas doesn't have room for
- * everything at once. Everything here is a client-side-only mock, same
- * as the rest of the account system — plan changes, avatar, icon/widget
- * selections, and the background all live in BrainScene3D's React
- * state, nothing persists across a reload yet (no backend/database).
+ * in", from either the Dashboard (TopBar) or Laboratory
+ * (LaboratoryTopBar) — both open the exact same drawer/component,
+ * reading and writing the exact same `account` (see state/account.ts,
+ * owned by App.tsx), so a change made from one scene shows up in the
+ * other immediately. A small internal menu → sub-page navigation (not
+ * drag-and-drop, not a router) since a floating, backdrop-blurred
+ * drawer over a live 3D canvas doesn't have room for everything at
+ * once. Everything here is a client-side-only mock — nothing persists
+ * across a reload yet (no backend/database).
  */
-export default function ProfileSettings(props: ProfileSettingsProps) {
-    const { nickname, onSignOut, plan, onPlanChange, avatar, onAvatarChange, background, onBackgroundChange } = props;
+export default function ProfileSettings({ account, onSignOut }: ProfileSettingsProps) {
+    const {
+        nickname, avatar, setAvatar, plan, setPlan,
+        activeIconIds, setActiveIconIds,
+        activeLeftWidgetIds, setActiveLeftWidgetIds,
+        activeRightWidgetIds, setActiveRightWidgetIds,
+        background, setBackground,
+    } = account;
     const [page, setPage] = useState<Page>("menu");
     const bgFileInputRef = useRef<HTMLInputElement>(null);
     const avatarFileInputRef = useRef<HTMLInputElement>(null);
@@ -76,7 +70,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = () => {
-            if (typeof reader.result === "string") onBackgroundChange({ type: "custom", dataUrl: reader.result });
+            if (typeof reader.result === "string") setBackground({ type: "custom", dataUrl: reader.result });
         };
         reader.readAsDataURL(file);
     };
@@ -86,7 +80,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = () => {
-            if (typeof reader.result === "string") onAvatarChange({ type: "custom", dataUrl: reader.result });
+            if (typeof reader.result === "string") setAvatar({ type: "custom", dataUrl: reader.result });
         };
         reader.readAsDataURL(file);
     };
@@ -116,7 +110,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
                                     key={preset.id}
                                     type="button"
                                     className={`profile-settings-avatar-swatch${isActive ? " profile-settings-avatar-swatch-active" : ""}`}
-                                    onClick={() => onAvatarChange({ type: "preset", id: preset.id })}
+                                    onClick={() => setAvatar({ type: "preset", id: preset.id })}
                                 >
                                     {isActive ? <Check size={18} strokeWidth={2.5} /> : <Icon size={22} strokeWidth={1.5} />}
                                     <span>{preset.label}</span>
@@ -138,10 +132,10 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
                 {page === "icons" && (
                     <>
                         <ItemPicker
-                            allItems={props.iconOptions}
-                            activeIds={props.activeIconIds}
+                            allItems={ICON_OPTIONS}
+                            activeIds={activeIconIds}
                             maxCount={currentPlanInfo.iconCount}
-                            onChange={props.onActiveIconIdsChange}
+                            onChange={setActiveIconIds}
                         />
                         {nextPlan && <UpgradeHint nextPlan={nextPlan} kind="icons" onOpenSubscription={() => setPage("subscription")} />}
                     </>
@@ -153,19 +147,19 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
                             <div>
                                 <div className="item-picker-subheading">Left column</div>
                                 <ItemPicker
-                                    allItems={props.leftWidgetOptions}
-                                    activeIds={props.activeLeftWidgetIds}
+                                    allItems={LEFT_WIDGET_OPTIONS}
+                                    activeIds={activeLeftWidgetIds}
                                     maxCount={currentPlanInfo.widgetCount}
-                                    onChange={props.onActiveLeftWidgetIdsChange}
+                                    onChange={setActiveLeftWidgetIds}
                                 />
                             </div>
                             <div>
                                 <div className="item-picker-subheading">Right column</div>
                                 <ItemPicker
-                                    allItems={props.rightWidgetOptions}
-                                    activeIds={props.activeRightWidgetIds}
+                                    allItems={RIGHT_WIDGET_OPTIONS}
+                                    activeIds={activeRightWidgetIds}
                                     maxCount={currentPlanInfo.widgetCount}
-                                    onChange={props.onActiveRightWidgetIdsChange}
+                                    onChange={setActiveRightWidgetIds}
                                 />
                             </div>
                         </div>
@@ -183,7 +177,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
                                     type="button"
                                     className={`profile-settings-bg-swatch${isActive ? " profile-settings-bg-swatch-active" : ""}`}
                                     style={{ background: preset.swatch }}
-                                    onClick={() => onBackgroundChange({ type: "preset", id: preset.id })}
+                                    onClick={() => setBackground({ type: "preset", id: preset.id })}
                                 >
                                     {isActive && <Check size={16} strokeWidth={2.5} />}
                                     <span>{preset.label}</span>
@@ -209,7 +203,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
                                 key={p.id}
                                 type="button"
                                 className={`profile-settings-plan${p.id === plan ? " profile-settings-plan-active" : ""}`}
-                                onClick={() => onPlanChange(p.id)}
+                                onClick={() => setPlan(p.id)}
                             >
                                 <div className="profile-settings-plan-header">
                                     <span className="profile-settings-plan-name">{p.label}</span>
@@ -255,7 +249,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
                     <Orbit size={16} strokeWidth={1.75} />
                     Icons
                 </span>
-                <span className="profile-settings-section-hint">{props.activeIconIds.length} / {currentPlanInfo.iconCount}</span>
+                <span className="profile-settings-section-hint">{activeIconIds.length} / {currentPlanInfo.iconCount}</span>
             </button>
 
             <button type="button" className="profile-settings-section profile-settings-section-clickable" onClick={() => setPage("widgets")}>
@@ -263,7 +257,7 @@ export default function ProfileSettings(props: ProfileSettingsProps) {
                     <Grid2x2 size={16} strokeWidth={1.75} />
                     Widgets
                 </span>
-                <span className="profile-settings-section-hint">{props.activeLeftWidgetIds.length + props.activeRightWidgetIds.length} / {currentPlanInfo.widgetCount * 2}</span>
+                <span className="profile-settings-section-hint">{activeLeftWidgetIds.length + activeRightWidgetIds.length} / {currentPlanInfo.widgetCount * 2}</span>
             </button>
 
             <button type="button" className="profile-settings-section profile-settings-section-clickable" onClick={() => setPage("background")}>

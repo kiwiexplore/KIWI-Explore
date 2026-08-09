@@ -1,3 +1,4 @@
+import type { MouseEvent } from "react";
 import { AudioLines, ArrowLeft, ChevronDown, UserCircle2 } from "lucide-react";
 import KiwiCoreBadge from "./KiwiCoreBadge";
 import AvatarGlyph from "../ui/AvatarGlyph";
@@ -19,6 +20,7 @@ interface LaboratoryTopBarProps {
     onSectionChange: (section: LaboratorySection) => void;
     nickname: string | null;
     avatar: AvatarChoice;
+    onProfileClick?: (event: MouseEvent<HTMLElement>) => void;
 }
 
 /**
@@ -36,10 +38,12 @@ interface LaboratoryTopBarProps {
  *
  * `nickname`/`avatar` come from App.tsx's shared account state (see
  * state/account.ts) — signing in/changing your avatar on the Dashboard
- * shows up here too. This pill is read-only, though: there's no
- * sign-in form or ProfileSettings drawer here, so signed-out shows a
- * plain "Sign in" prompt that just routes back to the Dashboard, where
- * that flow actually lives, rather than duplicating it.
+ * shows up here too. Clicking the pill opens the exact same
+ * ProfileSettings drawer as the Dashboard (see Laboratory.tsx, which
+ * owns the anchor/DetailDrawer for it, same pattern as BrainScene3D).
+ * Signed-out shows a plain "Sign in" prompt that just routes back to
+ * the Dashboard, where that flow actually lives, rather than
+ * duplicating SignUpForm here.
  *
  * Kept as its own component (not a TopBar variant) since the two
  * bars' contents genuinely diverge — the profile pill's markup/CSS is
@@ -47,7 +51,7 @@ interface LaboratoryTopBarProps {
  * keep Laboratory decoupled from the Dashboard's own files (see
  * Laboratory.tsx's doc comment).
  */
-export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi, section, onSectionChange, nickname, avatar }: LaboratoryTopBarProps) {
+export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi, section, onSectionChange, nickname, avatar, onProfileClick }: LaboratoryTopBarProps) {
     return (
         <header className="lab-topbar">
             <div className="lab-topbar-brand">
@@ -84,7 +88,7 @@ export default function LaboratoryTopBar({ onBack, listening, onOpenKiwi, sectio
                     Hey Kiwi
                 </button>
                 {nickname ? (
-                    <button type="button" className="lab-topbar-profile">
+                    <button type="button" className="lab-topbar-profile" onClick={onProfileClick}>
                         <AvatarGlyph avatar={avatar ?? DEFAULT_AVATAR} size={18} iconSize={18} />
                         {nickname}
                         <ChevronDown size={13} strokeWidth={2} />

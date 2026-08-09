@@ -17,10 +17,8 @@ import SpaceMissionsWidget from "./SpaceMissionsWidget";
 import RecipesWidget from "./RecipesWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
-import { PLANS, type PlanId } from "../../state/plans";
-import { DEFAULT_BACKGROUND, resolveBackgroundImage, type BackgroundChoice } from "../../state/backgrounds";
+import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { AccountState } from "../../state/account";
-import type { PickerItem } from "../ui/ItemPicker";
 import "./BrainScene3D.css";
 
 // A uniform dark scrim over the whole photo (it was too bright/busy for
@@ -36,10 +34,6 @@ function backgroundLayers(resolvedImage: string): string {
         resolvedImage,
     ].join(", ");
 }
-
-const ICON_OPTIONS: PickerItem[] = orbitModules.map((m) => ({ id: m.id, label: m.label, icon: m.icon }));
-const LEFT_WIDGET_OPTIONS: PickerItem[] = leftWidgets.map((w) => ({ id: w.id, label: w.title }));
-const RIGHT_WIDGET_OPTIONS: PickerItem[] = rightWidgets.map((w) => ({ id: w.id, label: w.title }));
 
 function anchorFromEvent(event: MouseEvent<HTMLElement>): { x: number; y: number } {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -98,7 +92,7 @@ interface BrainScene3DProps {
 }
 
 export default function BrainScene3D({ onOpenLaboratory, account }: BrainScene3DProps) {
-    const { nickname, setNickname, avatar, setAvatar, plan, setPlan } = account;
+    const { nickname, setNickname, avatar, activeIconIds, activeLeftWidgetIds, activeRightWidgetIds, background } = account;
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
     const [glowObjects, setGlowObjects] = useState<Object3D[]>([]);
@@ -113,36 +107,16 @@ export default function BrainScene3D({ onOpenLaboratory, account }: BrainScene3D
     // it to keep that one icon's hover glow lit even once the mouse has
     // moved away, e.g. toward the drawer's content.
     const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
-
-    // Per-user customization — client-side only for now (see
-    // ProfileSettings' own doc comment), defaulted to the Standard plan's
-    // limits (first N of each registry, in their existing order). Icons/
-    // widgets/background stay local here (Laboratory doesn't render any
-    // of this) — only nickname/avatar/plan are lifted to App.tsx (see
-    // the `account` prop above).
-    const standardPlan = PLANS[0];
-    const [activeIconIds, setActiveIconIds] = useState<string[]>(orbitModules.slice(0, standardPlan.iconCount).map((m) => m.id));
-    const [activeLeftWidgetIds, setActiveLeftWidgetIds] = useState<string[]>(leftWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
-    const [activeRightWidgetIds, setActiveRightWidgetIds] = useState<string[]>(rightWidgets.slice(0, standardPlan.widgetCount).map((w) => w.id));
-    const [background, setBackground] = useState<BackgroundChoice>(DEFAULT_BACKGROUND);
     // The profile drawer's anchor only — its body is built fresh below
-    // (not stored in `detail`), since it needs to keep reflecting plan/
-    // icon/widget/background state that changes *from inside itself*
-    // while it stays open. Storing a pre-rendered <ProfileSettings/>
-    // node in `detail.body` (like every other drawer here does) would
-    // freeze those props at click-time: React bails out of re-rendering
-    // that subtree on later parent state changes since the element
+    // (not stored in `detail`), since it needs to keep reflecting
+    // `account` state that changes *from inside itself* while it stays
+    // open. Storing a pre-rendered <ProfileSettings/> node in
+    // `detail.body` (like every other drawer here does) would freeze
+    // those props at click-time: React bails out of re-rendering that
+    // subtree on later parent state changes since the element
     // reference in state never changes, so the picker/plan cards would
     // silently go stale the moment you interact with them.
     const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number } | null>(null);
-
-    const handlePlanChange = (nextPlan: PlanId) => {
-        setPlan(nextPlan);
-        const info = PLANS.find((p) => p.id === nextPlan) ?? PLANS[0];
-        setActiveIconIds((ids) => ids.slice(0, info.iconCount));
-        setActiveLeftWidgetIds((ids) => ids.slice(0, info.widgetCount));
-        setActiveRightWidgetIds((ids) => ids.slice(0, info.widgetCount));
-    };
 
     const closeDetail = () => {
         setDetail(null);
@@ -207,32 +181,12 @@ export default function BrainScene3D({ onOpenLaboratory, account }: BrainScene3D
     };
 
     // Built fresh on every render (see profileAnchor's own comment) so
-    // it always reflects the latest plan/icon/widget/background state.
+    // it always reflects the latest account state.
     const profileDetail: DetailDrawerContent | null = profileAnchor ? {
         title: "Profile & settings",
         anchor: profileAnchor,
         maxHeight: 620,
-        body: (
-            <ProfileSettings
-                nickname={nickname ?? ""}
-                onSignOut={() => { setNickname(null); closeDetail(); }}
-                plan={plan}
-                onPlanChange={handlePlanChange}
-                avatar={avatar}
-                onAvatarChange={setAvatar}
-                iconOptions={ICON_OPTIONS}
-                activeIconIds={activeIconIds}
-                onActiveIconIdsChange={setActiveIconIds}
-                leftWidgetOptions={LEFT_WIDGET_OPTIONS}
-                activeLeftWidgetIds={activeLeftWidgetIds}
-                onActiveLeftWidgetIdsChange={setActiveLeftWidgetIds}
-                rightWidgetOptions={RIGHT_WIDGET_OPTIONS}
-                activeRightWidgetIds={activeRightWidgetIds}
-                onActiveRightWidgetIdsChange={setActiveRightWidgetIds}
-                background={background}
-                onBackgroundChange={setBackground}
-            />
-        ),
+        body: <ProfileSettings account={account} onSignOut={() => { setNickname(null); closeDetail(); }} />,
     } : null;
 
     return (
