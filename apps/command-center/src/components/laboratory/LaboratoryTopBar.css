@@ -78,7 +78,7 @@
 
     /* Extra room specifically between the Dashboard button and this
        wordmark, on top of .lab-topbar-brand's own flex gap. */
-    margin-left: 6px;
+    margin-left: 22px;
 
     font-size: 16px;
     font-weight: 700;
