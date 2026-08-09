@@ -181,7 +181,13 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
                 </main>
             </div>
 
-            {kiwiOpen && <KiwiPanel onClose={() => setKiwiOpen(false)} {...kiwiChat} />}
+            {kiwiOpen && (
+                <KiwiPanel
+                    onClose={() => setKiwiOpen(false)}
+                    {...kiwiChat}
+                    project={section === "projects" ? selectedProject : null}
+                />
+            )}
 
             <DetailDrawer content={profileDetail} onClose={() => setProfileAnchor(null)} />
         </div>

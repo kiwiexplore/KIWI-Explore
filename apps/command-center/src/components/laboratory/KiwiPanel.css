@@ -97,6 +97,79 @@
 
 }
 
+.kiwi-panel-context {
+
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    margin-top: -8px;
+
+}
+
+.kiwi-panel-context-label {
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-context-name {
+
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.kiwi-panel-tabs {
+
+    display: flex;
+    gap: 4px;
+
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+
+}
+
+.kiwi-panel-tab {
+
+    padding: 5px 10px;
+
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.kiwi-panel-tab:hover {
+
+    color: #eaf6ff;
+
+}
+
+.kiwi-panel-tab-active {
+
+    background: rgba(73, 199, 255, .12);
+    border-color: var(--primary);
+    color: #eaf6ff;
+
+}
+
 .kiwi-panel-body {
 
     flex: 1;
@@ -106,6 +179,130 @@
 
     display: flex;
     flex-direction: column;
+
+}
+
+.kiwi-panel-details {
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+}
+
+.kiwi-panel-detail-row {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    font-size: 12px;
+    color: var(--text);
+
+}
+
+.kiwi-panel-detail-label {
+
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-status {
+
+    padding: 2px 10px;
+
+    border: 1px solid;
+    border-radius: 999px;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+
+}
+
+.kiwi-panel-detail-description {
+
+    margin: 2px 0;
+
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-detail-section-title {
+
+    margin-top: 6px;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-detail-muted {
+
+    margin: 0;
+
+    font-size: 12px;
+    color: var(--text-muted);
+
+}
+
+.kiwi-panel-tags {
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+}
+
+.kiwi-panel-tag {
+
+    padding: 2px 9px;
+
+    background: rgba(117, 102, 255, .12);
+    border: 1px solid rgba(117, 102, 255, .3);
+    border-radius: 999px;
+
+    font-size: 11px;
+    color: var(--accent);
+
+}
+
+.kiwi-panel-placeholder {
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    flex: 1;
+
+    text-align: center;
+
+}
+
+.kiwi-panel-placeholder span {
+
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.kiwi-panel-placeholder p {
+
+    margin: 0;
+    max-width: 240px;
+
+    font-size: 12px;
+    color: var(--text-muted);
 
 }
 
