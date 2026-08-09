@@ -16,10 +16,20 @@
 
 }
 
+.laboratory-body {
+
+    flex: 1;
+    min-height: 0;
+
+    display: flex;
+
+}
+
 .laboratory-main {
 
     flex: 1;
     min-height: 0;
+    min-width: 0;
 
     overflow-y: auto;
 

@@ -37,7 +37,7 @@ export default function KiwiCoreBadge({ listening }: KiwiCoreBadgeProps) {
         <div className="kiwi-core-badge">
             <Canvas camera={{ position: [0, 0, 2.6], fov: 50 }} gl={{ alpha: true }}>
                 <primitive object={ambientLight} />
-                <group scale={1.55} position={[0, 0.1, 0]}>
+                <group scale={1.15} position={[0, -0.08, 0]}>
                     <BrainSystem3D onPulseReady={setPulseLines} listening={listening} interactive={false} />
                 </group>
                 <GlowLayer selection={pulseLines} lights={[ambientLight]} boosted={listening} />

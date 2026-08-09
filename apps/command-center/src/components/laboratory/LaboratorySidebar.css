@@ -1,0 +1,164 @@
+.lab-sidebar {
+
+    width: 240px;
+    flex-shrink: 0;
+
+    box-sizing: border-box;
+    padding: 20px 14px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    border-right: 1px solid var(--border);
+    background: rgba(5, 8, 22, 0.3);
+
+    overflow: hidden;
+
+}
+
+.lab-sidebar-scroll {
+
+    flex: 1;
+    min-height: 0;
+
+    overflow-y: auto;
+
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+}
+
+.lab-sidebar-section {
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+}
+
+.lab-sidebar-section-title {
+
+    padding: 0 10px 6px;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.lab-sidebar-item {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 8px 10px;
+
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.lab-sidebar-item span:first-of-type {
+
+    flex: 1;
+    min-width: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.lab-sidebar-item svg {
+
+    flex-shrink: 0;
+
+}
+
+.lab-sidebar-item:hover:not(:disabled) {
+
+    background: rgba(255, 255, 255, .04);
+    color: #eaf6ff;
+
+}
+
+.lab-sidebar-item:disabled {
+
+    cursor: default;
+    opacity: .5;
+
+}
+
+.lab-sidebar-item-active {
+
+    background: rgba(73, 199, 255, .12);
+    border-color: var(--primary);
+    color: #eaf6ff;
+
+}
+
+.lab-sidebar-item-active svg {
+
+    color: var(--primary);
+
+}
+
+.lab-sidebar-item-badge {
+
+    flex-shrink: 0;
+
+    padding: 1px 6px;
+
+    background: rgba(255, 255, 255, .06);
+    border-radius: 999px;
+
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.lab-sidebar-new-project {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+    padding: 10px 14px;
+
+    background: var(--primary);
+    border: none;
+    border-radius: 12px;
+
+    color: #06131f;
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.lab-sidebar-new-project:hover {
+
+    box-shadow: 0 0 16px rgba(73, 199, 255, .45);
+
+}

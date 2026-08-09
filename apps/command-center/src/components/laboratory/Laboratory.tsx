@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
+import LaboratorySidebar from "./LaboratorySidebar";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -102,6 +103,7 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
         const project = createMockProject();
         setProjects((prev) => [project, ...prev]);
         setSelectedProjectId(project.id);
+        setSection("projects");
     };
 
     const handleProjectChange = (id: string, changes: Partial<Pick<LaboratoryProject, "name" | "category" | "description">>) => {
@@ -144,31 +146,40 @@ export default function Laboratory({ onBack, account }: LaboratoryProps) {
                 onProfileClick={handleProfileClick}
             />
 
-            <main className="laboratory-main">
-                {section === "projects" && (
-                    selectedProject ? (
-                        <ProjectWorkspace project={selectedProject} onBack={() => setSelectedProjectId(null)} onChange={handleProjectChange} />
-                    ) : (
-                        <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />
-                    )
-                )}
+            <div className="laboratory-body">
+                <LaboratorySidebar
+                    section={section}
+                    onSectionChange={setSection}
+                    onCreateProject={handleCreateProject}
+                    onOpenKiwi={() => setKiwiOpen(true)}
+                />
 
-                {section === "research" && (
-                    selectedResearch ? (
-                        <ResearchDetail entry={selectedResearch} onBack={() => setSelectedResearchId(null)} onChange={handleResearchChange} />
-                    ) : (
-                        <ResearchGrid entries={researchEntries} onSelectEntry={setSelectedResearchId} onCreateEntry={handleCreateResearchEntry} />
-                    )
-                )}
+                <main className="laboratory-main">
+                    {section === "projects" && (
+                        selectedProject ? (
+                            <ProjectWorkspace project={selectedProject} onBack={() => setSelectedProjectId(null)} onChange={handleProjectChange} />
+                        ) : (
+                            <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />
+                        )
+                    )}
 
-                {section === "notes" && (
-                    selectedNote ? (
-                        <NoteEditor note={selectedNote} onBack={() => setSelectedNoteId(null)} onChange={handleNoteChange} />
-                    ) : (
-                        <NotesGrid notes={notes} onSelectNote={setSelectedNoteId} onCreateNote={handleCreateNote} />
-                    )
-                )}
-            </main>
+                    {section === "research" && (
+                        selectedResearch ? (
+                            <ResearchDetail entry={selectedResearch} onBack={() => setSelectedResearchId(null)} onChange={handleResearchChange} />
+                        ) : (
+                            <ResearchGrid entries={researchEntries} onSelectEntry={setSelectedResearchId} onCreateEntry={handleCreateResearchEntry} />
+                        )
+                    )}
+
+                    {section === "notes" && (
+                        selectedNote ? (
+                            <NoteEditor note={selectedNote} onBack={() => setSelectedNoteId(null)} onChange={handleNoteChange} />
+                        ) : (
+                            <NotesGrid notes={notes} onSelectNote={setSelectedNoteId} onCreateNote={handleCreateNote} />
+                        )
+                    )}
+                </main>
+            </div>
 
             {kiwiOpen && <KiwiPanel onClose={() => setKiwiOpen(false)} {...kiwiChat} />}
 
