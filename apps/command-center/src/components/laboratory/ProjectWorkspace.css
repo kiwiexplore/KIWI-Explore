@@ -289,13 +289,13 @@
 
 }
 
-.project-workspace-soon {
+.project-workspace-ai-lab {
 
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 14px;
 
     height: 172px;
 
@@ -303,19 +303,19 @@
 
 }
 
-.project-workspace-soon-title {
+.project-workspace-ai-lab-icon {
 
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text);
+    color: var(--accent);
 
 }
 
-.project-workspace-soon p {
+.project-workspace-ai-lab-text {
 
+    max-width: 360px;
     margin: 0;
 
     font-size: 13px;
+    line-height: 1.5;
     color: var(--text-muted);
 
 }

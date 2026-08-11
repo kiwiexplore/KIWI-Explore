@@ -320,6 +320,7 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                             <ProjectWorkspace
                                 project={selectedProject}
                                 onBack={() => setSelectedProjectId(null)}
+                                onOpenKiwi={() => setKiwiOpen(true)}
                                 onChange={handleProjectChange}
                                 onAddTask={handleAddTask}
                                 onToggleTask={handleToggleTask}

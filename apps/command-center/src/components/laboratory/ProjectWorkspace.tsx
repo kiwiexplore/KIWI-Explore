@@ -1,20 +1,20 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, File, FlaskConical, Lightbulb, Link2, Palette, Plus, Rocket, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, File, FlaskConical, Lightbulb, Link2, Palette, Plus, Rocket, Sparkles, StickyNote, Trash2 } from "lucide-react";
 import { PROTOTYPE_STAGE_META, STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
 import "./ProjectWorkspace.css";
 
-// Not all of these are real yet — Overview, Research, Ideas, Design,
-// Prototype, Tasks, Files, and Notes are the only modules with actual
-// content (see the render below). The rest just need to exist as tabs
-// now so the architecture doesn't have to change shape later to fit
-// them in, per explicit request.
 const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
 
 interface ProjectWorkspaceProps {
     project: LaboratoryProject;
     onBack: () => void;
+    // Opens Laboratory's floating KIWI panel (already scoped to
+    // whichever project is open) — the AI Lab tab hands off to that
+    // single shared assistant instance rather than standing up a
+    // second, unsynced chat.
+    onOpenKiwi: () => void;
     onChange: (id: string, changes: Partial<Pick<LaboratoryProject, "name" | "category" | "description">>) => void;
     onAddTask: (projectId: string, title: string) => void;
     onToggleTask: (projectId: string, taskId: string) => void;
@@ -44,7 +44,7 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddPrototype, onCyclePrototypeStage, onRemovePrototype, onAddFile, onRemoveFile, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project, onBack, onOpenKiwi, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddPrototype, onCyclePrototypeStage, onRemovePrototype, onAddFile, onRemoveFile, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
     const [newIdea, setNewIdea] = useState("");
@@ -588,10 +588,16 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     </div>
                 )}
 
-                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && activeModule !== "Design" && activeModule !== "Prototype" && activeModule !== "Files" && (
-                    <div className="project-workspace-soon">
-                        <span className="project-workspace-soon-title">{activeModule}</span>
-                        <p>This module isn't built yet — it's next in line.</p>
+                {activeModule === "AI Lab" && (
+                    <div className="project-workspace-ai-lab">
+                        <Sparkles size={22} strokeWidth={1.5} className="project-workspace-ai-lab-icon" />
+                        <p className="project-workspace-ai-lab-text">
+                            Ask KIWI about {project.name} — it already knows this project's status, tags, and progress.
+                        </p>
+                        <button type="button" className="project-workspace-notes-add" onClick={onOpenKiwi}>
+                            <Sparkles size={14} strokeWidth={2} />
+                            Open KIWI Assistant
+                        </button>
                     </div>
                 )}
             </div>
