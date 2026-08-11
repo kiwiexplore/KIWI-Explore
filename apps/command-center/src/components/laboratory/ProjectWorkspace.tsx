@@ -1,11 +1,22 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, File, FlaskConical, Lightbulb, Link2, Palette, Plus, Rocket, Sparkles, StickyNote, Trash2 } from "lucide-react";
-import { PROTOTYPE_STAGE_META, STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
+import {
+    ArrowLeft, File, FileText, FlaskConical, Library, Lightbulb, Link2, Megaphone, Package, Palette,
+    Plus, Rocket, Sparkles, StickyNote, Store as StoreIcon, TestTube2, Trash2,
+} from "lucide-react";
+import {
+    PRODUCT_STAGE_META, PROTOTYPE_STAGE_META, STATUS_META, TEST_STATUS_META, MARKETING_STATUS_META,
+    type LaboratoryProject,
+} from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
 import "./ProjectWorkspace.css";
 
-const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
+const MODULES = [
+    "Overview", "Research", "Ideas", "Design", "Prototype", "Tasks",
+    "Resources", "Tests", "Documents", "Files",
+    "Products", "Store", "Marketing",
+    "Notes", "AI Lab",
+];
 
 interface ProjectWorkspaceProps {
     project: LaboratoryProject;
@@ -28,6 +39,21 @@ interface ProjectWorkspaceProps {
     onRemovePrototype: (projectId: string, prototypeId: string) => void;
     onAddFile: (projectId: string, name: string) => void;
     onRemoveFile: (projectId: string, fileId: string) => void;
+    onAddResource: (projectId: string, label: string, url: string) => void;
+    onRemoveResource: (projectId: string, resourceId: string) => void;
+    onAddTest: (projectId: string, title: string) => void;
+    onCycleTestStatus: (projectId: string, testId: string) => void;
+    onRemoveTest: (projectId: string, testId: string) => void;
+    onAddDocument: (projectId: string, label: string, url: string) => void;
+    onRemoveDocument: (projectId: string, documentId: string) => void;
+    onAddProduct: (projectId: string, name: string, price: string) => void;
+    onCycleProductStage: (projectId: string, productId: string) => void;
+    onRemoveProduct: (projectId: string, productId: string) => void;
+    onAddStoreChannel: (projectId: string, label: string, url: string) => void;
+    onRemoveStoreChannel: (projectId: string, channelId: string) => void;
+    onAddMarketingItem: (projectId: string, label: string) => void;
+    onCycleMarketingStatus: (projectId: string, itemId: string) => void;
+    onRemoveMarketingItem: (projectId: string, itemId: string) => void;
     // Returns the new note's/finding's id so the workspace can jump
     // straight into editing it, same as the global Notes/Research
     // sections do.
@@ -44,7 +70,21 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onOpenKiwi, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddPrototype, onCyclePrototypeStage, onRemovePrototype, onAddFile, onRemoveFile, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({
+    project, onBack, onOpenKiwi, onChange,
+    onAddTask, onToggleTask, onRemoveTask,
+    onAddIdea, onRemoveIdea,
+    onAddDesignRef, onRemoveDesignRef,
+    onAddPrototype, onCyclePrototypeStage, onRemovePrototype,
+    onAddFile, onRemoveFile,
+    onAddResource, onRemoveResource,
+    onAddTest, onCycleTestStatus, onRemoveTest,
+    onAddDocument, onRemoveDocument,
+    onAddProduct, onCycleProductStage, onRemoveProduct,
+    onAddStoreChannel, onRemoveStoreChannel,
+    onAddMarketingItem, onCycleMarketingStatus, onRemoveMarketingItem,
+    onAddNote, onNoteChange, onAddResearch, onResearchChange,
+}: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
     const [newIdea, setNewIdea] = useState("");
@@ -53,6 +93,16 @@ export default function ProjectWorkspace({ project, onBack, onOpenKiwi, onChange
     const [newProtoLabel, setNewProtoLabel] = useState("");
     const [newProtoUrl, setNewProtoUrl] = useState("");
     const [newFileName, setNewFileName] = useState("");
+    const [newResourceLabel, setNewResourceLabel] = useState("");
+    const [newResourceUrl, setNewResourceUrl] = useState("");
+    const [newTestTitle, setNewTestTitle] = useState("");
+    const [newDocumentLabel, setNewDocumentLabel] = useState("");
+    const [newDocumentUrl, setNewDocumentUrl] = useState("");
+    const [newProductName, setNewProductName] = useState("");
+    const [newProductPrice, setNewProductPrice] = useState("");
+    const [newStoreLabel, setNewStoreLabel] = useState("");
+    const [newStoreUrl, setNewStoreUrl] = useState("");
+    const [newMarketingLabel, setNewMarketingLabel] = useState("");
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
     const status = STATUS_META[project.status];
@@ -126,7 +176,90 @@ export default function ProjectWorkspace({ project, onBack, onOpenKiwi, onChange
         }
     };
 
+    const handleAddResource = () => {
+        if (!newResourceLabel.trim()) return;
+        onAddResource(project.id, newResourceLabel.trim(), newResourceUrl.trim());
+        setNewResourceLabel("");
+        setNewResourceUrl("");
+    };
+
+    const handleResourceKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddResource();
+        }
+    };
+
+    const handleAddTest = () => {
+        if (!newTestTitle.trim()) return;
+        onAddTest(project.id, newTestTitle.trim());
+        setNewTestTitle("");
+    };
+
+    const handleTestKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddTest();
+        }
+    };
+
+    const handleAddDocument = () => {
+        if (!newDocumentLabel.trim()) return;
+        onAddDocument(project.id, newDocumentLabel.trim(), newDocumentUrl.trim());
+        setNewDocumentLabel("");
+        setNewDocumentUrl("");
+    };
+
+    const handleDocumentKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddDocument();
+        }
+    };
+
+    const handleAddProduct = () => {
+        if (!newProductName.trim()) return;
+        onAddProduct(project.id, newProductName.trim(), newProductPrice.trim());
+        setNewProductName("");
+        setNewProductPrice("");
+    };
+
+    const handleProductKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddProduct();
+        }
+    };
+
+    const handleAddStoreChannel = () => {
+        if (!newStoreLabel.trim()) return;
+        onAddStoreChannel(project.id, newStoreLabel.trim(), newStoreUrl.trim());
+        setNewStoreLabel("");
+        setNewStoreUrl("");
+    };
+
+    const handleStoreKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddStoreChannel();
+        }
+    };
+
+    const handleAddMarketingItem = () => {
+        if (!newMarketingLabel.trim()) return;
+        onAddMarketingItem(project.id, newMarketingLabel.trim());
+        setNewMarketingLabel("");
+    };
+
+    const handleMarketingKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddMarketingItem();
+        }
+    };
+
     const doneCount = project.tasks.filter((t) => t.done).length;
+    const passingTestCount = project.tests.filter((t) => t.status === "passing").length;
 
     return (
         <div className="project-workspace">
@@ -194,6 +327,24 @@ export default function ProjectWorkspace({ project, onBack, onOpenKiwi, onChange
                         {m === "Files" && project.files.length > 0 && (
                             <span className="project-workspace-module-count">{project.files.length}</span>
                         )}
+                        {m === "Resources" && project.resources.length > 0 && (
+                            <span className="project-workspace-module-count">{project.resources.length}</span>
+                        )}
+                        {m === "Tests" && project.tests.length > 0 && (
+                            <span className="project-workspace-module-count">{passingTestCount}/{project.tests.length}</span>
+                        )}
+                        {m === "Documents" && project.documents.length > 0 && (
+                            <span className="project-workspace-module-count">{project.documents.length}</span>
+                        )}
+                        {m === "Products" && project.products.length > 0 && (
+                            <span className="project-workspace-module-count">{project.products.length}</span>
+                        )}
+                        {m === "Store" && project.storeChannels.length > 0 && (
+                            <span className="project-workspace-module-count">{project.storeChannels.length}</span>
+                        )}
+                        {m === "Marketing" && project.marketing.length > 0 && (
+                            <span className="project-workspace-module-count">{project.marketing.length}</span>
+                        )}
                     </button>
                 ))}
             </nav>
@@ -260,6 +411,173 @@ export default function ProjectWorkspace({ project, onBack, onOpenKiwi, onChange
                                 placeholder="Add a task..."
                             />
                             <button type="button" className="project-workspace-task-add-btn" onClick={handleAddTask} disabled={!newTask.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule === "Resources" && (
+                    <div className="project-workspace-tasks">
+                        {project.resources.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No resources yet — drop a link below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.resources.map((resource) => (
+                                    <div key={resource.id} className="project-workspace-task">
+                                        <span className="project-workspace-idea-icon">
+                                            <Library size={13} strokeWidth={1.75} />
+                                        </span>
+                                        <span className="project-workspace-design-ref">
+                                            <span className="project-workspace-task-title">{resource.label}</span>
+                                            {resource.url && (
+                                                <a href={resource.url} target="_blank" rel="noreferrer" className="project-workspace-note-card-source">
+                                                    <Link2 size={10} strokeWidth={2} />
+                                                    {resource.url}
+                                                </a>
+                                            )}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="project-workspace-task-remove"
+                                            onClick={() => onRemoveResource(project.id, resource.id)}
+                                            aria-label="Remove resource"
+                                        >
+                                            <Trash2 size={13} strokeWidth={1.75} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add project-workspace-design-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newResourceLabel}
+                                onChange={(e) => setNewResourceLabel(e.target.value)}
+                                onKeyDown={handleResourceKeyDown}
+                                placeholder="Resource name..."
+                            />
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newResourceUrl}
+                                onChange={(e) => setNewResourceUrl(e.target.value)}
+                                onKeyDown={handleResourceKeyDown}
+                                placeholder="Link (optional)"
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddResource} disabled={!newResourceLabel.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule === "Tests" && (
+                    <div className="project-workspace-tasks">
+                        {project.tests.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No tests yet — add the first one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.tests.map((test) => {
+                                    const statusMeta = TEST_STATUS_META[test.status];
+                                    return (
+                                        <div key={test.id} className="project-workspace-task">
+                                            <span className="project-workspace-idea-icon">
+                                                <TestTube2 size={13} strokeWidth={1.75} />
+                                            </span>
+                                            <span className="project-workspace-task-title project-workspace-idea-title">{test.title}</span>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-stage-pill"
+                                                style={{ color: statusMeta.color, borderColor: statusMeta.color }}
+                                                onClick={() => onCycleTestStatus(project.id, test.id)}
+                                                title="Click to advance status"
+                                            >
+                                                {statusMeta.label}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-task-remove"
+                                                onClick={() => onRemoveTest(project.id, test.id)}
+                                                aria-label="Remove test"
+                                            >
+                                                <Trash2 size={13} strokeWidth={1.75} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newTestTitle}
+                                onChange={(e) => setNewTestTitle(e.target.value)}
+                                onKeyDown={handleTestKeyDown}
+                                placeholder="Add a test case..."
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddTest} disabled={!newTestTitle.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule === "Documents" && (
+                    <div className="project-workspace-tasks">
+                        {project.documents.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No documents linked yet — drop one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.documents.map((doc) => (
+                                    <div key={doc.id} className="project-workspace-task">
+                                        <span className="project-workspace-idea-icon">
+                                            <FileText size={13} strokeWidth={1.75} />
+                                        </span>
+                                        <span className="project-workspace-design-ref">
+                                            <span className="project-workspace-task-title">{doc.label}</span>
+                                            {doc.url && (
+                                                <a href={doc.url} target="_blank" rel="noreferrer" className="project-workspace-note-card-source">
+                                                    <Link2 size={10} strokeWidth={2} />
+                                                    {doc.url}
+                                                </a>
+                                            )}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="project-workspace-task-remove"
+                                            onClick={() => onRemoveDocument(project.id, doc.id)}
+                                            aria-label="Remove document"
+                                        >
+                                            <Trash2 size={13} strokeWidth={1.75} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add project-workspace-design-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newDocumentLabel}
+                                onChange={(e) => setNewDocumentLabel(e.target.value)}
+                                onKeyDown={handleDocumentKeyDown}
+                                placeholder="Document name..."
+                            />
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newDocumentUrl}
+                                onChange={(e) => setNewDocumentUrl(e.target.value)}
+                                onKeyDown={handleDocumentKeyDown}
+                                placeholder="Link (optional)"
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddDocument} disabled={!newDocumentLabel.trim()}>
                                 <Plus size={15} strokeWidth={2} />
                             </button>
                         </div>
@@ -582,6 +900,182 @@ export default function ProjectWorkspace({ project, onBack, onOpenKiwi, onChange
                                 placeholder="Track a file by name..."
                             />
                             <button type="button" className="project-workspace-task-add-btn" onClick={handleAddFile} disabled={!newFileName.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule === "Products" && (
+                    <div className="project-workspace-tasks">
+                        {project.products.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No products yet — add the first one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.products.map((product) => {
+                                    const stageMeta = PRODUCT_STAGE_META[product.stage];
+                                    return (
+                                        <div key={product.id} className="project-workspace-task">
+                                            <span className="project-workspace-idea-icon">
+                                                <Package size={13} strokeWidth={1.75} />
+                                            </span>
+                                            <span className="project-workspace-design-ref">
+                                                <span className="project-workspace-task-title">{product.name}</span>
+                                                {product.price && (
+                                                    <span className="project-workspace-note-card-source">{product.price}</span>
+                                                )}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-stage-pill"
+                                                style={{ color: stageMeta.color, borderColor: stageMeta.color }}
+                                                onClick={() => onCycleProductStage(project.id, product.id)}
+                                                title="Click to advance stage"
+                                            >
+                                                {stageMeta.label}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-task-remove"
+                                                onClick={() => onRemoveProduct(project.id, product.id)}
+                                                aria-label="Remove product"
+                                            >
+                                                <Trash2 size={13} strokeWidth={1.75} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add project-workspace-design-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newProductName}
+                                onChange={(e) => setNewProductName(e.target.value)}
+                                onKeyDown={handleProductKeyDown}
+                                placeholder="Product name..."
+                            />
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newProductPrice}
+                                onChange={(e) => setNewProductPrice(e.target.value)}
+                                onKeyDown={handleProductKeyDown}
+                                placeholder="Price (optional)"
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddProduct} disabled={!newProductName.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule === "Store" && (
+                    <div className="project-workspace-tasks">
+                        {project.storeChannels.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No sales channels yet — add one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.storeChannels.map((channel) => (
+                                    <div key={channel.id} className="project-workspace-task">
+                                        <span className="project-workspace-idea-icon">
+                                            <StoreIcon size={13} strokeWidth={1.75} />
+                                        </span>
+                                        <span className="project-workspace-design-ref">
+                                            <span className="project-workspace-task-title">{channel.label}</span>
+                                            {channel.url && (
+                                                <a href={channel.url} target="_blank" rel="noreferrer" className="project-workspace-note-card-source">
+                                                    <Link2 size={10} strokeWidth={2} />
+                                                    {channel.url}
+                                                </a>
+                                            )}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="project-workspace-task-remove"
+                                            onClick={() => onRemoveStoreChannel(project.id, channel.id)}
+                                            aria-label="Remove channel"
+                                        >
+                                            <Trash2 size={13} strokeWidth={1.75} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add project-workspace-design-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newStoreLabel}
+                                onChange={(e) => setNewStoreLabel(e.target.value)}
+                                onKeyDown={handleStoreKeyDown}
+                                placeholder="Channel name (Etsy, App Store...)"
+                            />
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newStoreUrl}
+                                onChange={(e) => setNewStoreUrl(e.target.value)}
+                                onKeyDown={handleStoreKeyDown}
+                                placeholder="Link (optional)"
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddStoreChannel} disabled={!newStoreLabel.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule === "Marketing" && (
+                    <div className="project-workspace-tasks">
+                        {project.marketing.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No marketing items yet — add the first one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.marketing.map((item) => {
+                                    const statusMeta = MARKETING_STATUS_META[item.status];
+                                    return (
+                                        <div key={item.id} className="project-workspace-task">
+                                            <span className="project-workspace-idea-icon">
+                                                <Megaphone size={13} strokeWidth={1.75} />
+                                            </span>
+                                            <span className="project-workspace-task-title project-workspace-idea-title">{item.label}</span>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-stage-pill"
+                                                style={{ color: statusMeta.color, borderColor: statusMeta.color }}
+                                                onClick={() => onCycleMarketingStatus(project.id, item.id)}
+                                                title="Click to advance status"
+                                            >
+                                                {statusMeta.label}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-task-remove"
+                                                onClick={() => onRemoveMarketingItem(project.id, item.id)}
+                                                aria-label="Remove marketing item"
+                                            >
+                                                <Trash2 size={13} strokeWidth={1.75} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newMarketingLabel}
+                                onChange={(e) => setNewMarketingLabel(e.target.value)}
+                                onKeyDown={handleMarketingKeyDown}
+                                placeholder="Add a marketing item..."
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddMarketingItem} disabled={!newMarketingLabel.trim()}>
                                 <Plus size={15} strokeWidth={2} />
                             </button>
                         </div>
