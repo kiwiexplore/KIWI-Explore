@@ -184,6 +184,22 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         setResearchEntries((prev) => prev.map((r) => (r.id === id ? { ...r, ...changes, savedAt: "Just now" } : r)));
     };
 
+    // Same "generate before setProjects, return the id synchronously"
+    // approach as handleAddProjectNote.
+    const handleAddProjectResearch = (projectId: string): string => {
+        const entry = createMockResearchEntry();
+        setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, research: [entry, ...p.research] } : p)));
+        return entry.id;
+    };
+
+    const handleProjectResearchChange = (projectId: string, entryId: string, changes: Partial<Pick<ResearchEntry, "title" | "summary" | "tag" | "source">>) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, research: p.research.map((r) => (r.id === entryId ? { ...r, ...changes, savedAt: "Just now" } : r)) }
+                : p
+        )));
+    };
+
     const handleSearchSelect = (kind: "project" | "note" | "research", id: string) => {
         if (kind === "project") { setSection("projects"); setSelectedProjectId(id); }
         else if (kind === "note") { setSection("notes"); setSelectedNoteId(id); }
@@ -230,6 +246,8 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                                 onRemoveTask={handleRemoveTask}
                                 onAddNote={handleAddProjectNote}
                                 onNoteChange={handleProjectNoteChange}
+                                onAddResearch={handleAddProjectResearch}
+                                onResearchChange={handleProjectResearchChange}
                             />
                         ) : (
                             <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />

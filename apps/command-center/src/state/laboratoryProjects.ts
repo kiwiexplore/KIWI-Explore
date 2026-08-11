@@ -1,4 +1,5 @@
 import type { LabNote } from "./laboratoryNotes";
+import type { ResearchEntry } from "./laboratoryResearch";
 
 /**
  * Laboratory's project registry — deliberately domain-agnostic. A
@@ -27,10 +28,11 @@ export interface LaboratoryProject {
     tags: string[];
     lastActivity: string; // human-readable, static for now — no real activity feed yet
     tasks: ProjectTask[];
-    // Reuses the exact same LabNote shape as Laboratory's global Notes
-    // section (state/laboratoryNotes.ts) — these are scoped to just
-    // this project, unlike the global list.
+    // Reuses the exact same LabNote/ResearchEntry shapes as Laboratory's
+    // global Notes/Research sections — these are scoped to just this
+    // project, unlike the global lists.
     notes: LabNote[];
+    research: ResearchEntry[];
 }
 
 export const STATUS_META: Record<ProjectStatus, { label: string; color: string }> = {
@@ -61,6 +63,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         notes: [
             { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
         ],
+        research: [
+            { id: "research-p1", title: "Selective bloom vs plain threshold", summary: "Plain luminance-threshold Bloom couldn't isolate pulse lines from ambient neurons — switched to SelectiveBloom.", tag: "Rendering", source: "", savedAt: "Just now" },
+        ],
     },
     {
         id: "debut-ep",
@@ -76,6 +81,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
             { id: "task-5", title: "Book studio time", done: false },
         ],
         notes: [],
+        research: [],
     },
     {
         id: "materials-study",
@@ -88,6 +94,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         lastActivity: "1 week ago",
         tasks: [],
         notes: [],
+        research: [],
     },
 ];
 
@@ -106,5 +113,6 @@ export function createMockProject(): LaboratoryProject {
         lastActivity: "Just now",
         tasks: [],
         notes: [],
+        research: [],
     };
 }

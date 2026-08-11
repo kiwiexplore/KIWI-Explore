@@ -1,13 +1,14 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, Plus, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, FlaskConical, Link2, Plus, StickyNote, Trash2 } from "lucide-react";
 import { STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
+import type { ResearchEntry } from "../../state/laboratoryResearch";
 import "./ProjectWorkspace.css";
 
-// Not all of these are real yet — Overview, Tasks, and Notes are the
-// only modules with actual content (see the render below). The rest
-// just need to exist as tabs now so the architecture doesn't have to
-// change shape later to fit them in, per explicit request.
+// Not all of these are real yet — Overview, Research, Tasks, and Notes
+// are the only modules with actual content (see the render below). The
+// rest just need to exist as tabs now so the architecture doesn't have
+// to change shape later to fit them in, per explicit request.
 const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
 
 interface ProjectWorkspaceProps {
@@ -17,10 +18,13 @@ interface ProjectWorkspaceProps {
     onAddTask: (projectId: string, title: string) => void;
     onToggleTask: (projectId: string, taskId: string) => void;
     onRemoveTask: (projectId: string, taskId: string) => void;
-    // Returns the new note's id so the workspace can jump straight
-    // into editing it, same as the global Notes section does.
+    // Returns the new note's/finding's id so the workspace can jump
+    // straight into editing it, same as the global Notes/Research
+    // sections do.
     onAddNote: (projectId: string) => string;
     onNoteChange: (projectId: string, noteId: string, changes: Partial<Pick<LabNote, "title" | "content">>) => void;
+    onAddResearch: (projectId: string) => string;
+    onResearchChange: (projectId: string, entryId: string, changes: Partial<Pick<ResearchEntry, "title" | "summary" | "tag" | "source">>) => void;
 }
 
 /**
@@ -30,12 +34,14 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddNote, onNoteChange }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+    const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
     const status = STATUS_META[project.status];
     const selectedNote = project.notes.find((n) => n.id === selectedNoteId) ?? null;
+    const selectedResearch = project.research.find((r) => r.id === selectedResearchId) ?? null;
 
     const handleAddTask = () => {
         if (!newTask.trim()) return;
@@ -102,6 +108,9 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                         )}
                         {m === "Notes" && project.notes.length > 0 && (
                             <span className="project-workspace-module-count">{project.notes.length}</span>
+                        )}
+                        {m === "Research" && project.research.length > 0 && (
+                            <span className="project-workspace-module-count">{project.research.length}</span>
                         )}
                     </button>
                 ))}
@@ -175,6 +184,74 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     </div>
                 )}
 
+                {activeModule === "Research" && (
+                    selectedResearch ? (
+                        <div className="project-workspace-note-editor">
+                            <button type="button" className="project-workspace-note-back" onClick={() => setSelectedResearchId(null)}>
+                                <ArrowLeft size={13} strokeWidth={2} />
+                                Research
+                            </button>
+                            <input
+                                type="text"
+                                className="project-workspace-note-title"
+                                value={selectedResearch.title}
+                                onChange={(e) => onResearchChange(project.id, selectedResearch.id, { title: e.target.value })}
+                                placeholder="Untitled finding"
+                            />
+                            <div className="project-workspace-research-meta-row">
+                                <input
+                                    type="text"
+                                    className="project-workspace-research-meta-input"
+                                    value={selectedResearch.tag}
+                                    onChange={(e) => onResearchChange(project.id, selectedResearch.id, { tag: e.target.value })}
+                                    placeholder="Tag"
+                                />
+                                <input
+                                    type="text"
+                                    className="project-workspace-research-meta-input"
+                                    value={selectedResearch.source}
+                                    onChange={(e) => onResearchChange(project.id, selectedResearch.id, { source: e.target.value })}
+                                    placeholder="Source URL or citation (optional)"
+                                />
+                            </div>
+                            <textarea
+                                className="project-workspace-note-content"
+                                value={selectedResearch.summary}
+                                onChange={(e) => onResearchChange(project.id, selectedResearch.id, { summary: e.target.value })}
+                                placeholder="What did you find?"
+                                rows={6}
+                            />
+                        </div>
+                    ) : (
+                        <div className="project-workspace-notes">
+                            <button type="button" className="project-workspace-notes-add" onClick={() => setSelectedResearchId(onAddResearch(project.id))}>
+                                <Plus size={14} strokeWidth={2} />
+                                Save Finding
+                            </button>
+
+                            {project.research.length === 0 ? (
+                                <p className="project-workspace-tasks-empty">No findings yet — save the first one above.</p>
+                            ) : (
+                                <div className="project-workspace-notes-grid">
+                                    {project.research.map((entry) => (
+                                        <button key={entry.id} type="button" className="project-workspace-note-card" onClick={() => setSelectedResearchId(entry.id)}>
+                                            <FlaskConical size={14} strokeWidth={1.75} className="project-workspace-note-card-icon" />
+                                            <span className="project-workspace-note-card-title">{entry.title}</span>
+                                            <span className="project-workspace-note-card-preview">{entry.summary || "No summary yet."}</span>
+                                            {entry.source && (
+                                                <span className="project-workspace-note-card-source">
+                                                    <Link2 size={10} strokeWidth={2} />
+                                                    {entry.source}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )
+                )}
+
                 {activeModule === "Notes" && (
                     selectedNote ? (
                         <div className="project-workspace-note-editor">
@@ -221,7 +298,7 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     )
                 )}
 
-                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && (
+                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && (
                     <div className="project-workspace-soon">
                         <span className="project-workspace-soon-title">{activeModule}</span>
                         <p>This module isn't built yet — it's next in line.</p>

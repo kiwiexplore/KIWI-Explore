@@ -681,3 +681,57 @@
     color: var(--text-muted);
 
 }
+
+.project-workspace-research-meta-row {
+
+    display: flex;
+    gap: 8px;
+
+}
+
+.project-workspace-research-meta-input {
+
+    flex: 1;
+    min-width: 0;
+
+    padding: 8px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+
+    outline: none;
+    transition: var(--transition);
+
+}
+
+.project-workspace-research-meta-input:focus {
+
+    border-color: var(--primary);
+
+}
+
+.project-workspace-research-meta-input::placeholder {
+
+    color: var(--text-muted);
+
+}
+
+.project-workspace-note-card-source {
+
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    font-size: 10px;
+    color: var(--primary);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
