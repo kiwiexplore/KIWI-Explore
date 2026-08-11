@@ -6,6 +6,10 @@ import LaboratorySearch from "./LaboratorySearch";
 import CalendarPanel from "./CalendarPanel";
 import NotificationsPanel from "./NotificationsPanel";
 import Overview from "./Overview";
+import TasksBoard from "./TasksBoard";
+import IdeasBoard from "./IdeasBoard";
+import DesignStudioBoard from "./DesignStudioBoard";
+import PrototypesBoard from "./PrototypesBoard";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -25,7 +29,7 @@ import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import "./Laboratory.css";
 
-export type LaboratorySection = "overview" | "projects" | "research" | "notes";
+export type LaboratorySection = "overview" | "projects" | "research" | "notes" | "tasks" | "ideas" | "design" | "prototypes";
 
 interface LaboratoryProps {
     onBack: () => void;
@@ -340,6 +344,44 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                             onSelectNote={(id) => { setSelectedNoteId(id); setSection("notes"); }}
                             onSelectResearch={(id) => { setSelectedResearchId(id); setSection("research"); }}
                             onToggleTask={handleToggleTask}
+                        />
+                    )}
+
+                    {section === "tasks" && (
+                        <TasksBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddTask={handleAddTask}
+                            onToggleTask={handleToggleTask}
+                            onRemoveTask={handleRemoveTask}
+                        />
+                    )}
+
+                    {section === "ideas" && (
+                        <IdeasBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddIdea={handleAddIdea}
+                            onRemoveIdea={handleRemoveIdea}
+                        />
+                    )}
+
+                    {section === "design" && (
+                        <DesignStudioBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddDesignRef={handleAddDesignRef}
+                            onRemoveDesignRef={handleRemoveDesignRef}
+                        />
+                    )}
+
+                    {section === "prototypes" && (
+                        <PrototypesBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddPrototype={handleAddPrototype}
+                            onCyclePrototypeStage={handleCyclePrototypeStage}
+                            onRemovePrototype={handleRemovePrototype}
                         />
                     )}
 

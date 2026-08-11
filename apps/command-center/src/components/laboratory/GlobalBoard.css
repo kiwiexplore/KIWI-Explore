@@ -1,0 +1,144 @@
+/*
+ * Shared layout for Laboratory's "one section per project" global
+ * pages (Tasks, Ideas, Design Studio, Prototypes) — same page shell as
+ * ProjectGrid/Overview, plus a per-project group card that wraps
+ * ProjectWorkspace's own item-list/add-form CSS.
+ */
+
+.global-board-page {
+
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    padding: 40px 40px 60px;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+
+}
+
+.global-board-header {
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+
+}
+
+.global-board-eyebrow {
+
+    display: block;
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+
+    color: var(--primary);
+    text-shadow: 0 0 12px rgba(73, 199, 255, .4);
+
+}
+
+.global-board-header h1 {
+
+    margin: 6px 0 0;
+
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.global-board-summary {
+
+    flex-shrink: 0;
+
+    font-size: 12px;
+    color: var(--text-muted);
+
+}
+
+.global-board-empty {
+
+    padding: 48px 24px;
+
+    text-align: center;
+
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+
+    color: var(--text-muted);
+    font-size: 14px;
+
+}
+
+.global-board-groups {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+    align-items: start;
+
+}
+
+.global-board-group {
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    padding: 18px 20px;
+
+    background: rgba(16, 25, 46, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+}
+
+.global-board-group-header {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+}
+
+.global-board-group-name {
+
+    padding: 0;
+
+    background: none;
+    border: none;
+
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.global-board-group-name:hover {
+
+    color: var(--primary);
+
+}
+
+.global-board-group-count {
+
+    flex-shrink: 0;
+
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+
+}

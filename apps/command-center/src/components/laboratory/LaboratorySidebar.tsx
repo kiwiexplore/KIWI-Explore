@@ -20,15 +20,15 @@ interface SidebarItem {
 const MAIN_ITEMS: SidebarItem[] = [
     { label: "Overview", icon: LayoutDashboard, section: "overview" },
     { label: "Projects", icon: FolderKanban, section: "projects" },
-    { label: "Ideas", icon: Lightbulb },
+    { label: "Ideas", icon: Lightbulb, section: "ideas" },
     { label: "Research", icon: FlaskConical, section: "research" },
     { label: "Notes", icon: StickyNote, section: "notes" },
-    { label: "Design Studio", icon: Palette },
-    { label: "Prototypes", icon: Boxes },
+    { label: "Design Studio", icon: Palette, section: "design" },
+    { label: "Prototypes", icon: Boxes, section: "prototypes" },
 ];
 
 const DEVELOP_ITEMS: SidebarItem[] = [
-    { label: "Tasks", icon: ListChecks },
+    { label: "Tasks", icon: ListChecks, section: "tasks" },
     { label: "Resources", icon: Library },
     { label: "Tests", icon: TestTube2 },
     { label: "Documents", icon: FileText },
@@ -95,9 +95,9 @@ interface LaboratorySidebarProps {
  * Laboratory's left nav — MAIN/DEVELOP/LAUNCH/AI TOOLS, matching the
  * original reference mockup's structure. Most items are placeholders
  * (badged "Soon", same honest pattern as InfoPanel's Terms/Privacy) —
- * only Overview/Projects/Research/Notes are real sections so far, and
- * "KIWI Assistant" opens KiwiPanel directly rather than switching
- * sections.
+ * only Overview/Projects/Research/Notes/Tasks/Ideas/Design
+ * Studio/Prototypes are real sections so far, and "KIWI Assistant"
+ * opens KiwiPanel directly rather than switching sections.
  * Deliberately duplicates the top bar's own Projects/Research/Notes
  * tabs rather than replacing them — the reference mockup itself has
  * both a top nav and this sidebar with overlapping items.
