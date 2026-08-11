@@ -1,12 +1,13 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, StickyNote, Trash2 } from "lucide-react";
 import { STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
+import type { LabNote } from "../../state/laboratoryNotes";
 import "./ProjectWorkspace.css";
 
-// Not all of these are real yet — Overview and Tasks are the only
-// modules with actual content (see the render below). The rest just
-// need to exist as tabs now so the architecture doesn't have to change
-// shape later to fit them in, per explicit request.
+// Not all of these are real yet — Overview, Tasks, and Notes are the
+// only modules with actual content (see the render below). The rest
+// just need to exist as tabs now so the architecture doesn't have to
+// change shape later to fit them in, per explicit request.
 const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
 
 interface ProjectWorkspaceProps {
@@ -16,6 +17,10 @@ interface ProjectWorkspaceProps {
     onAddTask: (projectId: string, title: string) => void;
     onToggleTask: (projectId: string, taskId: string) => void;
     onRemoveTask: (projectId: string, taskId: string) => void;
+    // Returns the new note's id so the workspace can jump straight
+    // into editing it, same as the global Notes section does.
+    onAddNote: (projectId: string) => string;
+    onNoteChange: (projectId: string, noteId: string, changes: Partial<Pick<LabNote, "title" | "content">>) => void;
 }
 
 /**
@@ -25,10 +30,12 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddNote, onNoteChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
+    const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const status = STATUS_META[project.status];
+    const selectedNote = project.notes.find((n) => n.id === selectedNoteId) ?? null;
 
     const handleAddTask = () => {
         if (!newTask.trim()) return;
@@ -92,6 +99,9 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                         {m}
                         {m === "Tasks" && project.tasks.length > 0 && (
                             <span className="project-workspace-module-count">{doneCount}/{project.tasks.length}</span>
+                        )}
+                        {m === "Notes" && project.notes.length > 0 && (
+                            <span className="project-workspace-module-count">{project.notes.length}</span>
                         )}
                     </button>
                 ))}
@@ -165,7 +175,53 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     </div>
                 )}
 
-                {activeModule !== "Overview" && activeModule !== "Tasks" && (
+                {activeModule === "Notes" && (
+                    selectedNote ? (
+                        <div className="project-workspace-note-editor">
+                            <button type="button" className="project-workspace-note-back" onClick={() => setSelectedNoteId(null)}>
+                                <ArrowLeft size={13} strokeWidth={2} />
+                                Notes
+                            </button>
+                            <input
+                                type="text"
+                                className="project-workspace-note-title"
+                                value={selectedNote.title}
+                                onChange={(e) => onNoteChange(project.id, selectedNote.id, { title: e.target.value })}
+                                placeholder="Untitled note"
+                            />
+                            <textarea
+                                className="project-workspace-note-content"
+                                value={selectedNote.content}
+                                onChange={(e) => onNoteChange(project.id, selectedNote.id, { content: e.target.value })}
+                                placeholder="Start writing..."
+                                rows={7}
+                            />
+                        </div>
+                    ) : (
+                        <div className="project-workspace-notes">
+                            <button type="button" className="project-workspace-notes-add" onClick={() => setSelectedNoteId(onAddNote(project.id))}>
+                                <Plus size={14} strokeWidth={2} />
+                                New Note
+                            </button>
+
+                            {project.notes.length === 0 ? (
+                                <p className="project-workspace-tasks-empty">No notes yet — add the first one above.</p>
+                            ) : (
+                                <div className="project-workspace-notes-grid">
+                                    {project.notes.map((note) => (
+                                        <button key={note.id} type="button" className="project-workspace-note-card" onClick={() => setSelectedNoteId(note.id)}>
+                                            <StickyNote size={14} strokeWidth={1.75} className="project-workspace-note-card-icon" />
+                                            <span className="project-workspace-note-card-title">{note.title}</span>
+                                            <span className="project-workspace-note-card-preview">{note.content || "Empty note."}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )
+                )}
+
+                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && (
                     <div className="project-workspace-soon">
                         <span className="project-workspace-soon-title">{activeModule}</span>
                         <p>This module isn't built yet — it's next in line.</p>

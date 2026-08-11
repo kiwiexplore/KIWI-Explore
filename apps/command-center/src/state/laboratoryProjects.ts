@@ -1,3 +1,5 @@
+import type { LabNote } from "./laboratoryNotes";
+
 /**
  * Laboratory's project registry — deliberately domain-agnostic. A
  * project here isn't "a hiking jacket" or "a startup", it's just
@@ -25,6 +27,10 @@ export interface LaboratoryProject {
     tags: string[];
     lastActivity: string; // human-readable, static for now — no real activity feed yet
     tasks: ProjectTask[];
+    // Reuses the exact same LabNote shape as Laboratory's global Notes
+    // section (state/laboratoryNotes.ts) — these are scoped to just
+    // this project, unlike the global list.
+    notes: LabNote[];
 }
 
 export const STATUS_META: Record<ProjectStatus, { label: string; color: string }> = {
@@ -52,6 +58,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
             { id: "task-2", title: "Build a real Tasks module", done: true },
             { id: "task-3", title: "Design the Files module", done: false },
         ],
+        notes: [
+            { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
+        ],
     },
     {
         id: "debut-ep",
@@ -66,6 +75,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
             { id: "task-4", title: "Finish lyrics for track 3", done: false },
             { id: "task-5", title: "Book studio time", done: false },
         ],
+        notes: [],
     },
     {
         id: "materials-study",
@@ -77,6 +87,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         tags: ["Science", "Prototype"],
         lastActivity: "1 week ago",
         tasks: [],
+        notes: [],
     },
 ];
 
@@ -94,5 +105,6 @@ export function createMockProject(): LaboratoryProject {
         tags: [],
         lastActivity: "Just now",
         tasks: [],
+        notes: [],
     };
 }

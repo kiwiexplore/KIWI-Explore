@@ -155,6 +155,25 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...changes, updatedAt: "Just now" } : n)));
     };
 
+    // Reuses the exact same createMockNote() the global Notes section
+    // uses — same "Untitled Note N" starting point either way. Returns
+    // the new note's id synchronously (the note itself is generated
+    // before setProjects runs) so ProjectWorkspace can jump straight
+    // into editing it.
+    const handleAddProjectNote = (projectId: string): string => {
+        const note = createMockNote();
+        setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, notes: [note, ...p.notes] } : p)));
+        return note.id;
+    };
+
+    const handleProjectNoteChange = (projectId: string, noteId: string, changes: Partial<Pick<LabNote, "title" | "content">>) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, notes: p.notes.map((n) => (n.id === noteId ? { ...n, ...changes, updatedAt: "Just now" } : n)) }
+                : p
+        )));
+    };
+
     const handleCreateResearchEntry = () => {
         const entry = createMockResearchEntry();
         setResearchEntries((prev) => [entry, ...prev]);
@@ -203,13 +222,15 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                     {section === "projects" && (
                         selectedProject ? (
                             <ProjectWorkspace
-                            project={selectedProject}
-                            onBack={() => setSelectedProjectId(null)}
-                            onChange={handleProjectChange}
-                            onAddTask={handleAddTask}
-                            onToggleTask={handleToggleTask}
-                            onRemoveTask={handleRemoveTask}
-                        />
+                                project={selectedProject}
+                                onBack={() => setSelectedProjectId(null)}
+                                onChange={handleProjectChange}
+                                onAddTask={handleAddTask}
+                                onToggleTask={handleToggleTask}
+                                onRemoveTask={handleRemoveTask}
+                                onAddNote={handleAddProjectNote}
+                                onNoteChange={handleProjectNoteChange}
+                            />
                         ) : (
                             <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />
                         )
