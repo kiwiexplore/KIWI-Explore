@@ -16,24 +16,23 @@
 
     /* Docked near the right edge, filling the height between the top
        bar and quick bar (both 72px now) minus a slight gap on all
-       three sides — narrower (almost half its original width) and
-       fully rounded per explicit follow-up feedback, a middle ground
-       between the original floating panel and the flush/no-radius
-       docked version. Same spot the collapsed .kiwi-dock-tab below
-       occupies, so opening it doesn't jump anywhere. */
+       three sides, fully rounded. Same width as the collapsed
+       .kiwi-dock-tab below (and close to the left sidebar's own
+       240px) so opening it doesn't change its footprint at all — just
+       unfolds downward in place, per explicit request. */
     position: fixed;
     top: 80px;
     right: 8px;
     bottom: 80px;
 
-    width: 200px;
+    width: 230px;
     max-width: 90vw;
     box-sizing: border-box;
 
     display: flex;
     flex-direction: column;
 
-    padding: 16px;
+    padding: 18px;
     gap: 14px;
 
     background: rgba(8, 13, 28, 0.9);
@@ -64,10 +63,14 @@
        vertical strip with sideways text — per explicit request. Sits
        right under the top bar (not centered) so opening it reads as
        unfolding downward from that spot, matching where the expanded
-       panel itself starts. */
+       panel itself starts. Same width as .kiwi-panel so opening it
+       never changes its footprint. */
     position: fixed;
     top: 80px;
     right: 8px;
+
+    width: 230px;
+    box-sizing: border-box;
 
     display: flex;
     align-items: center;

@@ -66,22 +66,23 @@ function getAudioContextCtor(): typeof AudioContext | null {
 /**
  * The bottom bar from the reference mockup — a row of quick-tool
  * shortcuts (all placeholders, "Soon" badged, same as the sidebar's
- * own not-yet-built modules) plus a real Focus Mode timer. Everything
- * about the timer lives inside a single ring: the center holds
- * whichever's most important right now — a Start icon while idle, the
- * big countdown digits once running — while the duration picker (idle)
- * or Pause/Stop controls (running) sit anchored to the ring's own
- * bottom edge, per explicit request. The progress arc itself shifts
- * from green through amber to red as the session runs out, and a
- * synthesized gong (Web Audio API, no audio asset needed) plays on
- * completion — the AudioContext is created/unlocked inside the Start
- * click handler specifically so it's not blocked by autoplay policies
- * when the gong fires later, unprompted, once time runs out.
- * Introduced an explicit idle/running/paused state machine so pausing
- * freezes the countdown without losing remaining time, distinct from
- * Stop which cancels back to the picker. Not tied to any project/task
- * yet, just a standalone session timer — no backend needed for any of
- * this.
+ * own not-yet-built modules) plus a real Focus Mode timer. The ring's
+ * own center is reserved for whatever's being read at a glance — the
+ * duration picker while idle (sized up now that nothing else shares
+ * the center with it), the big countdown digits once running — while
+ * the actual controls (Start; Pause/Resume and Stop) sit as bigger
+ * standalone buttons flanking the ring on either side, per explicit
+ * request that they move outside the ring rather than being squeezed
+ * onto its edge. The progress arc itself shifts from green through
+ * amber to red as the session runs out, and a synthesized gong (Web
+ * Audio API, no audio asset needed) plays on completion — the
+ * AudioContext is created/unlocked inside the Start click handler
+ * specifically so it's not blocked by autoplay policies when the gong
+ * fires later, unprompted, once time runs out. Introduced an explicit
+ * idle/running/paused state machine so pausing freezes the countdown
+ * without losing remaining time, distinct from Stop which cancels back
+ * to the picker. Not tied to any project/task yet, just a standalone
+ * session timer — no backend needed for any of this.
  */
 export default function LaboratoryQuickBar() {
     const [durationChoice, setDurationChoice] = useState<string>("25");
@@ -181,89 +182,93 @@ export default function LaboratoryQuickBar() {
                 ))}
             </div>
 
-            <div className="lab-quickbar-ring">
-                <svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                    <circle
-                        className="lab-quickbar-ring-track"
-                        cx={RING_SIZE / 2}
-                        cy={RING_SIZE / 2}
-                        r={RING_RADIUS}
-                        strokeWidth={RING_STROKE}
-                        fill="none"
-                    />
-                    {running && (
+            <div className="lab-quickbar-timer">
+                <div className="lab-quickbar-slot">
+                    {running ? (
+                        focusState === "running" ? (
+                            <button type="button" className="lab-quickbar-side-btn" onClick={pauseFocus} aria-label="Pause focus session">
+                                <Pause size={13} strokeWidth={2} />
+                            </button>
+                        ) : (
+                            <button type="button" className="lab-quickbar-side-btn" onClick={resumeFocus} aria-label="Resume focus session">
+                                <Play size={13} strokeWidth={2} />
+                            </button>
+                        )
+                    ) : (
+                        <button type="button" className="lab-quickbar-side-btn lab-quickbar-side-btn-start" onClick={startFocus} disabled={!resolvedMinutes} aria-label="Start focus session">
+                            <Play size={14} strokeWidth={2} />
+                        </button>
+                    )}
+                </div>
+
+                <div className="lab-quickbar-ring">
+                    <svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
                         <circle
+                            className="lab-quickbar-ring-track"
                             cx={RING_SIZE / 2}
                             cy={RING_SIZE / 2}
                             r={RING_RADIUS}
                             strokeWidth={RING_STROKE}
                             fill="none"
-                            stroke={progressColor(progress)}
-                            strokeLinecap="round"
-                            strokeDasharray={RING_CIRCUMFERENCE}
-                            strokeDashoffset={ringOffset}
-                            transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
-                            style={{ transition: "stroke-dashoffset 1s linear, stroke .4s ease" }}
                         />
-                    )}
-                </svg>
+                        {running && (
+                            <circle
+                                cx={RING_SIZE / 2}
+                                cy={RING_SIZE / 2}
+                                r={RING_RADIUS}
+                                strokeWidth={RING_STROKE}
+                                fill="none"
+                                stroke={progressColor(progress)}
+                                strokeLinecap="round"
+                                strokeDasharray={RING_CIRCUMFERENCE}
+                                strokeDashoffset={ringOffset}
+                                transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+                                style={{ transition: "stroke-dashoffset 1s linear, stroke .4s ease" }}
+                            />
+                        )}
+                    </svg>
 
-                {running ? (
-                    <>
-                        <span className="lab-quickbar-ring-center lab-quickbar-ring-time">{formatRemaining(remaining)}</span>
-                        <div className="lab-quickbar-ring-edge">
-                            {focusState === "running" ? (
-                                <button type="button" className="lab-quickbar-ring-btn" onClick={pauseFocus} aria-label="Pause focus session">
-                                    <Pause size={10} strokeWidth={2} />
-                                </button>
-                            ) : (
-                                <button type="button" className="lab-quickbar-ring-btn" onClick={resumeFocus} aria-label="Resume focus session">
-                                    <Play size={10} strokeWidth={2} />
-                                </button>
-                            )}
-                            <button type="button" className="lab-quickbar-ring-btn lab-quickbar-ring-btn-stop" onClick={stopFocus} aria-label="Stop focus session">
-                                <Square size={9} strokeWidth={2} />
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <button type="button" className="lab-quickbar-ring-center lab-quickbar-ring-btn-start" onClick={startFocus} disabled={!resolvedMinutes} aria-label="Start focus session">
-                            <Play size={16} strokeWidth={2} />
+                    <div className="lab-quickbar-ring-center">
+                        {running ? (
+                            <span className="lab-quickbar-ring-time">{formatRemaining(remaining)}</span>
+                        ) : durationChoice === CUSTOM_DURATION ? (
+                            <input
+                                type="number"
+                                min={1}
+                                max={999}
+                                className="lab-quickbar-ring-input"
+                                value={customMinutes}
+                                onChange={(e) => setCustomMinutes(e.target.value)}
+                                placeholder="min"
+                                aria-label="Custom focus duration in minutes"
+                            />
+                        ) : (
+                            <select
+                                className="lab-quickbar-ring-select"
+                                value={durationChoice}
+                                onChange={(e) => setDurationChoice(e.target.value)}
+                                aria-label="Focus duration"
+                            >
+                                {DURATION_PRESETS.map((minutes) => (
+                                    <option key={minutes} value={minutes}>{formatDurationLabel(minutes)}</option>
+                                ))}
+                                <option value={CUSTOM_DURATION}>Custom</option>
+                            </select>
+                        )}
+                    </div>
+                </div>
+
+                <div className="lab-quickbar-slot">
+                    {running ? (
+                        <button type="button" className="lab-quickbar-side-btn lab-quickbar-side-btn-stop" onClick={stopFocus} aria-label="Stop focus session">
+                            <Square size={12} strokeWidth={2} />
                         </button>
-                        <div className="lab-quickbar-ring-edge">
-                            {durationChoice === CUSTOM_DURATION ? (
-                                <input
-                                    type="number"
-                                    min={1}
-                                    max={999}
-                                    className="lab-quickbar-ring-input"
-                                    value={customMinutes}
-                                    onChange={(e) => setCustomMinutes(e.target.value)}
-                                    placeholder="min"
-                                    aria-label="Custom focus duration in minutes"
-                                />
-                            ) : (
-                                <select
-                                    className="lab-quickbar-ring-select"
-                                    value={durationChoice}
-                                    onChange={(e) => setDurationChoice(e.target.value)}
-                                    aria-label="Focus duration"
-                                >
-                                    {DURATION_PRESETS.map((minutes) => (
-                                        <option key={minutes} value={minutes}>{formatDurationLabel(minutes)}</option>
-                                    ))}
-                                    <option value={CUSTOM_DURATION}>Custom</option>
-                                </select>
-                            )}
-                            {durationChoice === CUSTOM_DURATION && (
-                                <button type="button" className="lab-quickbar-ring-back" onClick={() => setDurationChoice("25")} aria-label="Back to presets">
-                                    presets
-                                </button>
-                            )}
-                        </div>
-                    </>
-                )}
+                    ) : durationChoice === CUSTOM_DURATION ? (
+                        <button type="button" className="lab-quickbar-side-btn-mini" onClick={() => setDurationChoice("25")} aria-label="Back to presets">
+                            presets
+                        </button>
+                    ) : null}
+                </div>
             </div>
         </footer>
     );

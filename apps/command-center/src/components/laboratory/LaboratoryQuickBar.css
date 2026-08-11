@@ -73,6 +73,30 @@
 
 }
 
+.lab-quickbar-timer {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+}
+
+/* Reserves consistent space on either side of the ring for the
+   Start/Pause/Stop buttons (or the "presets" toggle) — fixed
+   min-width so the ring doesn't visibly shift when one side is empty
+   (idle, no custom duration picked). */
+.lab-quickbar-slot {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 32px;
+    flex-shrink: 0;
+
+}
+
 .lab-quickbar-ring {
 
     position: relative;
@@ -93,9 +117,10 @@
 
 }
 
-/* Dead center of the ring — either the big countdown digits (running)
-   or the Start button (idle), per explicit request that the number
-   itself read large rather than being squeezed alongside controls. */
+/* Dead center of the ring — the duration picker while idle, or the
+   big countdown digits once running. Nothing else shares the center
+   anymore (Start/Pause/Stop all moved to the side slots), so this can
+   read large. */
 .lab-quickbar-ring-center {
 
     position: absolute;
@@ -107,7 +132,7 @@
 
 .lab-quickbar-ring-time {
 
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
     color: #eaf6ff;
@@ -115,39 +140,22 @@
 
 }
 
-/* Anchored to the ring's own bottom edge — the duration picker (idle)
-   or Pause/Stop (running) — rather than stacked in the center, so the
-   center stays free for the number/Start icon. */
-.lab-quickbar-ring-edge {
-
-    position: absolute;
-    bottom: 1px;
-    left: 50%;
-    transform: translateX(-50%);
-
-    display: flex;
-    align-items: center;
-    gap: 3px;
-
-}
-
 .lab-quickbar-ring-select,
 .lab-quickbar-ring-input {
 
-    width: 34px;
+    width: 46px;
 
-    padding: 0 2px;
+    padding: 3px 4px;
 
-    background: rgba(255, 255, 255, .06);
+    background: rgba(255, 255, 255, .07);
     border: 1px solid var(--border);
-    border-radius: 5px;
+    border-radius: 7px;
 
     color: var(--text);
-    font-size: 8px;
+    font-size: 12px;
     font-weight: 700;
     font-family: inherit;
     text-align: center;
-    line-height: 1.6;
 
     outline: none;
     cursor: pointer;
@@ -170,37 +178,15 @@
 
 }
 
-.lab-quickbar-ring-back {
-
-    background: none;
-    border: none;
-    padding: 0;
-
-    color: var(--text-muted);
-    font-size: 7px;
-    font-weight: 600;
-    letter-spacing: .3px;
-    text-transform: uppercase;
-
-    cursor: pointer;
-
-}
-
-.lab-quickbar-ring-back:hover {
-
-    color: var(--primary);
-
-}
-
-.lab-quickbar-ring-btn {
+.lab-quickbar-side-btn {
 
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 
-    width: 15px;
-    height: 15px;
+    width: 30px;
+    height: 30px;
 
     background: rgba(255, 255, 255, .08);
     border: none;
@@ -212,48 +198,67 @@
 
 }
 
-.lab-quickbar-ring-btn:hover:not(:disabled) {
+.lab-quickbar-side-btn:hover:not(:disabled) {
 
     background: rgba(73, 199, 255, .2);
     color: #eaf6ff;
 
 }
 
-.lab-quickbar-ring-btn-stop:hover {
+.lab-quickbar-side-btn-stop:hover {
 
     background: rgba(255, 79, 109, .2);
     color: var(--danger);
 
 }
 
-.lab-quickbar-ring-btn-start {
+.lab-quickbar-side-btn-start {
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    width: 26px;
-    height: 26px;
+    width: 32px;
+    height: 32px;
 
     background: var(--primary);
-    border: none;
-    border-radius: 50%;
-
     color: #06131f;
+
+}
+
+.lab-quickbar-side-btn-start:hover:not(:disabled) {
+
+    background: var(--primary);
+    box-shadow: 0 0 12px rgba(73, 199, 255, .5);
+
+}
+
+.lab-quickbar-side-btn-start:disabled {
+
+    opacity: .4;
+    cursor: not-allowed;
+
+}
+
+.lab-quickbar-side-btn-mini {
+
+    padding: 5px 8px;
+
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+
     cursor: pointer;
     transition: var(--transition);
 
 }
 
-.lab-quickbar-ring-btn-start:hover:not(:disabled) {
+.lab-quickbar-side-btn-mini:hover {
 
-    box-shadow: 0 0 12px rgba(73, 199, 255, .5);
-
-}
-
-.lab-quickbar-ring-btn-start:disabled {
-
-    opacity: .4;
-    cursor: not-allowed;
+    border-color: var(--primary);
+    color: #eaf6ff;
 
 }
