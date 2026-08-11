@@ -209,6 +209,22 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
+    const handleAddFile = (projectId: string, name: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, files: [...p.files, { id: `file-${Date.now()}`, name }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveFile = (projectId: string, fileId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, files: p.files.filter((f) => f.id !== fileId) }
+                : p
+        )));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -315,6 +331,8 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                                 onAddPrototype={handleAddPrototype}
                                 onCyclePrototypeStage={handleCyclePrototypeStage}
                                 onRemovePrototype={handleRemovePrototype}
+                                onAddFile={handleAddFile}
+                                onRemoveFile={handleRemoveFile}
                                 onAddNote={handleAddProjectNote}
                                 onNoteChange={handleProjectNoteChange}
                                 onAddResearch={handleAddProjectResearch}

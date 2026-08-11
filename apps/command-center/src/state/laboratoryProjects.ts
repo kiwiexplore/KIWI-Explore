@@ -38,6 +38,14 @@ export interface ProjectPrototype {
     stage: PrototypeStage;
 }
 
+// No real upload/backend yet — a "file" here is just a tracked
+// filename, same mock-data philosophy as everything else in this
+// registry. Real storage is a backend concern for later.
+export interface ProjectFile {
+    id: string;
+    name: string;
+}
+
 export interface LaboratoryProject {
     id: string;
     name: string;
@@ -51,6 +59,7 @@ export interface LaboratoryProject {
     ideas: ProjectIdea[];
     designRefs: ProjectDesignRef[];
     prototypes: ProjectPrototype[];
+    files: ProjectFile[];
     // Reuses the exact same LabNote/ResearchEntry shapes as Laboratory's
     // global Notes/Research sections — these are scoped to just this
     // project, unlike the global lists.
@@ -103,6 +112,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         prototypes: [
             { id: "proto-p1", label: "Laboratory workspace", url: "", stage: "testing" },
         ],
+        files: [
+            { id: "file-p1", name: "brain-shader-notes.glsl" },
+        ],
         notes: [
             { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
         ],
@@ -126,6 +138,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         ideas: [],
         designRefs: [],
         prototypes: [],
+        files: [],
         notes: [],
         research: [],
     },
@@ -142,6 +155,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         ideas: [],
         designRefs: [],
         prototypes: [],
+        files: [],
         notes: [],
         research: [],
     },
@@ -164,6 +178,7 @@ export function createMockProject(): LaboratoryProject {
         ideas: [],
         designRefs: [],
         prototypes: [],
+        files: [],
         notes: [],
         research: [],
     };

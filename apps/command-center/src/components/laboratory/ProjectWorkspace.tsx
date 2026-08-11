@@ -1,15 +1,15 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, FlaskConical, Lightbulb, Link2, Palette, Plus, Rocket, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, File, FlaskConical, Lightbulb, Link2, Palette, Plus, Rocket, StickyNote, Trash2 } from "lucide-react";
 import { PROTOTYPE_STAGE_META, STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
 import "./ProjectWorkspace.css";
 
 // Not all of these are real yet — Overview, Research, Ideas, Design,
-// Prototype, Tasks, and Notes are the only modules with actual content
-// (see the render below). The rest just need to exist as tabs now so
-// the architecture doesn't have to change shape later to fit them in,
-// per explicit request.
+// Prototype, Tasks, Files, and Notes are the only modules with actual
+// content (see the render below). The rest just need to exist as tabs
+// now so the architecture doesn't have to change shape later to fit
+// them in, per explicit request.
 const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
 
 interface ProjectWorkspaceProps {
@@ -26,6 +26,8 @@ interface ProjectWorkspaceProps {
     onAddPrototype: (projectId: string, label: string, url: string) => void;
     onCyclePrototypeStage: (projectId: string, prototypeId: string) => void;
     onRemovePrototype: (projectId: string, prototypeId: string) => void;
+    onAddFile: (projectId: string, name: string) => void;
+    onRemoveFile: (projectId: string, fileId: string) => void;
     // Returns the new note's/finding's id so the workspace can jump
     // straight into editing it, same as the global Notes/Research
     // sections do.
@@ -42,7 +44,7 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddPrototype, onCyclePrototypeStage, onRemovePrototype, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddPrototype, onCyclePrototypeStage, onRemovePrototype, onAddFile, onRemoveFile, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
     const [newIdea, setNewIdea] = useState("");
@@ -50,6 +52,7 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
     const [newDesignUrl, setNewDesignUrl] = useState("");
     const [newProtoLabel, setNewProtoLabel] = useState("");
     const [newProtoUrl, setNewProtoUrl] = useState("");
+    const [newFileName, setNewFileName] = useState("");
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
     const status = STATUS_META[project.status];
@@ -107,6 +110,19 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
         if (event.key === "Enter") {
             event.preventDefault();
             handleAddPrototype();
+        }
+    };
+
+    const handleAddFile = () => {
+        if (!newFileName.trim()) return;
+        onAddFile(project.id, newFileName.trim());
+        setNewFileName("");
+    };
+
+    const handleFileKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddFile();
         }
     };
 
@@ -174,6 +190,9 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                         )}
                         {m === "Prototype" && project.prototypes.length > 0 && (
                             <span className="project-workspace-module-count">{project.prototypes.length}</span>
+                        )}
+                        {m === "Files" && project.files.length > 0 && (
+                            <span className="project-workspace-module-count">{project.files.length}</span>
                         )}
                     </button>
                 ))}
@@ -528,7 +547,48 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     </div>
                 )}
 
-                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && activeModule !== "Design" && activeModule !== "Prototype" && (
+                {activeModule === "Files" && (
+                    <div className="project-workspace-tasks">
+                        {project.files.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No files tracked yet — add one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.files.map((file) => (
+                                    <div key={file.id} className="project-workspace-task">
+                                        <span className="project-workspace-idea-icon">
+                                            <File size={13} strokeWidth={1.75} />
+                                        </span>
+                                        <span className="project-workspace-task-title">{file.name}</span>
+                                        <button
+                                            type="button"
+                                            className="project-workspace-task-remove"
+                                            onClick={() => onRemoveFile(project.id, file.id)}
+                                            aria-label="Remove file"
+                                        >
+                                            <Trash2 size={13} strokeWidth={1.75} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newFileName}
+                                onChange={(e) => setNewFileName(e.target.value)}
+                                onKeyDown={handleFileKeyDown}
+                                placeholder="Track a file by name..."
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddFile} disabled={!newFileName.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && activeModule !== "Design" && activeModule !== "Prototype" && activeModule !== "Files" && (
                     <div className="project-workspace-soon">
                         <span className="project-workspace-soon-title">{activeModule}</span>
                         <p>This module isn't built yet — it's next in line.</p>
