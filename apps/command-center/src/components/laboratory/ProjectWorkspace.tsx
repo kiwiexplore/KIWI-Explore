@@ -5,10 +5,11 @@ import {
 } from "lucide-react";
 import {
     PRODUCT_STAGE_META, PROTOTYPE_STAGE_META, STATUS_META, TEST_STATUS_META, MARKETING_STATUS_META,
-    type LaboratoryProject,
+    type LaboratoryProject, type ImageAttachment,
 } from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
+import { ImageUploadButton, ImageThumbnail } from "./ImageAttachmentField";
 import "./ProjectWorkspace.css";
 
 const MODULES = [
@@ -32,12 +33,12 @@ interface ProjectWorkspaceProps {
     onRemoveTask: (projectId: string, taskId: string) => void;
     onAddIdea: (projectId: string, text: string) => void;
     onRemoveIdea: (projectId: string, ideaId: string) => void;
-    onAddDesignRef: (projectId: string, label: string, url: string) => void;
+    onAddDesignRef: (projectId: string, label: string, url: string, image?: ImageAttachment) => void;
     onRemoveDesignRef: (projectId: string, refId: string) => void;
     onAddPrototype: (projectId: string, label: string, url: string) => void;
     onCyclePrototypeStage: (projectId: string, prototypeId: string) => void;
     onRemovePrototype: (projectId: string, prototypeId: string) => void;
-    onAddFile: (projectId: string, name: string) => void;
+    onAddFile: (projectId: string, name: string, image?: ImageAttachment) => void;
     onRemoveFile: (projectId: string, fileId: string) => void;
     onAddResource: (projectId: string, label: string, url: string) => void;
     onRemoveResource: (projectId: string, resourceId: string) => void;
@@ -747,9 +748,13 @@ export default function ProjectWorkspace({
                             <div className="project-workspace-task-list">
                                 {project.designRefs.map((ref) => (
                                     <div key={ref.id} className="project-workspace-task">
-                                        <span className="project-workspace-idea-icon">
-                                            <Palette size={13} strokeWidth={1.75} />
-                                        </span>
+                                        {ref.image ? (
+                                            <ImageThumbnail image={ref.image} alt={ref.label} />
+                                        ) : (
+                                            <span className="project-workspace-idea-icon">
+                                                <Palette size={13} strokeWidth={1.75} />
+                                            </span>
+                                        )}
                                         <span className="project-workspace-design-ref">
                                             <span className="project-workspace-task-title">{ref.label}</span>
                                             {ref.url && (
@@ -792,6 +797,10 @@ export default function ProjectWorkspace({
                             <button type="button" className="project-workspace-task-add-btn" onClick={handleAddDesignRef} disabled={!newDesignLabel.trim()}>
                                 <Plus size={15} strokeWidth={2} />
                             </button>
+                            <ImageUploadButton
+                                onUpload={(file, image) => onAddDesignRef(project.id, file.name, "", image)}
+                                label="Upload image"
+                            />
                         </div>
                     </div>
                 )}
@@ -873,9 +882,13 @@ export default function ProjectWorkspace({
                             <div className="project-workspace-task-list">
                                 {project.files.map((file) => (
                                     <div key={file.id} className="project-workspace-task">
-                                        <span className="project-workspace-idea-icon">
-                                            <File size={13} strokeWidth={1.75} />
-                                        </span>
+                                        {file.image ? (
+                                            <ImageThumbnail image={file.image} alt={file.name} />
+                                        ) : (
+                                            <span className="project-workspace-idea-icon">
+                                                <File size={13} strokeWidth={1.75} />
+                                            </span>
+                                        )}
                                         <span className="project-workspace-task-title">{file.name}</span>
                                         <button
                                             type="button"
@@ -902,6 +915,10 @@ export default function ProjectWorkspace({
                             <button type="button" className="project-workspace-task-add-btn" onClick={handleAddFile} disabled={!newFileName.trim()}>
                                 <Plus size={15} strokeWidth={2} />
                             </button>
+                            <ImageUploadButton
+                                onUpload={(file, image) => onAddFile(project.id, file.name, image)}
+                                label="Upload image"
+                            />
                         </div>
                     </div>
                 )}

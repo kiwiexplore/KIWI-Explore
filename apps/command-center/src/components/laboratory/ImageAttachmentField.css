@@ -1,0 +1,70 @@
+.image-attachment-upload-btn {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
+
+    padding: 9px 12px;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.image-attachment-upload-btn:hover {
+
+    color: var(--text);
+    border-color: var(--primary);
+
+}
+
+.image-attachment-thumb {
+
+    flex-shrink: 0;
+
+    width: 30px;
+    height: 30px;
+
+    padding: 0;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+
+    overflow: hidden;
+    cursor: pointer;
+
+}
+
+.image-attachment-thumb img {
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+    display: block;
+
+}
+
+.image-attachment-preview {
+
+    display: block;
+
+    max-width: 100%;
+    max-height: 70vh;
+    margin: 0 auto;
+
+    border-radius: 10px;
+
+}

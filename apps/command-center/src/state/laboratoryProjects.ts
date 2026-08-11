@@ -23,10 +23,20 @@ export interface ProjectIdea {
     text: string;
 }
 
+// A real uploaded image (FileReader -> data URL, same client-side-only
+// pattern ProfileSettings already uses for avatar/background) — held
+// in memory for the session, same "no backend yet" honesty as
+// everything else here, just no longer just a tracked filename.
+export interface ImageAttachment {
+    dataUrl: string;
+    mimeType: string;
+}
+
 export interface ProjectDesignRef {
     id: string;
     label: string;
     url: string;
+    image?: ImageAttachment;
 }
 
 export type PrototypeStage = "planned" | "building" | "testing" | "shipped";
@@ -38,12 +48,13 @@ export interface ProjectPrototype {
     stage: PrototypeStage;
 }
 
-// No real upload/backend yet — a "file" here is just a tracked
-// filename, same mock-data philosophy as everything else in this
-// registry. Real storage is a backend concern for later.
+// A tracked filename, optionally backed by a real uploaded image (see
+// ImageAttachment above) — non-image files still just track a name,
+// no real storage/backend for those yet.
 export interface ProjectFile {
     id: string;
     name: string;
+    image?: ImageAttachment;
 }
 
 // A link out to something the project depends on but doesn't own —

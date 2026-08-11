@@ -34,7 +34,7 @@ import ProfileSettings from "../ui/ProfileSettings";
 import { useKiwiChat } from "../../lib/useKiwiChat";
 import {
     MOCK_PROJECTS, PROTOTYPE_STAGE_ORDER, TEST_STATUS_ORDER, PRODUCT_STAGE_ORDER, MARKETING_STATUS_ORDER,
-    createMockProject, type LaboratoryProject,
+    createMockProject, type LaboratoryProject, type ImageAttachment,
 } from "../../state/laboratoryProjects";
 import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratoryNotes";
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
@@ -200,10 +200,10 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
-    const handleAddDesignRef = (projectId: string, label: string, url: string) => {
+    const handleAddDesignRef = (projectId: string, label: string, url: string, image?: ImageAttachment) => {
         setProjects((prev) => prev.map((p) => (
             p.id === projectId
-                ? { ...p, designRefs: [...p.designRefs, { id: `design-${Date.now()}`, label, url }], lastActivity: "Just now" }
+                ? { ...p, designRefs: [...p.designRefs, { id: `design-${Date.now()}`, label, url, image }], lastActivity: "Just now" }
                 : p
         )));
     };
@@ -248,10 +248,10 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
-    const handleAddFile = (projectId: string, name: string) => {
+    const handleAddFile = (projectId: string, name: string, image?: ImageAttachment) => {
         setProjects((prev) => prev.map((p) => (
             p.id === projectId
-                ? { ...p, files: [...p.files, { id: `file-${Date.now()}`, name }], lastActivity: "Just now" }
+                ? { ...p, files: [...p.files, { id: `file-${Date.now()}`, name, image }], lastActivity: "Just now" }
                 : p
         )));
     };

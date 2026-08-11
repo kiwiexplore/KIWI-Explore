@@ -1,20 +1,21 @@
 import { useState, type KeyboardEvent } from "react";
 import { Link2, Palette, Plus, Trash2 } from "lucide-react";
-import type { LaboratoryProject } from "../../state/laboratoryProjects";
+import type { LaboratoryProject, ImageAttachment } from "../../state/laboratoryProjects";
+import { ImageUploadButton, ImageThumbnail } from "./ImageAttachmentField";
 import "./ProjectWorkspace.css";
 import "./GlobalBoard.css";
 
 interface DesignStudioBoardProps {
     projects: LaboratoryProject[];
     onSelectProject: (id: string) => void;
-    onAddDesignRef: (projectId: string, label: string, url: string) => void;
+    onAddDesignRef: (projectId: string, label: string, url: string, image?: ImageAttachment) => void;
     onRemoveDesignRef: (projectId: string, refId: string) => void;
 }
 
 function ProjectDesignGroup({ project, onSelectProject, onAddDesignRef, onRemoveDesignRef }: {
     project: LaboratoryProject;
     onSelectProject: (id: string) => void;
-    onAddDesignRef: (projectId: string, label: string, url: string) => void;
+    onAddDesignRef: (projectId: string, label: string, url: string, image?: ImageAttachment) => void;
     onRemoveDesignRef: (projectId: string, refId: string) => void;
 }) {
     const [newLabel, setNewLabel] = useState("");
@@ -47,9 +48,13 @@ function ProjectDesignGroup({ project, onSelectProject, onAddDesignRef, onRemove
                 <div className="project-workspace-task-list">
                     {project.designRefs.map((ref) => (
                         <div key={ref.id} className="project-workspace-task">
-                            <span className="project-workspace-idea-icon">
-                                <Palette size={13} strokeWidth={1.75} />
-                            </span>
+                            {ref.image ? (
+                                <ImageThumbnail image={ref.image} alt={ref.label} />
+                            ) : (
+                                <span className="project-workspace-idea-icon">
+                                    <Palette size={13} strokeWidth={1.75} />
+                                </span>
+                            )}
                             <span className="project-workspace-design-ref">
                                 <span className="project-workspace-task-title">{ref.label}</span>
                                 {ref.url && (
@@ -92,6 +97,10 @@ function ProjectDesignGroup({ project, onSelectProject, onAddDesignRef, onRemove
                 <button type="button" className="project-workspace-task-add-btn" onClick={handleAdd} disabled={!newLabel.trim()}>
                     <Plus size={15} strokeWidth={2} />
                 </button>
+                <ImageUploadButton
+                    onUpload={(file, image) => onAddDesignRef(project.id, file.name, "", image)}
+                    label="Upload"
+                />
             </div>
         </div>
     );
