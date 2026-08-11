@@ -17,15 +17,17 @@
     /* Docked near the right edge, filling the height between the top
        bar and quick bar (both 72px now) minus a slight gap on all
        three sides, fully rounded. Same width as the collapsed
-       .kiwi-dock-tab below (and close to the left sidebar's own
-       240px) so opening it doesn't change its footprint at all — just
-       unfolds downward in place, per explicit request. */
+       .kiwi-dock-tab below so opening it doesn't change its footprint
+       at all — just unfolds downward in place, per explicit request.
+       Widened from the original 230px to 280px per follow-up request
+       ("o kousek širší") — kept in lockstep with .kiwi-dock-tab below
+       so that invariant still holds at the new size. */
     position: fixed;
     top: 80px;
     right: 8px;
     bottom: 80px;
 
-    width: 230px;
+    width: 280px;
     max-width: 90vw;
     box-sizing: border-box;
 
@@ -64,12 +66,13 @@
        right under the top bar (not centered) so opening it reads as
        unfolding downward from that spot, matching where the expanded
        panel itself starts. Same width as .kiwi-panel so opening it
-       never changes its footprint. */
+       never changes its footprint — see that rule for the matching
+       280px. */
     position: fixed;
     top: 80px;
     right: 8px;
 
-    width: 230px;
+    width: 280px;
     box-sizing: border-box;
 
     display: flex;
