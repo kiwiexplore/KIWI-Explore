@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-    FileBarChart, ImagePlus, Lightbulb, Network, Pause, PenTool, Play, Square, Telescope,
+    ChevronLeft, FileBarChart, ImagePlus, Lightbulb, Network, Pause, PenTool, Play, Square, Telescope,
     type LucideIcon,
 } from "lucide-react";
 import "./LaboratoryQuickBar.css";
@@ -67,25 +67,28 @@ function getAudioContextCtor(): typeof AudioContext | null {
  * The bottom bar from the reference mockup — a row of quick-tool
  * shortcuts (all placeholders, "Soon" badged, same as the sidebar's
  * own not-yet-built modules) plus a real Focus Mode timer. The ring's
- * own center is reserved for whatever's being read at a glance — the
- * duration picker while idle (sized up now that nothing else shares
- * the center with it), the big countdown digits once running — while
- * the actual controls (Start; Pause/Resume and Stop) sit as bigger
- * standalone buttons flanking the ring on either side, per explicit
- * request that they move outside the ring rather than being squeezed
- * onto its edge. The progress arc itself shifts from green through
- * amber to red as the session runs out, and a synthesized gong (Web
- * Audio API, no audio asset needed) plays on completion — the
- * AudioContext is created/unlocked inside the Start click handler
- * specifically so it's not blocked by autoplay policies when the gong
- * fires later, unprompted, once time runs out. Introduced an explicit
- * idle/running/paused state machine so pausing freezes the countdown
- * without losing remaining time, distinct from Stop which cancels back
- * to the picker. Not tied to any project/task yet, just a standalone
- * session timer — no backend needed for any of this.
+ * own center is reserved purely for numbers — the picked duration
+ * while idle, the live countdown once running — rendered through the
+ * exact same element at the exact same size either way, so the ring
+ * never resizes or swaps in a form control, per explicit request.
+ * Every actual control (Start/Pause/Resume/Stop, and the duration
+ * picker itself) lives outside the ring in the two side slots instead:
+ * left holds Start/Pause/Resume, right holds the duration select (or,
+ * once Custom is picked, a number input plus a small "presets" link
+ * back) while idle, and Stop once running. The progress arc shifts
+ * from green through amber to red as the session runs out, and a
+ * synthesized gong (Web Audio API, no audio asset needed) plays on
+ * completion — the AudioContext is created/unlocked inside the Start
+ * click handler specifically so it's not blocked by autoplay policies
+ * when the gong fires later, unprompted, once time runs out.
+ * Introduced an explicit idle/running/paused state machine so pausing
+ * freezes the countdown without losing remaining time, distinct from
+ * Stop which cancels back to the picker. Not tied to any project/task
+ * yet, just a standalone session timer — no backend needed for any of
+ * this.
  */
 export default function LaboratoryQuickBar() {
-    const [durationChoice, setDurationChoice] = useState<string>("25");
+    const [durationChoice, setDurationChoice] = useState<string>("30");
     const [customMinutes, setCustomMinutes] = useState("25");
     const [focusState, setFocusState] = useState<FocusState>("idle");
     const [totalSeconds, setTotalSeconds] = useState(0);
@@ -111,19 +114,24 @@ export default function LaboratoryQuickBar() {
         const ctx = audioCtxRef.current;
         if (!ctx) return;
         const now = ctx.currentTime;
-        // A few detuned sine harmonics with a slow decay reads as a
-        // soft gong/bell rather than a single flat beep.
-        [220, 330, 440].forEach((freq, i) => {
+        // A soft three-note chime (a major triad, gently arpeggiated)
+        // rather than a deep gong — the earlier low-fundamental/
+        // inharmonic-partials version read as ominous rather than a
+        // pleasant "you're done" cue, per explicit follow-up feedback.
+        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+        notes.forEach((freq, i) => {
+            const startAt = now + i * 0.1;
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = "sine";
             osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.28 / (i + 1), now);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+            gain.gain.setValueAtTime(0, startAt);
+            gain.gain.linearRampToValueAtTime(0.22, startAt + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, startAt + 1.8);
             osc.connect(gain);
             gain.connect(ctx.destination);
-            osc.start(now);
-            osc.stop(now + 2.5);
+            osc.start(startAt);
+            osc.stop(startAt + 1.9);
         });
     };
 
@@ -229,32 +237,15 @@ export default function LaboratoryQuickBar() {
                     </svg>
 
                     <div className="lab-quickbar-ring-center">
-                        {running ? (
-                            <span className="lab-quickbar-ring-time">{formatRemaining(remaining)}</span>
-                        ) : durationChoice === CUSTOM_DURATION ? (
-                            <input
-                                type="number"
-                                min={1}
-                                max={999}
-                                className="lab-quickbar-ring-input"
-                                value={customMinutes}
-                                onChange={(e) => setCustomMinutes(e.target.value)}
-                                placeholder="min"
-                                aria-label="Custom focus duration in minutes"
-                            />
-                        ) : (
-                            <select
-                                className="lab-quickbar-ring-select"
-                                value={durationChoice}
-                                onChange={(e) => setDurationChoice(e.target.value)}
-                                aria-label="Focus duration"
-                            >
-                                {DURATION_PRESETS.map((minutes) => (
-                                    <option key={minutes} value={minutes}>{formatDurationLabel(minutes)}</option>
-                                ))}
-                                <option value={CUSTOM_DURATION}>Custom</option>
-                            </select>
-                        )}
+                        {/* Always just the numbers, in the exact same
+                            spot at the exact same size, whether that's
+                            the picked duration sitting idle or the
+                            live countdown — the ring itself never
+                            resizes or swaps in a control, per explicit
+                            request. */}
+                        <span className="lab-quickbar-ring-time">
+                            {formatRemaining(running ? remaining : resolvedMinutes * 60)}
+                        </span>
                     </div>
                 </div>
 
@@ -263,11 +254,45 @@ export default function LaboratoryQuickBar() {
                         <button type="button" className="lab-quickbar-side-btn lab-quickbar-side-btn-stop" onClick={stopFocus} aria-label="Stop focus session">
                             <Square size={12} strokeWidth={2} />
                         </button>
-                    ) : durationChoice === CUSTOM_DURATION ? (
-                        <button type="button" className="lab-quickbar-side-btn-mini" onClick={() => setDurationChoice("25")} aria-label="Back to presets">
-                            presets
-                        </button>
-                    ) : null}
+                    ) : (
+                        // One fixed-size pill either way — picking
+                        // "Custom" swaps the <select> for a number
+                        // input inside the exact same box rather than
+                        // growing/shifting the layout, per explicit
+                        // request. The tiny back-chevron (only shown
+                        // in custom mode) returns to the preset list.
+                        <div className="lab-quickbar-duration-control">
+                            {durationChoice === CUSTOM_DURATION ? (
+                                <>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={999}
+                                        className="lab-quickbar-duration-value"
+                                        value={customMinutes}
+                                        onChange={(e) => setCustomMinutes(e.target.value)}
+                                        placeholder="min"
+                                        aria-label="Custom focus duration in minutes"
+                                    />
+                                    <button type="button" className="lab-quickbar-duration-back" onClick={() => setDurationChoice("30")} aria-label="Back to presets">
+                                        <ChevronLeft size={11} strokeWidth={2.25} />
+                                    </button>
+                                </>
+                            ) : (
+                                <select
+                                    className="lab-quickbar-duration-select"
+                                    value={durationChoice}
+                                    onChange={(e) => setDurationChoice(e.target.value)}
+                                    aria-label="Focus duration"
+                                >
+                                    {DURATION_PRESETS.map((minutes) => (
+                                        <option key={minutes} value={minutes}>{formatDurationLabel(minutes)}</option>
+                                    ))}
+                                    <option value={CUSTOM_DURATION}>Custom</option>
+                                </select>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </footer>

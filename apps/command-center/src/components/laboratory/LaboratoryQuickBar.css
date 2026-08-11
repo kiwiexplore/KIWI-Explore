@@ -82,17 +82,17 @@
 
 }
 
-/* Reserves consistent space on either side of the ring for the
-   Start/Pause/Stop buttons (or the "presets" toggle) — fixed
-   min-width so the ring doesn't visibly shift when one side is empty
-   (idle, no custom duration picked). */
+/* Fixed width (not just min-width) on both sides of the ring, sized to
+   fit the widest thing that ever appears there (the 60px duration
+   pill) — so starting/stopping the timer swaps the slot's contents
+   without the slot itself, or the ring, ever shifting position. */
 .lab-quickbar-slot {
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    min-width: 32px;
+    width: 62px;
     flex-shrink: 0;
 
 }
@@ -140,41 +140,88 @@
 
 }
 
-.lab-quickbar-ring-select,
-.lab-quickbar-ring-input {
+/* One fixed-size pill for the duration control, in the side slot where
+   Stop later appears — the <select> (presets) and the <input> (custom)
+   share this exact box so switching between them never shifts
+   anything, per explicit request. */
+.lab-quickbar-duration-control {
 
-    width: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    padding: 3px 4px;
+    width: 60px;
+    height: 26px;
+    box-sizing: border-box;
 
-    background: rgba(255, 255, 255, .07);
+    background: rgba(255, 255, 255, .06);
     border: 1px solid var(--border);
-    border-radius: 7px;
+    border-radius: 999px;
+
+    transition: var(--transition);
+
+}
+
+.lab-quickbar-duration-control:focus-within,
+.lab-quickbar-duration-control:hover {
+
+    border-color: var(--primary);
+
+}
+
+.lab-quickbar-duration-select,
+.lab-quickbar-duration-value {
+
+    width: 100%;
+    height: 100%;
+
+    padding: 0 4px 0 10px;
+
+    background: none;
+    border: none;
 
     color: var(--text);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     font-family: inherit;
     text-align: center;
 
     outline: none;
     cursor: pointer;
-    transition: var(--transition);
 
 }
 
-.lab-quickbar-ring-input {
+.lab-quickbar-duration-value {
+
+    padding: 0 0 0 10px;
 
     cursor: text;
 
 }
 
-.lab-quickbar-ring-select:hover,
-.lab-quickbar-ring-select:focus,
-.lab-quickbar-ring-input:hover,
-.lab-quickbar-ring-input:focus {
+.lab-quickbar-duration-back {
 
-    border-color: var(--primary);
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 18px;
+    height: 100%;
+
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border);
+
+    color: var(--text-muted);
+    cursor: pointer;
+
+}
+
+.lab-quickbar-duration-back:hover {
+
+    color: var(--primary);
 
 }
 
@@ -236,29 +283,3 @@
 
 }
 
-.lab-quickbar-side-btn-mini {
-
-    padding: 5px 8px;
-
-    background: rgba(255, 255, 255, .06);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-
-    color: var(--text-muted);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: .3px;
-    text-transform: uppercase;
-    white-space: nowrap;
-
-    cursor: pointer;
-    transition: var(--transition);
-
-}
-
-.lab-quickbar-side-btn-mini:hover {
-
-    border-color: var(--primary);
-    color: #eaf6ff;
-
-}
