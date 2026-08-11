@@ -8,6 +8,9 @@ interface QuickToolModalProps {
     onClose: () => void;
     headerExtra?: ReactNode;
     children: ReactNode;
+    // Widens the card from 560px to 720px — for content that needs
+    // real horizontal room (a calendar grid) rather than a list/canvas.
+    wide?: boolean;
 }
 
 /**
@@ -16,11 +19,11 @@ interface QuickToolModalProps {
  * shape from CalendarPanel/NotificationsPanel's right-side sheet since
  * these need real width for a diagram/canvas rather than a list.
  */
-export default function QuickToolModal({ title, icon: Icon, onClose, headerExtra, children }: QuickToolModalProps) {
+export default function QuickToolModal({ title, icon: Icon, onClose, headerExtra, children, wide }: QuickToolModalProps) {
     return (
         <>
             <div className="quick-tool-scrim" onClick={onClose} />
-            <div className="quick-tool-modal">
+            <div className={`quick-tool-modal${wide ? " quick-tool-modal-wide" : ""}`}>
                 <header className="quick-tool-modal-header">
                     <span className="quick-tool-modal-title">
                         <Icon size={16} strokeWidth={1.75} />

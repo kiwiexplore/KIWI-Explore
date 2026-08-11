@@ -21,6 +21,8 @@
     max-height: 80vh;
     box-sizing: border-box;
 
+    transition: width .18s ease;
+
     display: flex;
     flex-direction: column;
 
@@ -38,6 +40,12 @@
     z-index: 41;
 
     animation: quick-tool-modal-in .18s ease;
+
+}
+
+.quick-tool-modal-wide {
+
+    width: 720px;
 
 }
 

@@ -5,7 +5,11 @@
  * scene shows up in both. Mock/in-memory only, same as everything else
  * in the account system.
  */
-export type CalendarEventType = "meeting" | "event" | "task";
+// What you can drop onto a day — a scheduled event, a reminder to
+// nudge you, or a freeform note. Same {title, date, time?, type} shape
+// for all three; "note" and "reminder" just skip the meeting-specific
+// connotation "event" used to carry.
+export type CalendarEventType = "event" | "reminder" | "note";
 
 export interface CalendarEvent {
     id: string;
@@ -16,14 +20,14 @@ export interface CalendarEvent {
 }
 
 export const EVENT_TYPE_LABEL: Record<CalendarEventType, string> = {
-    meeting: "Meeting",
     event: "Event",
-    task: "Task",
+    reminder: "Reminder",
+    note: "Note",
 };
 
 export const MOCK_EVENTS: CalendarEvent[] = [
-    { id: "team-sync", title: "Team sync", date: "2026-08-10", time: "10:00", type: "meeting" },
-    { id: "project-review", title: "KIWI AI OS review", date: "2026-08-12", time: "14:00", type: "meeting" },
+    { id: "team-sync", title: "Team sync", date: "2026-08-10", time: "10:00", type: "event" },
+    { id: "project-review", title: "Review KIWI AI OS before the sync", date: "2026-08-12", time: "09:00", type: "reminder" },
     { id: "launch-planning", title: "Launch planning", date: "2026-08-15", type: "event" },
 ];
 
