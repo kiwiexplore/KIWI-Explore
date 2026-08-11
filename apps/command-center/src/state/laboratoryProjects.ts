@@ -73,6 +73,32 @@ export interface ProjectDocument {
     url: string;
 }
 
+export type ProductStage = "idea" | "building" | "launched";
+
+export interface ProjectProduct {
+    id: string;
+    name: string;
+    price: string; // freeform ("$29", "€12/mo", "" if not priced yet) — no currency/commerce logic, just a label
+    stage: ProductStage;
+}
+
+// A place the finished thing is (or will be) sold/distributed — an
+// Etsy shop, the App Store, Bandcamp, a Shopify storefront. Same
+// {label, url} shape as everything else that's just a tracked link.
+export interface ProjectStoreChannel {
+    id: string;
+    label: string;
+    url: string;
+}
+
+export type MarketingStatus = "planned" | "active" | "done";
+
+export interface ProjectMarketingItem {
+    id: string;
+    label: string;
+    status: MarketingStatus;
+}
+
 export interface LaboratoryProject {
     id: string;
     name: string;
@@ -90,6 +116,9 @@ export interface LaboratoryProject {
     resources: ProjectResource[];
     tests: ProjectTest[];
     documents: ProjectDocument[];
+    products: ProjectProduct[];
+    storeChannels: ProjectStoreChannel[];
+    marketing: ProjectMarketingItem[];
     // Reuses the exact same LabNote/ResearchEntry shapes as Laboratory's
     // global Notes/Research sections — these are scoped to just this
     // project, unlike the global lists.
@@ -124,6 +153,27 @@ export const TEST_STATUS_META: Record<TestStatus, { label: string; color: string
     untested: { label: "Untested", color: "var(--text-muted)" },
     passing: { label: "Passing", color: "var(--secondary)" },
     failing: { label: "Failing", color: "var(--danger)" },
+};
+
+// Cycle order for clicking a product's stage pill: idea -> building ->
+// launched -> back to idea, same click-to-advance interaction as
+// prototype stages.
+export const PRODUCT_STAGE_ORDER: ProductStage[] = ["idea", "building", "launched"];
+
+export const PRODUCT_STAGE_META: Record<ProductStage, { label: string; color: string }> = {
+    idea: { label: "Idea", color: "var(--text-muted)" },
+    building: { label: "Building", color: "var(--primary)" },
+    launched: { label: "Launched", color: "var(--secondary)" },
+};
+
+// Cycle order for clicking a marketing item's status pill: planned ->
+// active -> done -> back to planned.
+export const MARKETING_STATUS_ORDER: MarketingStatus[] = ["planned", "active", "done"];
+
+export const MARKETING_STATUS_META: Record<MarketingStatus, { label: string; color: string }> = {
+    planned: { label: "Planned", color: "var(--text-muted)" },
+    active: { label: "Active", color: "var(--accent)" },
+    done: { label: "Done", color: "var(--secondary)" },
 };
 
 // Intentionally spans very different kinds of work (software, music,
@@ -164,6 +214,13 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
             { id: "test-p2", title: "Sidebar scroll reaches AI Tools items", status: "failing" },
         ],
         documents: [],
+        products: [
+            { id: "product-p1", name: "KIWI Laboratory (personal mode)", price: "", stage: "building" },
+        ],
+        storeChannels: [],
+        marketing: [
+            { id: "marketing-p1", label: "Sprint changelog on X", status: "active" },
+        ],
         notes: [
             { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
         ],
@@ -191,6 +248,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         resources: [],
         tests: [],
         documents: [],
+        products: [],
+        storeChannels: [],
+        marketing: [],
         notes: [],
         research: [],
     },
@@ -211,6 +271,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         resources: [],
         tests: [],
         documents: [],
+        products: [],
+        storeChannels: [],
+        marketing: [],
         notes: [],
         research: [],
     },
@@ -237,6 +300,9 @@ export function createMockProject(): LaboratoryProject {
         resources: [],
         tests: [],
         documents: [],
+        products: [],
+        storeChannels: [],
+        marketing: [],
         notes: [],
         research: [],
     };

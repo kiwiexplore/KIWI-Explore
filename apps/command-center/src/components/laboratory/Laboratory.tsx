@@ -13,6 +13,10 @@ import PrototypesBoard from "./PrototypesBoard";
 import ResourcesBoard from "./ResourcesBoard";
 import TestsBoard from "./TestsBoard";
 import DocumentsBoard from "./DocumentsBoard";
+import ProductsBoard from "./ProductsBoard";
+import StoreBoard from "./StoreBoard";
+import MarketingBoard from "./MarketingBoard";
+import AnalyticsPage from "./AnalyticsPage";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -23,7 +27,10 @@ import KiwiPanel from "./KiwiPanel";
 import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import ProfileSettings from "../ui/ProfileSettings";
 import { useKiwiChat } from "../../lib/useKiwiChat";
-import { MOCK_PROJECTS, PROTOTYPE_STAGE_ORDER, TEST_STATUS_ORDER, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
+import {
+    MOCK_PROJECTS, PROTOTYPE_STAGE_ORDER, TEST_STATUS_ORDER, PRODUCT_STAGE_ORDER, MARKETING_STATUS_ORDER,
+    createMockProject, type LaboratoryProject,
+} from "../../state/laboratoryProjects";
 import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratoryNotes";
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
 import { resolveBackgroundImage } from "../../state/backgrounds";
@@ -32,7 +39,11 @@ import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import "./Laboratory.css";
 
-export type LaboratorySection = "overview" | "projects" | "research" | "notes" | "tasks" | "ideas" | "design" | "prototypes" | "resources" | "tests" | "documents";
+export type LaboratorySection =
+    | "overview" | "projects" | "research" | "notes"
+    | "tasks" | "ideas" | "design" | "prototypes"
+    | "resources" | "tests" | "documents"
+    | "products" | "store" | "marketing" | "analytics";
 
 interface LaboratoryProps {
     onBack: () => void;
@@ -309,6 +320,86 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
+    const handleAddProduct = (projectId: string, name: string, price: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, products: [...p.products, { id: `product-${Date.now()}`, name, price, stage: "idea" }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleCycleProductStage = (projectId: string, productId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? {
+                    ...p,
+                    products: p.products.map((product) => {
+                        if (product.id !== productId) return product;
+                        const nextIndex = (PRODUCT_STAGE_ORDER.indexOf(product.stage) + 1) % PRODUCT_STAGE_ORDER.length;
+                        return { ...product, stage: PRODUCT_STAGE_ORDER[nextIndex] };
+                    }),
+                    lastActivity: "Just now",
+                }
+                : p
+        )));
+    };
+
+    const handleRemoveProduct = (projectId: string, productId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, products: p.products.filter((prod) => prod.id !== productId) }
+                : p
+        )));
+    };
+
+    const handleAddStoreChannel = (projectId: string, label: string, url: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, storeChannels: [...p.storeChannels, { id: `store-${Date.now()}`, label, url }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveStoreChannel = (projectId: string, channelId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, storeChannels: p.storeChannels.filter((c) => c.id !== channelId) }
+                : p
+        )));
+    };
+
+    const handleAddMarketingItem = (projectId: string, label: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, marketing: [...p.marketing, { id: `marketing-${Date.now()}`, label, status: "planned" }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleCycleMarketingStatus = (projectId: string, itemId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? {
+                    ...p,
+                    marketing: p.marketing.map((item) => {
+                        if (item.id !== itemId) return item;
+                        const nextIndex = (MARKETING_STATUS_ORDER.indexOf(item.status) + 1) % MARKETING_STATUS_ORDER.length;
+                        return { ...item, status: MARKETING_STATUS_ORDER[nextIndex] };
+                    }),
+                    lastActivity: "Just now",
+                }
+                : p
+        )));
+    };
+
+    const handleRemoveMarketingItem = (projectId: string, itemId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, marketing: p.marketing.filter((item) => item.id !== itemId) }
+                : p
+        )));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -478,6 +569,39 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                             onAddDocument={handleAddDocument}
                             onRemoveDocument={handleRemoveDocument}
                         />
+                    )}
+
+                    {section === "products" && (
+                        <ProductsBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddProduct={handleAddProduct}
+                            onCycleProductStage={handleCycleProductStage}
+                            onRemoveProduct={handleRemoveProduct}
+                        />
+                    )}
+
+                    {section === "store" && (
+                        <StoreBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddStoreChannel={handleAddStoreChannel}
+                            onRemoveStoreChannel={handleRemoveStoreChannel}
+                        />
+                    )}
+
+                    {section === "marketing" && (
+                        <MarketingBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddMarketingItem={handleAddMarketingItem}
+                            onCycleMarketingStatus={handleCycleMarketingStatus}
+                            onRemoveMarketingItem={handleRemoveMarketingItem}
+                        />
+                    )}
+
+                    {section === "analytics" && (
+                        <AnalyticsPage projects={projects} noteCount={notes.length} researchCount={researchEntries.length} />
                     )}
 
                     {section === "projects" && (

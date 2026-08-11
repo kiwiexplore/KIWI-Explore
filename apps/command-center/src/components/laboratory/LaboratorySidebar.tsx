@@ -35,10 +35,10 @@ const DEVELOP_ITEMS: SidebarItem[] = [
 ];
 
 const LAUNCH_ITEMS: SidebarItem[] = [
-    { label: "Products", icon: Package },
-    { label: "Store", icon: Store },
-    { label: "Marketing", icon: Megaphone },
-    { label: "Analytics", icon: BarChart3 },
+    { label: "Products", icon: Package, section: "products" },
+    { label: "Store", icon: Store, section: "store" },
+    { label: "Marketing", icon: Megaphone, section: "marketing" },
+    { label: "Analytics", icon: BarChart3, section: "analytics" },
 ];
 
 const AI_ITEMS: SidebarItem[] = [
@@ -95,10 +95,9 @@ interface LaboratorySidebarProps {
  * Laboratory's left nav — MAIN/DEVELOP/LAUNCH/AI TOOLS, matching the
  * original reference mockup's structure. Most items are placeholders
  * (badged "Soon", same honest pattern as InfoPanel's Terms/Privacy) —
- * only Overview/Projects/Research/Notes/Tasks/Ideas/Design
- * Studio/Prototypes/Resources/Tests/Documents are real sections so
- * far, and "KIWI Assistant" opens KiwiPanel directly rather than
- * switching sections.
+ * only the AI Tools group and "KIWI Assistant" itself are placeholders
+ * now; every Main/Develop/Launch item is a real section, and "KIWI
+ * Assistant" opens KiwiPanel directly rather than switching sections.
  * Deliberately duplicates the top bar's own Projects/Research/Notes
  * tabs rather than replacing them — the reference mockup itself has
  * both a top nav and this sidebar with overlapping items.

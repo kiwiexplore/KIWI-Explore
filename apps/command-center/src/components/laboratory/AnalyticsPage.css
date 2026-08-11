@@ -1,0 +1,207 @@
+.analytics-page {
+
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    padding: 40px 40px 60px;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+
+}
+
+.analytics-header span.analytics-eyebrow {
+
+    display: block;
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+
+    color: var(--primary);
+    text-shadow: 0 0 12px rgba(73, 199, 255, .4);
+
+}
+
+.analytics-header h1 {
+
+    margin: 6px 0 0;
+
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.analytics-tiles {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+
+}
+
+.analytics-tile {
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    padding: 16px 18px;
+
+    background: rgba(16, 25, 46, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+}
+
+.analytics-tile-value {
+
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.analytics-tile-label {
+
+    font-size: 11px;
+    color: var(--text-muted);
+
+}
+
+.analytics-grid {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+    align-items: start;
+
+}
+
+.analytics-panel {
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    padding: 18px 20px;
+
+    background: rgba(16, 25, 46, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+}
+
+.analytics-panel h2 {
+
+    margin: 0;
+
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.analytics-empty {
+
+    margin: 0;
+
+    font-size: 13px;
+    color: var(--text-muted);
+
+}
+
+.analytics-status-list {
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+}
+
+.analytics-status-row {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+}
+
+.analytics-status-dot {
+
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+
+    border-radius: 999px;
+
+}
+
+.analytics-status-label {
+
+    flex-shrink: 0;
+    width: 80px;
+
+    font-size: 12px;
+    color: var(--text);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.analytics-project-label {
+
+    width: 110px;
+
+}
+
+.analytics-status-track {
+
+    flex: 1;
+    height: 6px;
+
+    background: rgba(255, 255, 255, .08);
+    border-radius: 999px;
+
+    overflow: hidden;
+
+}
+
+.analytics-status-fill {
+
+    height: 100%;
+    border-radius: 999px;
+
+}
+
+.analytics-progress-fill {
+
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+
+}
+
+.analytics-status-count {
+
+    flex-shrink: 0;
+    width: 30px;
+
+    text-align: right;
+
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+
+}
