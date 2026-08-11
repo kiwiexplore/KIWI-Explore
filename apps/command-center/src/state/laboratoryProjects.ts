@@ -29,6 +29,15 @@ export interface ProjectDesignRef {
     url: string;
 }
 
+export type PrototypeStage = "planned" | "building" | "testing" | "shipped";
+
+export interface ProjectPrototype {
+    id: string;
+    label: string;
+    url: string;
+    stage: PrototypeStage;
+}
+
 export interface LaboratoryProject {
     id: string;
     name: string;
@@ -41,6 +50,7 @@ export interface LaboratoryProject {
     tasks: ProjectTask[];
     ideas: ProjectIdea[];
     designRefs: ProjectDesignRef[];
+    prototypes: ProjectPrototype[];
     // Reuses the exact same LabNote/ResearchEntry shapes as Laboratory's
     // global Notes/Research sections — these are scoped to just this
     // project, unlike the global lists.
@@ -53,6 +63,17 @@ export const STATUS_META: Record<ProjectStatus, { label: string; color: string }
     research: { label: "Research", color: "var(--primary)" },
     paused: { label: "Paused", color: "var(--text-muted)" },
     completed: { label: "Completed", color: "var(--secondary)" },
+};
+
+// Cycle order for clicking a prototype's stage pill: planned -> building
+// -> testing -> shipped -> back to planned.
+export const PROTOTYPE_STAGE_ORDER: PrototypeStage[] = ["planned", "building", "testing", "shipped"];
+
+export const PROTOTYPE_STAGE_META: Record<PrototypeStage, { label: string; color: string }> = {
+    planned: { label: "Planned", color: "var(--text-muted)" },
+    building: { label: "Building", color: "var(--primary)" },
+    testing: { label: "Testing", color: "var(--accent)" },
+    shipped: { label: "Shipped", color: "var(--secondary)" },
 };
 
 // Intentionally spans very different kinds of work (software, music,
@@ -79,6 +100,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         designRefs: [
             { id: "design-p1", label: "Selective bloom reference reel", url: "https://example.com/bloom-reference" },
         ],
+        prototypes: [
+            { id: "proto-p1", label: "Laboratory workspace", url: "", stage: "testing" },
+        ],
         notes: [
             { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
         ],
@@ -101,6 +125,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         ],
         ideas: [],
         designRefs: [],
+        prototypes: [],
         notes: [],
         research: [],
     },
@@ -116,6 +141,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         tasks: [],
         ideas: [],
         designRefs: [],
+        prototypes: [],
         notes: [],
         research: [],
     },
@@ -137,6 +163,7 @@ export function createMockProject(): LaboratoryProject {
         tasks: [],
         ideas: [],
         designRefs: [],
+        prototypes: [],
         notes: [],
         research: [],
     };

@@ -1,15 +1,15 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, FlaskConical, Lightbulb, Link2, Palette, Plus, StickyNote, Trash2 } from "lucide-react";
-import { STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
+import { ArrowLeft, FlaskConical, Lightbulb, Link2, Palette, Plus, Rocket, StickyNote, Trash2 } from "lucide-react";
+import { PROTOTYPE_STAGE_META, STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
 import "./ProjectWorkspace.css";
 
 // Not all of these are real yet — Overview, Research, Ideas, Design,
-// Tasks, and Notes are the only modules with actual content (see the
-// render below). The rest just need to exist as tabs now so the
-// architecture doesn't have to change shape later to fit them in, per
-// explicit request.
+// Prototype, Tasks, and Notes are the only modules with actual content
+// (see the render below). The rest just need to exist as tabs now so
+// the architecture doesn't have to change shape later to fit them in,
+// per explicit request.
 const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
 
 interface ProjectWorkspaceProps {
@@ -23,6 +23,9 @@ interface ProjectWorkspaceProps {
     onRemoveIdea: (projectId: string, ideaId: string) => void;
     onAddDesignRef: (projectId: string, label: string, url: string) => void;
     onRemoveDesignRef: (projectId: string, refId: string) => void;
+    onAddPrototype: (projectId: string, label: string, url: string) => void;
+    onCyclePrototypeStage: (projectId: string, prototypeId: string) => void;
+    onRemovePrototype: (projectId: string, prototypeId: string) => void;
     // Returns the new note's/finding's id so the workspace can jump
     // straight into editing it, same as the global Notes/Research
     // sections do.
@@ -39,12 +42,14 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddPrototype, onCyclePrototypeStage, onRemovePrototype, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
     const [newIdea, setNewIdea] = useState("");
     const [newDesignLabel, setNewDesignLabel] = useState("");
     const [newDesignUrl, setNewDesignUrl] = useState("");
+    const [newProtoLabel, setNewProtoLabel] = useState("");
+    const [newProtoUrl, setNewProtoUrl] = useState("");
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
     const status = STATUS_META[project.status];
@@ -88,6 +93,20 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
         if (event.key === "Enter") {
             event.preventDefault();
             handleAddDesignRef();
+        }
+    };
+
+    const handleAddPrototype = () => {
+        if (!newProtoLabel.trim()) return;
+        onAddPrototype(project.id, newProtoLabel.trim(), newProtoUrl.trim());
+        setNewProtoLabel("");
+        setNewProtoUrl("");
+    };
+
+    const handleProtoKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddPrototype();
         }
     };
 
@@ -152,6 +171,9 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                         )}
                         {m === "Design" && project.designRefs.length > 0 && (
                             <span className="project-workspace-module-count">{project.designRefs.length}</span>
+                        )}
+                        {m === "Prototype" && project.prototypes.length > 0 && (
+                            <span className="project-workspace-module-count">{project.prototypes.length}</span>
                         )}
                     </button>
                 ))}
@@ -437,7 +459,76 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     </div>
                 )}
 
-                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && activeModule !== "Design" && (
+                {activeModule === "Prototype" && (
+                    <div className="project-workspace-tasks">
+                        {project.prototypes.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No prototypes yet — add the first one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.prototypes.map((proto) => {
+                                    const stageMeta = PROTOTYPE_STAGE_META[proto.stage];
+                                    return (
+                                        <div key={proto.id} className="project-workspace-task">
+                                            <span className="project-workspace-idea-icon">
+                                                <Rocket size={13} strokeWidth={1.75} />
+                                            </span>
+                                            <span className="project-workspace-design-ref">
+                                                <span className="project-workspace-task-title">{proto.label}</span>
+                                                {proto.url && (
+                                                    <a href={proto.url} target="_blank" rel="noreferrer" className="project-workspace-note-card-source">
+                                                        <Link2 size={10} strokeWidth={2} />
+                                                        {proto.url}
+                                                    </a>
+                                                )}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-stage-pill"
+                                                style={{ color: stageMeta.color, borderColor: stageMeta.color }}
+                                                onClick={() => onCyclePrototypeStage(project.id, proto.id)}
+                                                title="Click to advance stage"
+                                            >
+                                                {stageMeta.label}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="project-workspace-task-remove"
+                                                onClick={() => onRemovePrototype(project.id, proto.id)}
+                                                aria-label="Remove prototype"
+                                            >
+                                                <Trash2 size={13} strokeWidth={1.75} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add project-workspace-design-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newProtoLabel}
+                                onChange={(e) => setNewProtoLabel(e.target.value)}
+                                onKeyDown={handleProtoKeyDown}
+                                placeholder="Prototype name..."
+                            />
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newProtoUrl}
+                                onChange={(e) => setNewProtoUrl(e.target.value)}
+                                onKeyDown={handleProtoKeyDown}
+                                placeholder="Link (optional)"
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddPrototype} disabled={!newProtoLabel.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && activeModule !== "Design" && activeModule !== "Prototype" && (
                     <div className="project-workspace-soon">
                         <span className="project-workspace-soon-title">{activeModule}</span>
                         <p>This module isn't built yet — it's next in line.</p>

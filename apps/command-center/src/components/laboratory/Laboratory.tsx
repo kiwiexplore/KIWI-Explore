@@ -14,7 +14,7 @@ import KiwiPanel from "./KiwiPanel";
 import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import ProfileSettings from "../ui/ProfileSettings";
 import { useKiwiChat } from "../../lib/useKiwiChat";
-import { MOCK_PROJECTS, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
+import { MOCK_PROJECTS, PROTOTYPE_STAGE_ORDER, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
 import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratoryNotes";
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
 import { resolveBackgroundImage } from "../../state/backgrounds";
@@ -177,6 +177,38 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
+    const handleAddPrototype = (projectId: string, label: string, url: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, prototypes: [...p.prototypes, { id: `proto-${Date.now()}`, label, url, stage: "planned" }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleCyclePrototypeStage = (projectId: string, prototypeId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? {
+                    ...p,
+                    prototypes: p.prototypes.map((proto) => {
+                        if (proto.id !== prototypeId) return proto;
+                        const nextIndex = (PROTOTYPE_STAGE_ORDER.indexOf(proto.stage) + 1) % PROTOTYPE_STAGE_ORDER.length;
+                        return { ...proto, stage: PROTOTYPE_STAGE_ORDER[nextIndex] };
+                    }),
+                    lastActivity: "Just now",
+                }
+                : p
+        )));
+    };
+
+    const handleRemovePrototype = (projectId: string, prototypeId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, prototypes: p.prototypes.filter((proto) => proto.id !== prototypeId) }
+                : p
+        )));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -280,6 +312,9 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                                 onRemoveIdea={handleRemoveIdea}
                                 onAddDesignRef={handleAddDesignRef}
                                 onRemoveDesignRef={handleRemoveDesignRef}
+                                onAddPrototype={handleAddPrototype}
+                                onCyclePrototypeStage={handleCyclePrototypeStage}
+                                onRemovePrototype={handleRemovePrototype}
                                 onAddNote={handleAddProjectNote}
                                 onNoteChange={handleProjectNoteChange}
                                 onAddResearch={handleAddProjectResearch}
