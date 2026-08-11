@@ -1,14 +1,15 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, FlaskConical, Link2, Plus, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, FlaskConical, Lightbulb, Link2, Plus, StickyNote, Trash2 } from "lucide-react";
 import { STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
 import "./ProjectWorkspace.css";
 
-// Not all of these are real yet — Overview, Research, Tasks, and Notes
-// are the only modules with actual content (see the render below). The
-// rest just need to exist as tabs now so the architecture doesn't have
-// to change shape later to fit them in, per explicit request.
+// Not all of these are real yet — Overview, Research, Ideas, Tasks, and
+// Notes are the only modules with actual content (see the render
+// below). The rest just need to exist as tabs now so the architecture
+// doesn't have to change shape later to fit them in, per explicit
+// request.
 const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
 
 interface ProjectWorkspaceProps {
@@ -18,6 +19,8 @@ interface ProjectWorkspaceProps {
     onAddTask: (projectId: string, title: string) => void;
     onToggleTask: (projectId: string, taskId: string) => void;
     onRemoveTask: (projectId: string, taskId: string) => void;
+    onAddIdea: (projectId: string, text: string) => void;
+    onRemoveIdea: (projectId: string, ideaId: string) => void;
     // Returns the new note's/finding's id so the workspace can jump
     // straight into editing it, same as the global Notes/Research
     // sections do.
@@ -34,9 +37,10 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
+    const [newIdea, setNewIdea] = useState("");
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
     const status = STATUS_META[project.status];
@@ -53,6 +57,19 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
         if (event.key === "Enter") {
             event.preventDefault();
             handleAddTask();
+        }
+    };
+
+    const handleAddIdea = () => {
+        if (!newIdea.trim()) return;
+        onAddIdea(project.id, newIdea.trim());
+        setNewIdea("");
+    };
+
+    const handleIdeaKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddIdea();
         }
     };
 
@@ -111,6 +128,9 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                         )}
                         {m === "Research" && project.research.length > 0 && (
                             <span className="project-workspace-module-count">{project.research.length}</span>
+                        )}
+                        {m === "Ideas" && project.ideas.length > 0 && (
+                            <span className="project-workspace-module-count">{project.ideas.length}</span>
                         )}
                     </button>
                 ))}
@@ -298,7 +318,48 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     )
                 )}
 
-                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && (
+                {activeModule === "Ideas" && (
+                    <div className="project-workspace-tasks">
+                        {project.ideas.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No ideas yet — capture the first one below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.ideas.map((idea) => (
+                                    <div key={idea.id} className="project-workspace-task">
+                                        <span className="project-workspace-idea-icon">
+                                            <Lightbulb size={13} strokeWidth={1.75} />
+                                        </span>
+                                        <span className="project-workspace-task-title project-workspace-idea-title">{idea.text}</span>
+                                        <button
+                                            type="button"
+                                            className="project-workspace-task-remove"
+                                            onClick={() => onRemoveIdea(project.id, idea.id)}
+                                            aria-label="Remove idea"
+                                        >
+                                            <Trash2 size={13} strokeWidth={1.75} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newIdea}
+                                onChange={(e) => setNewIdea(e.target.value)}
+                                onKeyDown={handleIdeaKeyDown}
+                                placeholder="Capture an idea..."
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddIdea} disabled={!newIdea.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && (
                     <div className="project-workspace-soon">
                         <span className="project-workspace-soon-title">{activeModule}</span>
                         <p>This module isn't built yet — it's next in line.</p>

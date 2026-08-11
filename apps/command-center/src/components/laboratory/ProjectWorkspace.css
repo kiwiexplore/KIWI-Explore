@@ -396,6 +396,23 @@
 
 }
 
+.project-workspace-idea-icon {
+
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+
+    color: var(--accent);
+
+}
+
+.project-workspace-idea-title {
+
+    flex: 1;
+    white-space: normal;
+
+}
+
 .project-workspace-task-remove {
 
     flex-shrink: 0;

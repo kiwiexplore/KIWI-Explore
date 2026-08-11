@@ -145,6 +145,22 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
+    const handleAddIdea = (projectId: string, text: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, ideas: [...p.ideas, { id: `idea-${Date.now()}`, text }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveIdea = (projectId: string, ideaId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, ideas: p.ideas.filter((i) => i.id !== ideaId) }
+                : p
+        )));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -244,6 +260,8 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                                 onAddTask={handleAddTask}
                                 onToggleTask={handleToggleTask}
                                 onRemoveTask={handleRemoveTask}
+                                onAddIdea={handleAddIdea}
+                                onRemoveIdea={handleRemoveIdea}
                                 onAddNote={handleAddProjectNote}
                                 onNoteChange={handleProjectNoteChange}
                                 onAddResearch={handleAddProjectResearch}
