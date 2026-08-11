@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { AudioLines, ArrowLeft, Calendar, ChevronDown, Search, UserCircle2 } from "lucide-react";
+import { ArrowLeft, Bell, Calendar, ChevronDown, Search, UserCircle2 } from "lucide-react";
 import KiwiCoreBadge from "./KiwiCoreBadge";
 import LaboratoryStats from "./LaboratoryStats";
 import AvatarGlyph from "../ui/AvatarGlyph";
@@ -9,9 +9,10 @@ import "./LaboratoryTopBar.css";
 interface LaboratoryTopBarProps {
     onBack: () => void;
     listening?: boolean;
-    onOpenKiwi?: () => void;
     onOpenSearch?: () => void;
     onOpenCalendar?: () => void;
+    onOpenNotifications?: () => void;
+    unreadNotificationCount?: number;
     nickname: string | null;
     avatar: AvatarChoice;
     onProfileClick?: (event: MouseEvent<HTMLElement>) => void;
@@ -30,11 +31,14 @@ interface LaboratoryTopBarProps {
  * sit to its right. The center used to have Projects/Research/Notes
  * nav tabs, but those just duplicated the left sidebar's own items
  * with nothing extra to offer — per explicit feedback, replaced with
- * LaboratoryStats (an at-a-glance summary) instead. Search and
- * Calendar sit next to Hey Kiwi and the profile pill; Search opens a
+ * LaboratoryStats (an at-a-glance summary) instead. Search, Calendar,
+ * and Notifications sit next to the profile pill; Search opens a
  * quick cross-section lookup (LaboratorySearch), Calendar opens
- * CalendarPanel — both owned by Laboratory.tsx, same pattern as
- * KiwiPanel/ProfileSettings.
+ * CalendarPanel, Notifications opens NotificationsPanel — all owned by
+ * Laboratory.tsx, same pattern as ProfileSettings. The "Hey Kiwi"
+ * trigger itself now lives as a docked tab on the right edge (see
+ * KiwiPanel.tsx) rather than a button up here, so opening it and where
+ * it actually appears are the same place.
  *
  * `nickname`/`avatar` come from App.tsx's shared account state (see
  * state/account.ts) — signing in/changing your avatar on the Dashboard
@@ -52,7 +56,7 @@ interface LaboratoryTopBarProps {
  * Laboratory.tsx's doc comment).
  */
 export default function LaboratoryTopBar({
-    onBack, listening, onOpenKiwi, onOpenSearch, onOpenCalendar, nickname, avatar, onProfileClick,
+    onBack, listening, onOpenSearch, onOpenCalendar, onOpenNotifications, unreadNotificationCount = 0, nickname, avatar, onProfileClick,
     projectCount, activeProjectCount, noteCount, researchCount,
 }: LaboratoryTopBarProps) {
     return (
@@ -80,15 +84,17 @@ export default function LaboratoryTopBar({
             />
 
             <div className="lab-topbar-account">
-                <button type="button" className="lab-topbar-kiwi-btn" onClick={onOpenKiwi}>
-                    <AudioLines size={15} strokeWidth={1.75} />
-                    Hey Kiwi
-                </button>
                 <button type="button" className="lab-topbar-icon-btn" onClick={onOpenSearch} aria-label="Search">
                     <Search size={16} strokeWidth={1.75} />
                 </button>
                 <button type="button" className="lab-topbar-icon-btn" onClick={onOpenCalendar} aria-label="Calendar">
                     <Calendar size={16} strokeWidth={1.75} />
+                </button>
+                <button type="button" className="lab-topbar-icon-btn" onClick={onOpenNotifications} aria-label="Notifications">
+                    <Bell size={16} strokeWidth={1.75} />
+                    {unreadNotificationCount > 0 && (
+                        <span className="lab-topbar-badge">{unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}</span>
+                    )}
                 </button>
                 {nickname ? (
                     <button type="button" className="lab-topbar-profile" onClick={onProfileClick}>

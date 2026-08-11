@@ -4,6 +4,7 @@ import LaboratorySidebar from "./LaboratorySidebar";
 import LaboratoryQuickBar from "./LaboratoryQuickBar";
 import LaboratorySearch from "./LaboratorySearch";
 import CalendarPanel from "./CalendarPanel";
+import NotificationsPanel from "./NotificationsPanel";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -18,6 +19,7 @@ import { MOCK_PROJECTS, PROTOTYPE_STAGE_ORDER, createMockProject, type Laborator
 import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratoryNotes";
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
 import { resolveBackgroundImage } from "../../state/backgrounds";
+import { useNotificationsState } from "../../state/notifications";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import "./Laboratory.css";
@@ -92,6 +94,13 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
     const kiwiChat = useKiwiChat();
     const [searchOpen, setSearchOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const notifications = useNotificationsState();
+
+    // Search and Notifications both drop down from the same top-right
+    // spot — opening one closes the other so they never stack.
+    const openSearch = () => { setSearchOpen(true); setNotificationsOpen(false); };
+    const openNotifications = () => { setNotificationsOpen(true); setSearchOpen(false); };
 
     // Same "build fresh every render" approach as BrainScene3D's own
     // profileAnchor — storing a pre-rendered <ProfileSettings/> node
@@ -294,9 +303,10 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
             <LaboratoryTopBar
                 onBack={onBack}
                 listening={kiwiChat.listening}
-                onOpenKiwi={() => setKiwiOpen(true)}
-                onOpenSearch={() => setSearchOpen(true)}
+                onOpenSearch={openSearch}
                 onOpenCalendar={() => setCalendarOpen(true)}
+                onOpenNotifications={openNotifications}
+                unreadNotificationCount={notifications.unreadCount}
                 nickname={account.nickname}
                 avatar={account.avatar}
                 onProfileClick={handleProfileClick}
@@ -364,13 +374,13 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
 
             <LaboratoryQuickBar />
 
-            {kiwiOpen && (
-                <KiwiPanel
-                    onClose={() => setKiwiOpen(false)}
-                    {...kiwiChat}
-                    project={section === "projects" ? selectedProject : null}
-                />
-            )}
+            <KiwiPanel
+                isOpen={kiwiOpen}
+                onToggle={() => setKiwiOpen((open) => !open)}
+                hideTab={searchOpen || calendarOpen || notificationsOpen}
+                {...kiwiChat}
+                project={section === "projects" ? selectedProject : null}
+            />
 
             {searchOpen && (
                 <LaboratorySearch
@@ -388,6 +398,16 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                     events={calendar.events}
                     onAddEvent={calendar.addEvent}
                     onRemoveEvent={calendar.removeEvent}
+                />
+            )}
+
+            {notificationsOpen && (
+                <NotificationsPanel
+                    onClose={() => setNotificationsOpen(false)}
+                    notifications={notifications.notifications}
+                    onMarkRead={notifications.markRead}
+                    onMarkAllRead={notifications.markAllRead}
+                    onRemove={notifications.removeNotification}
                 />
             )}
 

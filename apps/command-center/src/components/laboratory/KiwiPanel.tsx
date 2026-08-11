@@ -14,7 +14,17 @@ const QUICK_ACTIONS = [
 type PanelTab = "chat" | "details" | "activity" | "files";
 
 interface KiwiPanelProps {
-    onClose: () => void;
+    // Docked open/closed rather than mounted/unmounted — collapsed, it
+    // shows as a slim tab flush against the right edge; expanding it
+    // opens *at that same spot*, filling the full height between the
+    // top bar and the quick bar, per explicit request that the click
+    // target and the place it opens should be the same place.
+    isOpen: boolean;
+    onToggle: () => void;
+    // Search/Calendar/Notifications all dock or drop down from the
+    // same right-edge area — while any of those is open, the collapsed
+    // tab hides rather than visually peeking out from behind them.
+    hideTab?: boolean;
     listening: boolean;
     transcript: string;
     setTranscript: (value: string) => void;
@@ -31,20 +41,23 @@ interface KiwiPanelProps {
 }
 
 /**
- * Laboratory's "Hey Kiwi" panel — a right-side sheet, not a full-screen
- * takeover, so closing it just continues wherever the workspace left
- * off (per explicit UX rule: "KIWI je stále součástí Laboratory, ale
- * není permanentně v cestě"). Shares its actual chat state/logic with
+ * Laboratory's "Hey Kiwi" panel — docked to the right edge between the
+ * top bar and the quick bar, not a full-screen takeover, so closing it
+ * just continues wherever the workspace left off (per explicit UX
+ * rule: "KIWI je stále součástí Laboratory, ale není permanentně v
+ * cestě"). Always mounted: collapsed, it's just a slim vertical tab;
+ * expanded, it fills the entire remaining height flush against the
+ * edges, no floating gaps. Shares its actual chat state/logic with
  * VoiceBar via useKiwiChat (lifted up into Laboratory.tsx so the same
  * `listening` value can also drive KiwiCoreBadge's reaction) — this
- * component only owns the side-panel presentation, the quick-action
+ * component only owns the panel presentation, the quick-action
  * shortcuts (which just prefill the input rather than doing anything
  * real yet — no AI wired up), and the Details/Activity/Files tabs.
  * Activity/Files are honest placeholders (same pattern as
  * ProjectWorkspace's own non-Overview modules) — there's no real
  * activity feed or file storage yet.
  */
-export default function KiwiPanel({ onClose, listening, transcript, setTranscript, messages, supported, toggleListening, sendMessage, project }: KiwiPanelProps) {
+export default function KiwiPanel({ isOpen, onToggle, hideTab, listening, transcript, setTranscript, messages, supported, toggleListening, sendMessage, project }: KiwiPanelProps) {
     const [tab, setTab] = useState<PanelTab>("chat");
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const conversationRef = useRef<HTMLDivElement>(null);
@@ -69,16 +82,26 @@ export default function KiwiPanel({ onClose, listening, transcript, setTranscrip
 
     const status = project ? STATUS_META[project.status] : null;
 
+    if (!isOpen) {
+        if (hideTab) return null;
+        return (
+            <button type="button" className="kiwi-dock-tab" onClick={onToggle} aria-label="Open Hey Kiwi">
+                <AudioLines size={15} strokeWidth={1.75} />
+                <span className="kiwi-dock-tab-label">Hey Kiwi</span>
+            </button>
+        );
+    }
+
     return (
         <>
-            <div className="kiwi-panel-scrim" onClick={onClose} />
+            <div className="kiwi-panel-scrim" onClick={onToggle} />
             <aside className="kiwi-panel">
                 <header className="kiwi-panel-header">
                     <span className="kiwi-panel-title">
                         <Sparkles size={16} strokeWidth={1.75} />
                         KIWI
                     </span>
-                    <button type="button" className="kiwi-panel-close" onClick={onClose} aria-label="Close">
+                    <button type="button" className="kiwi-panel-close" onClick={onToggle} aria-label="Close">
                         <X size={16} strokeWidth={1.75} />
                     </button>
                 </header>

@@ -9,7 +9,11 @@
     width: 100%;
     box-sizing: border-box;
 
-    padding: 10px 24px;
+    /* Sized to the focus ring (78px) plus a little breathing room —
+       trimmed back down after the ring first grew to fit duration
+       picking + start/pause/stop inside it made the bar too tall, per
+       explicit follow-up feedback. */
+    padding: 9px 24px;
 
     border-top: 1px solid var(--border);
     background: rgba(5, 8, 22, 0.4);
@@ -70,83 +74,183 @@
 
 }
 
-.lab-quickbar-focus {
+.lab-quickbar-ring {
+
+    position: relative;
+    flex-shrink: 0;
 
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
+    justify-content: center;
 
-    padding: 8px 16px;
+    width: 78px;
+    height: 78px;
 
-    background: transparent;
-    border: 1px solid var(--primary);
-    border-radius: 999px;
+}
 
-    color: #eaf6ff;
-    font-size: 12px;
+.lab-quickbar-ring-track {
+
+    stroke: rgba(255, 255, 255, .08);
+
+}
+
+.lab-quickbar-ring-progress {
+
+    stroke: var(--secondary);
+    stroke-linecap: round;
+
+    transition: stroke-dashoffset 1s linear;
+
+}
+
+.lab-quickbar-ring-content {
+
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+
+    padding: 0 10px;
+
+}
+
+.lab-quickbar-ring-time {
+
+    font-size: 11px;
     font-weight: 700;
-    white-space: nowrap;
     font-variant-numeric: tabular-nums;
-
-    cursor: pointer;
-    transition: var(--transition);
+    color: #eaf6ff;
 
 }
 
-.lab-quickbar-focus:hover {
-
-    background: rgba(73, 199, 255, .15);
-    box-shadow: 0 0 10px rgba(73, 199, 255, .4);
-
-}
-
-.lab-quickbar-focus-active {
-
-    background: rgba(110, 243, 165, .12);
-    border-color: var(--secondary);
-    color: var(--secondary);
-
-}
-
-.lab-quickbar-focus-active:hover {
-
-    background: rgba(110, 243, 165, .2);
-    box-shadow: 0 0 10px rgba(110, 243, 165, .4);
-
-}
-
-.lab-quickbar-focus-setup {
+.lab-quickbar-ring-controls {
 
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
+    gap: 5px;
 
 }
 
-.lab-quickbar-duration {
+.lab-quickbar-ring-select,
+.lab-quickbar-ring-input {
 
-    padding: 8px 10px;
+    width: 100%;
+    max-width: 46px;
 
-    background: rgba(5, 8, 22, 0.6);
+    padding: 1px 3px;
+
+    background: rgba(255, 255, 255, .05);
     border: 1px solid var(--border);
-    border-radius: 999px;
+    border-radius: 6px;
 
     color: var(--text);
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: 700;
     font-family: inherit;
+    text-align: center;
 
+    outline: none;
     cursor: pointer;
     transition: var(--transition);
 
 }
 
-.lab-quickbar-duration:hover,
-.lab-quickbar-duration:focus {
+.lab-quickbar-ring-input {
+
+    cursor: text;
+
+}
+
+.lab-quickbar-ring-select:hover,
+.lab-quickbar-ring-select:focus,
+.lab-quickbar-ring-input:hover,
+.lab-quickbar-ring-input:focus {
 
     border-color: var(--primary);
-    outline: none;
+
+}
+
+.lab-quickbar-ring-back {
+
+    background: none;
+    border: none;
+    padding: 0;
+
+    color: var(--text-muted);
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+
+    cursor: pointer;
+
+}
+
+.lab-quickbar-ring-back:hover {
+
+    color: var(--primary);
+
+}
+
+.lab-quickbar-ring-btn {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 19px;
+    height: 19px;
+
+    background: rgba(255, 255, 255, .06);
+    border: none;
+    border-radius: 50%;
+
+    color: var(--text);
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.lab-quickbar-ring-btn:hover:not(:disabled) {
+
+    background: rgba(73, 199, 255, .18);
+    color: #eaf6ff;
+
+}
+
+.lab-quickbar-ring-btn:disabled {
+
+    opacity: .4;
+    cursor: not-allowed;
+
+}
+
+.lab-quickbar-ring-btn-start {
+
+    width: 22px;
+    height: 22px;
+    margin-top: 1px;
+
+    background: var(--primary);
+    color: #06131f;
+
+}
+
+.lab-quickbar-ring-btn-start:hover:not(:disabled) {
+
+    background: var(--primary);
+    box-shadow: 0 0 12px rgba(73, 199, 255, .5);
+
+}
+
+.lab-quickbar-ring-btn-stop:hover {
+
+    background: rgba(255, 79, 109, .18);
+    color: var(--danger);
 
 }

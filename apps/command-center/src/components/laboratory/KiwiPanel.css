@@ -14,16 +14,17 @@
 
 .kiwi-panel {
 
-    /* Floating — inset from all four edges (see the top/bottom values
-       below, matched to the top bar's 72px + the quick bar's own
-       height) rather than a flush full-height sheet, so it never
-       covers either of them. */
+    /* Docked flush against the right edge, filling the full height
+       between the top bar (72px) and the quick bar (96px) — no side
+       gaps, so it uses all the space that's actually left there. Same
+       spot the collapsed .kiwi-dock-tab below occupies, so opening it
+       doesn't jump anywhere. */
     position: fixed;
-    top: 88px;
-    right: 20px;
-    bottom: 88px;
+    top: 72px;
+    right: 0;
+    bottom: 96px;
 
-    width: 360px;
+    width: 380px;
     max-width: 90vw;
     box-sizing: border-box;
 
@@ -33,13 +34,13 @@
     padding: 20px;
     gap: 16px;
 
-    background: rgba(8, 13, 28, 0.78);
+    background: rgba(8, 13, 28, 0.86);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
 
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.45);
 
     z-index: 31;
 
@@ -51,6 +52,59 @@
 
     from { transform: translateX(24px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
+
+}
+
+.kiwi-dock-tab {
+
+    /* Horizontal, same reading direction as the left sidebar's own
+       items (icon then label, left to right) rather than a thin
+       vertical strip with sideways text — per explicit request. Sits
+       right under the top bar (not centered) so opening it reads as
+       unfolding downward from that spot, matching where the expanded
+       panel itself starts. */
+    position: fixed;
+    top: 72px;
+    right: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 16px 10px 14px;
+
+    background: rgba(8, 13, 28, 0.65);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border: 1px solid var(--border);
+    border-top: none;
+    border-right: none;
+    border-radius: 0 0 0 14px;
+
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+    z-index: 20;
+
+}
+
+.kiwi-dock-tab:hover {
+
+    background: rgba(73, 199, 255, .12);
+    border-color: var(--primary);
+    color: #eaf6ff;
+    box-shadow: -6px 0 16px rgba(73, 199, 255, .2);
+
+}
+
+.kiwi-dock-tab-label {
+
+    white-space: nowrap;
 
 }
 
