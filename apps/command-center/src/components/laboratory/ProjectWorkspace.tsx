@@ -1,7 +1,7 @@
 import { useState, type KeyboardEvent } from "react";
 import {
     ArrowLeft, File, FileText, FlaskConical, Library, Lightbulb, Link2, Megaphone, Package, Palette,
-    Plus, Rocket, Sparkles, StickyNote, Store as StoreIcon, TestTube2, Trash2,
+    Plus, Rocket, Ruler, Sparkles, StickyNote, Store as StoreIcon, TestTube2, Trash2,
 } from "lucide-react";
 import {
     PRODUCT_STAGE_META, PROTOTYPE_STAGE_META, STATUS_META, TEST_STATUS_META, MARKETING_STATUS_META,
@@ -50,6 +50,7 @@ interface ProjectWorkspaceProps {
     onAddProduct: (projectId: string, name: string, price: string) => void;
     onCycleProductStage: (projectId: string, productId: string) => void;
     onRemoveProduct: (projectId: string, productId: string) => void;
+    onUpdateProductSpecs: (projectId: string, productId: string, specs: string) => void;
     onAddStoreChannel: (projectId: string, label: string, url: string) => void;
     onRemoveStoreChannel: (projectId: string, channelId: string) => void;
     onAddMarketingItem: (projectId: string, label: string) => void;
@@ -81,7 +82,7 @@ export default function ProjectWorkspace({
     onAddResource, onRemoveResource,
     onAddTest, onCycleTestStatus, onRemoveTest,
     onAddDocument, onRemoveDocument,
-    onAddProduct, onCycleProductStage, onRemoveProduct,
+    onAddProduct, onCycleProductStage, onRemoveProduct, onUpdateProductSpecs,
     onAddStoreChannel, onRemoveStoreChannel,
     onAddMarketingItem, onCycleMarketingStatus, onRemoveMarketingItem,
     onAddNote, onNoteChange, onAddResearch, onResearchChange,
@@ -101,6 +102,16 @@ export default function ProjectWorkspace({
     const [newDocumentUrl, setNewDocumentUrl] = useState("");
     const [newProductName, setNewProductName] = useState("");
     const [newProductPrice, setNewProductPrice] = useState("");
+    const [expandedProductSpecs, setExpandedProductSpecs] = useState<Set<string>>(new Set());
+
+    const toggleProductSpecs = (productId: string) => {
+        setExpandedProductSpecs((prev) => {
+            const next = new Set(prev);
+            if (next.has(productId)) next.delete(productId);
+            else next.add(productId);
+            return next;
+        });
+    };
     const [newStoreLabel, setNewStoreLabel] = useState("");
     const [newStoreUrl, setNewStoreUrl] = useState("");
     const [newMarketingLabel, setNewMarketingLabel] = useState("");
@@ -931,34 +942,55 @@ export default function ProjectWorkspace({
                             <div className="project-workspace-task-list">
                                 {project.products.map((product) => {
                                     const stageMeta = PRODUCT_STAGE_META[product.stage];
+                                    const specsOpen = expandedProductSpecs.has(product.id) || Boolean(product.specs);
                                     return (
-                                        <div key={product.id} className="project-workspace-task">
-                                            <span className="project-workspace-idea-icon">
-                                                <Package size={13} strokeWidth={1.75} />
-                                            </span>
-                                            <span className="project-workspace-design-ref">
-                                                <span className="project-workspace-task-title">{product.name}</span>
-                                                {product.price && (
-                                                    <span className="project-workspace-note-card-source">{product.price}</span>
-                                                )}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="project-workspace-stage-pill"
-                                                style={{ color: stageMeta.color, borderColor: stageMeta.color }}
-                                                onClick={() => onCycleProductStage(project.id, product.id)}
-                                                title="Click to advance stage"
-                                            >
-                                                {stageMeta.label}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="project-workspace-task-remove"
-                                                onClick={() => onRemoveProduct(project.id, product.id)}
-                                                aria-label="Remove product"
-                                            >
-                                                <Trash2 size={13} strokeWidth={1.75} />
-                                            </button>
+                                        <div key={product.id}>
+                                            <div className="project-workspace-task">
+                                                <span className="project-workspace-idea-icon">
+                                                    <Package size={13} strokeWidth={1.75} />
+                                                </span>
+                                                <span className="project-workspace-design-ref">
+                                                    <span className="project-workspace-task-title">{product.name}</span>
+                                                    {product.price && (
+                                                        <span className="project-workspace-note-card-source">{product.price}</span>
+                                                    )}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    className="project-workspace-stage-pill"
+                                                    style={{ color: stageMeta.color, borderColor: stageMeta.color }}
+                                                    onClick={() => onCycleProductStage(project.id, product.id)}
+                                                    title="Click to advance stage"
+                                                >
+                                                    {stageMeta.label}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`project-product-specs-toggle${specsOpen ? " project-product-specs-toggle-active" : ""}`}
+                                                    onClick={() => toggleProductSpecs(product.id)}
+                                                    aria-label="Toggle specs/dimensions"
+                                                    title="Specs / dimensions"
+                                                >
+                                                    <Ruler size={13} strokeWidth={1.75} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="project-workspace-task-remove"
+                                                    onClick={() => onRemoveProduct(project.id, product.id)}
+                                                    aria-label="Remove product"
+                                                >
+                                                    <Trash2 size={13} strokeWidth={1.75} />
+                                                </button>
+                                            </div>
+                                            {specsOpen && (
+                                                <textarea
+                                                    className="project-product-specs-textarea"
+                                                    value={product.specs}
+                                                    onChange={(e) => onUpdateProductSpecs(project.id, product.id, e.target.value)}
+                                                    placeholder="Measurements, materials, dimensions..."
+                                                    rows={3}
+                                                />
+                                            )}
                                         </div>
                                     );
                                 })}

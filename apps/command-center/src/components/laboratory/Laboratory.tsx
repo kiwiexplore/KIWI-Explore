@@ -331,7 +331,15 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
     const handleAddProduct = (projectId: string, name: string, price: string) => {
         setProjects((prev) => prev.map((p) => (
             p.id === projectId
-                ? { ...p, products: [...p.products, { id: `product-${Date.now()}`, name, price, stage: "idea" }], lastActivity: "Just now" }
+                ? { ...p, products: [...p.products, { id: `product-${Date.now()}`, name, price, stage: "idea", specs: "" }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleUpdateProductSpecs = (projectId: string, productId: string, specs: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, products: p.products.map((product) => (product.id === productId ? { ...product, specs } : product)) }
                 : p
         )));
     };
@@ -634,6 +642,7 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                             onAddProduct={handleAddProduct}
                             onCycleProductStage={handleCycleProductStage}
                             onRemoveProduct={handleRemoveProduct}
+                            onUpdateProductSpecs={handleUpdateProductSpecs}
                         />
                     )}
 
@@ -716,6 +725,7 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                                 onAddProduct={handleAddProduct}
                                 onCycleProductStage={handleCycleProductStage}
                                 onRemoveProduct={handleRemoveProduct}
+                                onUpdateProductSpecs={handleUpdateProductSpecs}
                                 onAddStoreChannel={handleAddStoreChannel}
                                 onRemoveStoreChannel={handleRemoveStoreChannel}
                                 onAddMarketingItem={handleAddMarketingItem}

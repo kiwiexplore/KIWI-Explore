@@ -91,6 +91,11 @@ export interface ProjectProduct {
     name: string;
     price: string; // freeform ("$29", "€12/mo", "" if not priced yet) — no currency/commerce logic, just a label
     stage: ProductStage;
+    // Freeform multi-line measurements/spec sheet ("Chest: 104cm,
+    // Length: 71cm..."), not a structured schema — physical goods
+    // (e.g. hiking gear) need this, software/digital ones can just
+    // leave it empty.
+    specs: string;
 }
 
 // A place the finished thing is (or will be) sold/distributed — an
@@ -250,7 +255,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         ],
         documents: [],
         products: [
-            { id: "product-p1", name: "KIWI Laboratory (personal mode)", price: "", stage: "building" },
+            { id: "product-p1", name: "KIWI Laboratory (personal mode)", price: "", stage: "building", specs: "" },
         ],
         storeChannels: [],
         marketing: [
