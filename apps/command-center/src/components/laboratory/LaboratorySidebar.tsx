@@ -18,7 +18,7 @@ interface SidebarItem {
 }
 
 const MAIN_ITEMS: SidebarItem[] = [
-    { label: "Overview", icon: LayoutDashboard },
+    { label: "Overview", icon: LayoutDashboard, section: "overview" },
     { label: "Projects", icon: FolderKanban, section: "projects" },
     { label: "Ideas", icon: Lightbulb },
     { label: "Research", icon: FlaskConical, section: "research" },
@@ -95,8 +95,9 @@ interface LaboratorySidebarProps {
  * Laboratory's left nav — MAIN/DEVELOP/LAUNCH/AI TOOLS, matching the
  * original reference mockup's structure. Most items are placeholders
  * (badged "Soon", same honest pattern as InfoPanel's Terms/Privacy) —
- * only Projects/Research/Notes are real sections so far, and "KIWI
- * Assistant" opens KiwiPanel directly rather than switching sections.
+ * only Overview/Projects/Research/Notes are real sections so far, and
+ * "KIWI Assistant" opens KiwiPanel directly rather than switching
+ * sections.
  * Deliberately duplicates the top bar's own Projects/Research/Notes
  * tabs rather than replacing them — the reference mockup itself has
  * both a top nav and this sidebar with overlapping items.

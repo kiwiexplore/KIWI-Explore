@@ -5,6 +5,7 @@ import LaboratoryQuickBar from "./LaboratoryQuickBar";
 import LaboratorySearch from "./LaboratorySearch";
 import CalendarPanel from "./CalendarPanel";
 import NotificationsPanel from "./NotificationsPanel";
+import Overview from "./Overview";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -24,7 +25,7 @@ import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import "./Laboratory.css";
 
-export type LaboratorySection = "projects" | "research" | "notes";
+export type LaboratorySection = "overview" | "projects" | "research" | "notes";
 
 interface LaboratoryProps {
     onBack: () => void;
@@ -42,9 +43,12 @@ interface LaboratoryProps {
  * here touches the Dashboard's own working files, and nothing in the
  * Dashboard depends on this existing.
  *
- * Three top-level sections (Projects/Research/Notes, switched from the
- * left sidebar) each follow the same grid -> detail shape: pick an
- * item, walk into its own page, come back. Research and Notes here are
+ * Four top-level sections (Overview/Projects/Research/Notes, switched
+ * from the left sidebar). Overview is a read-only snapshot across the
+ * other three (recent projects, open tasks, recent notes/research) and
+ * is the default landing section; Projects/Research/Notes each follow
+ * their own grid -> detail shape: pick an item, walk into its own
+ * page, come back. Research and Notes here are
  * deliberately GLOBAL/cross-project (a scratchpad and a findings list
  * that don't belong to any one project yet) — each project also has
  * its own "Research"/"Notes" MODULE tab inside ProjectWorkspace, which
@@ -76,7 +80,7 @@ interface LaboratoryProps {
  * so an event added from CalendarPanel here shows up there too.
  */
 export default function Laboratory({ onBack, account, calendar }: LaboratoryProps) {
-    const [section, setSection] = useState<LaboratorySection>("projects");
+    const [section, setSection] = useState<LaboratorySection>("overview");
 
     const [projects, setProjects] = useState<LaboratoryProject[]>(MOCK_PROJECTS);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -325,6 +329,20 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                 />
 
                 <main className="laboratory-main">
+                    {section === "overview" && (
+                        <Overview
+                            projects={projects}
+                            notes={notes}
+                            researchEntries={researchEntries}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onCreateProject={handleCreateProject}
+                            onGoToSection={setSection}
+                            onSelectNote={(id) => { setSelectedNoteId(id); setSection("notes"); }}
+                            onSelectResearch={(id) => { setSelectedResearchId(id); setSection("research"); }}
+                            onToggleTask={handleToggleTask}
+                        />
+                    )}
+
                     {section === "projects" && (
                         selectedProject ? (
                             <ProjectWorkspace
