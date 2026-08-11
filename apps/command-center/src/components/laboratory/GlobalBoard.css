@@ -142,3 +142,35 @@
     color: var(--text-muted);
 
 }
+
+/*
+ * Honesty banner for the AI Tools boards (Image Generation/Market
+ * Analysis/Trend Scanner) — same "no AI behind this yet" disclosure as
+ * useKiwiChat, surfaced once per page rather than repeated per item.
+ */
+.global-board-notice {
+
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 12px 16px;
+
+    background: rgba(117, 102, 255, .08);
+    border: 1px solid rgba(117, 102, 255, .25);
+    border-radius: var(--radius);
+
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-muted);
+
+}
+
+.global-board-notice svg {
+
+    flex-shrink: 0;
+    margin-top: 1px;
+
+    color: var(--accent);
+
+}

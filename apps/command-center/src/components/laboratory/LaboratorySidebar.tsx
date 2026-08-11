@@ -43,9 +43,9 @@ const LAUNCH_ITEMS: SidebarItem[] = [
 
 const AI_ITEMS: SidebarItem[] = [
     { label: "KIWI Assistant", icon: Sparkles, action: "kiwi" },
-    { label: "Image Generation", icon: ImageIcon },
-    { label: "Market Analysis", icon: TrendingUp },
-    { label: "Trend Scanner", icon: Radar },
+    { label: "Image Generation", icon: ImageIcon, section: "image-generation" },
+    { label: "Market Analysis", icon: TrendingUp, section: "market-analysis" },
+    { label: "Trend Scanner", icon: Radar, section: "trend-scanner" },
 ];
 
 interface SidebarSectionProps {
@@ -94,10 +94,11 @@ interface LaboratorySidebarProps {
 /**
  * Laboratory's left nav — MAIN/DEVELOP/LAUNCH/AI TOOLS, matching the
  * original reference mockup's structure. Most items are placeholders
- * (badged "Soon", same honest pattern as InfoPanel's Terms/Privacy) —
- * only the AI Tools group and "KIWI Assistant" itself are placeholders
- * now; every Main/Develop/Launch item is a real section, and "KIWI
- * Assistant" opens KiwiPanel directly rather than switching sections.
+ * Every item is now a real section — "KIWI Assistant" opens KiwiPanel
+ * directly rather than switching sections; the other three AI Tools
+ * items (Image Generation/Market Analysis/Trend Scanner) are real
+ * pages too, but honestly UI-only — see each board's own doc comment,
+ * same "no AI behind this yet" state as useKiwiChat.
  * Deliberately duplicates the top bar's own Projects/Research/Notes
  * tabs rather than replacing them — the reference mockup itself has
  * both a top nav and this sidebar with overlapping items.

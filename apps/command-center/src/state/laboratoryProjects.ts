@@ -99,6 +99,27 @@ export interface ProjectMarketingItem {
     status: MarketingStatus;
 }
 
+// The three AI Tools sections (Image Generation/Market Analysis/Trend
+// Scanner) are UI shells only — same honest state as useKiwiChat's "no
+// AI behind this yet": saving a prompt/query/topic just tracks it in
+// this list, nothing generates or analyzes anything. Each gets its own
+// type/array (rather than one shared shape) so the field name matches
+// what's actually being saved.
+export interface ProjectImagePrompt {
+    id: string;
+    prompt: string;
+}
+
+export interface ProjectMarketQuery {
+    id: string;
+    query: string;
+}
+
+export interface ProjectTrendTopic {
+    id: string;
+    topic: string;
+}
+
 export interface LaboratoryProject {
     id: string;
     name: string;
@@ -119,6 +140,9 @@ export interface LaboratoryProject {
     products: ProjectProduct[];
     storeChannels: ProjectStoreChannel[];
     marketing: ProjectMarketingItem[];
+    imagePrompts: ProjectImagePrompt[];
+    marketQueries: ProjectMarketQuery[];
+    trendTopics: ProjectTrendTopic[];
     // Reuses the exact same LabNote/ResearchEntry shapes as Laboratory's
     // global Notes/Research sections — these are scoped to just this
     // project, unlike the global lists.
@@ -221,6 +245,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         marketing: [
             { id: "marketing-p1", label: "Sprint changelog on X", status: "active" },
         ],
+        imagePrompts: [],
+        marketQueries: [],
+        trendTopics: [],
         notes: [
             { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
         ],
@@ -251,6 +278,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         products: [],
         storeChannels: [],
         marketing: [],
+        imagePrompts: [],
+        marketQueries: [],
+        trendTopics: [],
         notes: [],
         research: [],
     },
@@ -274,6 +304,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         products: [],
         storeChannels: [],
         marketing: [],
+        imagePrompts: [],
+        marketQueries: [],
+        trendTopics: [],
         notes: [],
         research: [],
     },
@@ -303,6 +336,9 @@ export function createMockProject(): LaboratoryProject {
         products: [],
         storeChannels: [],
         marketing: [],
+        imagePrompts: [],
+        marketQueries: [],
+        trendTopics: [],
         notes: [],
         research: [],
     };

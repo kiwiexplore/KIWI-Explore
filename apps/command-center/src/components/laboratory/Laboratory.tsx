@@ -17,6 +17,9 @@ import ProductsBoard from "./ProductsBoard";
 import StoreBoard from "./StoreBoard";
 import MarketingBoard from "./MarketingBoard";
 import AnalyticsPage from "./AnalyticsPage";
+import ImageGenerationBoard from "./ImageGenerationBoard";
+import MarketAnalysisBoard from "./MarketAnalysisBoard";
+import TrendScannerBoard from "./TrendScannerBoard";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -43,7 +46,8 @@ export type LaboratorySection =
     | "overview" | "projects" | "research" | "notes"
     | "tasks" | "ideas" | "design" | "prototypes"
     | "resources" | "tests" | "documents"
-    | "products" | "store" | "marketing" | "analytics";
+    | "products" | "store" | "marketing" | "analytics"
+    | "image-generation" | "market-analysis" | "trend-scanner";
 
 interface LaboratoryProps {
     onBack: () => void;
@@ -400,6 +404,54 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
+    const handleAddImagePrompt = (projectId: string, prompt: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, imagePrompts: [...p.imagePrompts, { id: `image-prompt-${Date.now()}`, prompt }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveImagePrompt = (projectId: string, promptId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, imagePrompts: p.imagePrompts.filter((item) => item.id !== promptId) }
+                : p
+        )));
+    };
+
+    const handleAddMarketQuery = (projectId: string, query: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, marketQueries: [...p.marketQueries, { id: `market-query-${Date.now()}`, query }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveMarketQuery = (projectId: string, queryId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, marketQueries: p.marketQueries.filter((item) => item.id !== queryId) }
+                : p
+        )));
+    };
+
+    const handleAddTrendTopic = (projectId: string, topic: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, trendTopics: [...p.trendTopics, { id: `trend-topic-${Date.now()}`, topic }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveTrendTopic = (projectId: string, topicId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, trendTopics: p.trendTopics.filter((item) => item.id !== topicId) }
+                : p
+        )));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -602,6 +654,33 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
 
                     {section === "analytics" && (
                         <AnalyticsPage projects={projects} noteCount={notes.length} researchCount={researchEntries.length} />
+                    )}
+
+                    {section === "image-generation" && (
+                        <ImageGenerationBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddImagePrompt={handleAddImagePrompt}
+                            onRemoveImagePrompt={handleRemoveImagePrompt}
+                        />
+                    )}
+
+                    {section === "market-analysis" && (
+                        <MarketAnalysisBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddMarketQuery={handleAddMarketQuery}
+                            onRemoveMarketQuery={handleRemoveMarketQuery}
+                        />
+                    )}
+
+                    {section === "trend-scanner" && (
+                        <TrendScannerBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddTrendTopic={handleAddTrendTopic}
+                            onRemoveTrendTopic={handleRemoveTrendTopic}
+                        />
                     )}
 
                     {section === "projects" && (
