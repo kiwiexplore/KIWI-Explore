@@ -3,6 +3,15 @@
     width: 240px;
     flex-shrink: 0;
 
+    /* Without this, the flex item's default min-height:auto lets it
+       grow to fit ALL of its content instead of respecting the
+       stretched height from .laboratory-body — which meant
+       .lab-sidebar-scroll's own overflow-y:auto never had a bounded
+       box to actually scroll within, so items past the bottom edge
+       were silently clipped by the page's own overflow:hidden instead
+       of being reachable via scroll. */
+    min-height: 0;
+
     box-sizing: border-box;
     padding: 20px 14px;
 
