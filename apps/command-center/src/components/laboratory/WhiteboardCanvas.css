@@ -1,0 +1,79 @@
+.whiteboard-body {
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+}
+
+.whiteboard-canvas {
+
+    width: 100%;
+    aspect-ratio: 1000 / 560;
+
+    background: rgba(5, 8, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    touch-action: none;
+    cursor: crosshair;
+
+}
+
+.whiteboard-actions {
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+
+}
+
+.whiteboard-action-btn {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 8px 14px;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.whiteboard-action-btn:hover:not(:disabled) {
+
+    color: var(--text);
+    border-color: var(--primary);
+
+}
+
+.whiteboard-action-btn:disabled {
+
+    opacity: .4;
+    cursor: not-allowed;
+
+}
+
+.whiteboard-action-save {
+
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #06131f;
+
+}
+
+.whiteboard-action-save:hover:not(:disabled) {
+
+    color: #06131f;
+    box-shadow: 0 0 12px rgba(73, 199, 255, .4);
+
+}

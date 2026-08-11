@@ -1,0 +1,52 @@
+.mind-map-svg {
+
+    display: block;
+
+    overflow: visible;
+
+}
+
+.mind-map-edge {
+
+    stroke: var(--border);
+    stroke-width: 1.5;
+
+}
+
+.mind-map-node-dot {
+
+    fill: var(--accent);
+
+}
+
+.mind-map-node-label {
+
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: center;
+    color: var(--text);
+
+}
+
+.mind-map-center-dot {
+
+    fill: rgba(73, 199, 255, .16);
+    stroke: var(--primary);
+    stroke-width: 1.5;
+
+}
+
+.mind-map-center-label {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    height: 100%;
+
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text);
+
+}

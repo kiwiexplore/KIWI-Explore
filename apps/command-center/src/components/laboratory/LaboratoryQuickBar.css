@@ -52,24 +52,15 @@
     font-weight: 600;
     white-space: nowrap;
 
-    cursor: default;
-    opacity: .7;
+    cursor: pointer;
     transition: var(--transition);
 
 }
 
-.lab-quickbar-tool-badge {
+.lab-quickbar-tool:hover {
 
-    padding: 1px 6px;
-
-    background: rgba(255, 255, 255, .06);
-    border-radius: 999px;
-
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: .5px;
-    text-transform: uppercase;
-    color: var(--text-muted);
+    color: var(--text);
+    border-color: var(--primary);
 
 }
 

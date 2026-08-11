@@ -20,6 +20,8 @@ import AnalyticsPage from "./AnalyticsPage";
 import ImageGenerationBoard from "./ImageGenerationBoard";
 import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import TrendScannerBoard from "./TrendScannerBoard";
+import MindMapView from "./MindMapView";
+import WhiteboardCanvas from "./WhiteboardCanvas";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -121,6 +123,8 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
     const [searchOpen, setSearchOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [mindMapOpen, setMindMapOpen] = useState(false);
+    const [whiteboardOpen, setWhiteboardOpen] = useState(false);
     const notifications = useNotificationsState();
 
     // Search and Notifications both drop down from the same top-right
@@ -730,7 +734,11 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                 </main>
             </div>
 
-            <LaboratoryQuickBar />
+            <LaboratoryQuickBar
+                onOpenSection={setSection}
+                onOpenMindMap={() => setMindMapOpen(true)}
+                onOpenWhiteboard={() => setWhiteboardOpen(true)}
+            />
 
             <KiwiPanel
                 isOpen={kiwiOpen}
@@ -767,6 +775,11 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                     onMarkAllRead={notifications.markAllRead}
                     onRemove={notifications.removeNotification}
                 />
+            )}
+
+            {mindMapOpen && <MindMapView projects={projects} onClose={() => setMindMapOpen(false)} />}
+            {whiteboardOpen && (
+                <WhiteboardCanvas projects={projects} onClose={() => setWhiteboardOpen(false)} onAddFile={handleAddFile} />
             )}
 
             <DetailDrawer content={profileDetail} onClose={() => setProfileAnchor(null)} />

@@ -1,0 +1,142 @@
+.quick-tool-scrim {
+
+    position: fixed;
+    inset: 0;
+
+    background: rgba(2, 6, 17, 0.5);
+
+    z-index: 40;
+
+}
+
+.quick-tool-modal {
+
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 560px;
+    max-width: 92vw;
+    max-height: 80vh;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 20px;
+    gap: 16px;
+
+    background: rgba(8, 13, 28, 0.9);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+    z-index: 41;
+
+    animation: quick-tool-modal-in .18s ease;
+
+}
+
+@keyframes quick-tool-modal-in {
+
+    from { transform: translate(-50%, -50%) scale(.97); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+
+}
+
+.quick-tool-modal-header {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+}
+
+.quick-tool-modal-title {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.quick-tool-modal-title svg {
+
+    color: var(--primary);
+
+}
+
+.quick-tool-modal-close {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 28px;
+    height: 28px;
+
+    background: none;
+    border: none;
+    border-radius: 8px;
+
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.quick-tool-modal-close:hover {
+
+    background: rgba(255, 255, 255, .06);
+    color: var(--text);
+
+}
+
+.quick-tool-modal-project-select {
+
+    padding: 8px 12px;
+
+    background: rgba(5, 8, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+
+    outline: none;
+
+}
+
+.quick-tool-modal-body {
+
+    flex: 1;
+    min-height: 0;
+
+    overflow-y: auto;
+
+}
+
+.quick-tool-modal-empty {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    height: 100%;
+    min-height: 160px;
+
+    text-align: center;
+
+    color: var(--text-muted);
+    font-size: 13px;
+
+}

@@ -3,23 +3,32 @@ import {
     ChevronLeft, FileBarChart, ImagePlus, Lightbulb, Network, Pause, PenTool, Play, Square, Telescope,
     type LucideIcon,
 } from "lucide-react";
+import type { LaboratorySection } from "./Laboratory";
 import "./LaboratoryQuickBar.css";
+
+// "mindmap"/"whiteboard" open their own modal (see below); "section"
+// tools just jump the main view to an already-real Laboratory section
+// — Ideation -> Ideas, AI Research -> Market Analysis, Image Gen ->
+// Image Generation, Reports -> Analytics. No more placeholders here;
+// every quick tool does something real now.
+type QuickToolAction =
+    | { kind: "mindmap" }
+    | { kind: "whiteboard" }
+    | { kind: "section"; section: LaboratorySection };
 
 interface QuickTool {
     label: string;
     icon: LucideIcon;
+    action: QuickToolAction;
 }
 
-// All placeholders for now (per the reference mockup's own Quick Tools
-// row) — none of these open anything yet, same honest "Soon" pattern
-// used across the rest of Laboratory.
 const QUICK_TOOLS: QuickTool[] = [
-    { label: "Mind Map", icon: Network },
-    { label: "Whiteboard", icon: PenTool },
-    { label: "Ideation", icon: Lightbulb },
-    { label: "AI Research", icon: Telescope },
-    { label: "Image Gen", icon: ImagePlus },
-    { label: "Reports", icon: FileBarChart },
+    { label: "Mind Map", icon: Network, action: { kind: "mindmap" } },
+    { label: "Whiteboard", icon: PenTool, action: { kind: "whiteboard" } },
+    { label: "Ideation", icon: Lightbulb, action: { kind: "section", section: "ideas" } },
+    { label: "AI Research", icon: Telescope, action: { kind: "section", section: "market-analysis" } },
+    { label: "Image Gen", icon: ImagePlus, action: { kind: "section", section: "image-generation" } },
+    { label: "Reports", icon: FileBarChart, action: { kind: "section", section: "analytics" } },
 ];
 
 // In minutes — presets plus a "custom" sentinel that reveals a free-
@@ -65,8 +74,9 @@ function getAudioContextCtor(): typeof AudioContext | null {
 
 /**
  * The bottom bar from the reference mockup — a row of quick-tool
- * shortcuts (all placeholders, "Soon" badged, same as the sidebar's
- * own not-yet-built modules) plus a real Focus Mode timer. The ring's
+ * shortcuts (Mind Map/Whiteboard open their own modal below; the other
+ * four just jump the main view to the already-real Laboratory section
+ * they correspond to) plus a real Focus Mode timer. The ring's
  * own center is reserved purely for numbers — the picked duration
  * while idle, the live countdown once running — rendered through the
  * exact same element at the exact same size either way, so the ring
@@ -87,7 +97,20 @@ function getAudioContextCtor(): typeof AudioContext | null {
  * yet, just a standalone session timer — no backend needed for any of
  * this.
  */
-export default function LaboratoryQuickBar() {
+interface LaboratoryQuickBarProps {
+    onOpenSection: (section: LaboratorySection) => void;
+    // Mind Map/Whiteboard render as centered modals — Laboratory.tsx
+    // owns that open/close state and renders them itself (same pattern
+    // as searchOpen/calendarOpen/notificationsOpen), rather than this
+    // component rendering them inline: .lab-quickbar has its own
+    // backdrop-filter, which establishes a containing block for
+    // position:fixed descendants and would silently break the modals'
+    // viewport-centering if they were nested in here.
+    onOpenMindMap: () => void;
+    onOpenWhiteboard: () => void;
+}
+
+export default function LaboratoryQuickBar({ onOpenSection, onOpenMindMap, onOpenWhiteboard }: LaboratoryQuickBarProps) {
     const [durationChoice, setDurationChoice] = useState<string>("30");
     const [customMinutes, setCustomMinutes] = useState("25");
     const [focusState, setFocusState] = useState<FocusState>("idle");
@@ -95,6 +118,12 @@ export default function LaboratoryQuickBar() {
     const [remaining, setRemaining] = useState(0);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const audioCtxRef = useRef<AudioContext | null>(null);
+
+    const handleToolClick = (action: QuickToolAction) => {
+        if (action.kind === "mindmap") onOpenMindMap();
+        else if (action.kind === "whiteboard") onOpenWhiteboard();
+        else onOpenSection(action.section);
+    };
 
     const ensureAudioContext = (): AudioContext | null => {
         try {
@@ -182,10 +211,9 @@ export default function LaboratoryQuickBar() {
         <footer className="lab-quickbar">
             <div className="lab-quickbar-tools">
                 {QUICK_TOOLS.map((tool) => (
-                    <button key={tool.label} type="button" className="lab-quickbar-tool" disabled>
+                    <button key={tool.label} type="button" className="lab-quickbar-tool" onClick={() => handleToolClick(tool.action)}>
                         <tool.icon size={15} strokeWidth={1.75} />
                         <span>{tool.label}</span>
-                        <span className="lab-quickbar-tool-badge">Soon</span>
                     </button>
                 ))}
             </div>
