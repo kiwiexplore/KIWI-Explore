@@ -413,6 +413,35 @@
 
 }
 
+.project-workspace-design-ref {
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    flex: 1;
+    min-width: 0;
+
+}
+
+.project-workspace-design-ref .project-workspace-note-card-source {
+
+    white-space: nowrap;
+
+}
+
+.project-workspace-design-add {
+
+    flex-wrap: wrap;
+
+}
+
+.project-workspace-design-add .project-workspace-task-input {
+
+    min-width: 160px;
+
+}
+
 .project-workspace-task-remove {
 
     flex-shrink: 0;

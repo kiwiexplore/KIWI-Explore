@@ -1,15 +1,15 @@
 import { useState, type KeyboardEvent } from "react";
-import { ArrowLeft, FlaskConical, Lightbulb, Link2, Plus, StickyNote, Trash2 } from "lucide-react";
+import { ArrowLeft, FlaskConical, Lightbulb, Link2, Palette, Plus, StickyNote, Trash2 } from "lucide-react";
 import { STATUS_META, type LaboratoryProject } from "../../state/laboratoryProjects";
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
 import "./ProjectWorkspace.css";
 
-// Not all of these are real yet — Overview, Research, Ideas, Tasks, and
-// Notes are the only modules with actual content (see the render
-// below). The rest just need to exist as tabs now so the architecture
-// doesn't have to change shape later to fit them in, per explicit
-// request.
+// Not all of these are real yet — Overview, Research, Ideas, Design,
+// Tasks, and Notes are the only modules with actual content (see the
+// render below). The rest just need to exist as tabs now so the
+// architecture doesn't have to change shape later to fit them in, per
+// explicit request.
 const MODULES = ["Overview", "Research", "Ideas", "Design", "Prototype", "Tasks", "Files", "Notes", "AI Lab"];
 
 interface ProjectWorkspaceProps {
@@ -21,6 +21,8 @@ interface ProjectWorkspaceProps {
     onRemoveTask: (projectId: string, taskId: string) => void;
     onAddIdea: (projectId: string, text: string) => void;
     onRemoveIdea: (projectId: string, ideaId: string) => void;
+    onAddDesignRef: (projectId: string, label: string, url: string) => void;
+    onRemoveDesignRef: (projectId: string, refId: string) => void;
     // Returns the new note's/finding's id so the workspace can jump
     // straight into editing it, same as the global Notes/Research
     // sections do.
@@ -37,10 +39,12 @@ interface ProjectWorkspaceProps {
  * Project N" with no way to rename it otherwise, which is the very
  * first thing you'd want to fix on walking into it.
  */
-export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
+export default function ProjectWorkspace({ project, onBack, onChange, onAddTask, onToggleTask, onRemoveTask, onAddIdea, onRemoveIdea, onAddDesignRef, onRemoveDesignRef, onAddNote, onNoteChange, onAddResearch, onResearchChange }: ProjectWorkspaceProps) {
     const [activeModule, setActiveModule] = useState("Overview");
     const [newTask, setNewTask] = useState("");
     const [newIdea, setNewIdea] = useState("");
+    const [newDesignLabel, setNewDesignLabel] = useState("");
+    const [newDesignUrl, setNewDesignUrl] = useState("");
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
     const status = STATUS_META[project.status];
@@ -70,6 +74,20 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
         if (event.key === "Enter") {
             event.preventDefault();
             handleAddIdea();
+        }
+    };
+
+    const handleAddDesignRef = () => {
+        if (!newDesignLabel.trim()) return;
+        onAddDesignRef(project.id, newDesignLabel.trim(), newDesignUrl.trim());
+        setNewDesignLabel("");
+        setNewDesignUrl("");
+    };
+
+    const handleDesignKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            handleAddDesignRef();
         }
     };
 
@@ -131,6 +149,9 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                         )}
                         {m === "Ideas" && project.ideas.length > 0 && (
                             <span className="project-workspace-module-count">{project.ideas.length}</span>
+                        )}
+                        {m === "Design" && project.designRefs.length > 0 && (
+                            <span className="project-workspace-module-count">{project.designRefs.length}</span>
                         )}
                     </button>
                 ))}
@@ -359,7 +380,64 @@ export default function ProjectWorkspace({ project, onBack, onChange, onAddTask,
                     </div>
                 )}
 
-                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && (
+                {activeModule === "Design" && (
+                    <div className="project-workspace-tasks">
+                        {project.designRefs.length === 0 ? (
+                            <p className="project-workspace-tasks-empty">No references yet — drop a link below.</p>
+                        ) : (
+                            <div className="project-workspace-task-list">
+                                {project.designRefs.map((ref) => (
+                                    <div key={ref.id} className="project-workspace-task">
+                                        <span className="project-workspace-idea-icon">
+                                            <Palette size={13} strokeWidth={1.75} />
+                                        </span>
+                                        <span className="project-workspace-design-ref">
+                                            <span className="project-workspace-task-title">{ref.label}</span>
+                                            {ref.url && (
+                                                <a href={ref.url} target="_blank" rel="noreferrer" className="project-workspace-note-card-source">
+                                                    <Link2 size={10} strokeWidth={2} />
+                                                    {ref.url}
+                                                </a>
+                                            )}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="project-workspace-task-remove"
+                                            onClick={() => onRemoveDesignRef(project.id, ref.id)}
+                                            aria-label="Remove reference"
+                                        >
+                                            <Trash2 size={13} strokeWidth={1.75} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="project-workspace-task-add project-workspace-design-add">
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newDesignLabel}
+                                onChange={(e) => setNewDesignLabel(e.target.value)}
+                                onKeyDown={handleDesignKeyDown}
+                                placeholder="Reference name..."
+                            />
+                            <input
+                                type="text"
+                                className="project-workspace-task-input"
+                                value={newDesignUrl}
+                                onChange={(e) => setNewDesignUrl(e.target.value)}
+                                onKeyDown={handleDesignKeyDown}
+                                placeholder="Link (optional)"
+                            />
+                            <button type="button" className="project-workspace-task-add-btn" onClick={handleAddDesignRef} disabled={!newDesignLabel.trim()}>
+                                <Plus size={15} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {activeModule !== "Overview" && activeModule !== "Tasks" && activeModule !== "Notes" && activeModule !== "Research" && activeModule !== "Ideas" && activeModule !== "Design" && (
                     <div className="project-workspace-soon">
                         <span className="project-workspace-soon-title">{activeModule}</span>
                         <p>This module isn't built yet — it's next in line.</p>

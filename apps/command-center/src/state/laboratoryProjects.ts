@@ -23,6 +23,12 @@ export interface ProjectIdea {
     text: string;
 }
 
+export interface ProjectDesignRef {
+    id: string;
+    label: string;
+    url: string;
+}
+
 export interface LaboratoryProject {
     id: string;
     name: string;
@@ -34,6 +40,7 @@ export interface LaboratoryProject {
     lastActivity: string; // human-readable, static for now — no real activity feed yet
     tasks: ProjectTask[];
     ideas: ProjectIdea[];
+    designRefs: ProjectDesignRef[];
     // Reuses the exact same LabNote/ResearchEntry shapes as Laboratory's
     // global Notes/Research sections — these are scoped to just this
     // project, unlike the global lists.
@@ -69,6 +76,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         ideas: [
             { id: "idea-p1", text: "Let KIWI Assistant suggest which module to open next based on what you're doing" },
         ],
+        designRefs: [
+            { id: "design-p1", label: "Selective bloom reference reel", url: "https://example.com/bloom-reference" },
+        ],
         notes: [
             { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
         ],
@@ -90,6 +100,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
             { id: "task-5", title: "Book studio time", done: false },
         ],
         ideas: [],
+        designRefs: [],
         notes: [],
         research: [],
     },
@@ -104,6 +115,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         lastActivity: "1 week ago",
         tasks: [],
         ideas: [],
+        designRefs: [],
         notes: [],
         research: [],
     },
@@ -124,6 +136,7 @@ export function createMockProject(): LaboratoryProject {
         lastActivity: "Just now",
         tasks: [],
         ideas: [],
+        designRefs: [],
         notes: [],
         research: [],
     };
