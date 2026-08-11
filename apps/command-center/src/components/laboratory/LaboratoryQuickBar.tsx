@@ -39,26 +39,49 @@ function formatRemaining(totalSeconds: number): string {
     return `${minutes}:${seconds}`;
 }
 
-const RING_SIZE = 78;
+// Green while there's plenty of time left, amber past the halfway
+// mark, red for the final stretch — per explicit request so the ring
+// itself communicates urgency, not just the number.
+function progressColor(progress: number): string {
+    if (progress >= 0.9) return "var(--danger)";
+    if (progress >= 0.5) return "#F5C451";
+    return "var(--secondary)";
+}
+
+const RING_SIZE = 64;
 const RING_STROKE = 4;
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 type FocusState = "idle" | "running" | "paused";
 
+// The Web Audio API isn't part of TypeScript's standard DOM lib under
+// the webkit-prefixed name, same minimal-shape pattern as
+// useKiwiChat.ts's SpeechRecognition handling.
+function getAudioContextCtor(): typeof AudioContext | null {
+    const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+    return w.AudioContext ?? w.webkitAudioContext ?? null;
+}
+
 /**
  * The bottom bar from the reference mockup — a row of quick-tool
  * shortcuts (all placeholders, "Soon" badged, same as the sidebar's
  * own not-yet-built modules) plus a real Focus Mode timer. Everything
- * about the timer lives inside a single ring, per explicit request:
- * picking a duration (a preset from 5 min to 4 h, or a typed-in custom
- * number of minutes) and starting happen in the ring's idle state;
- * once running, the same ring fills in as an SVG progress circle and
- * its center swaps to the remaining time plus Pause/Stop controls.
- * Pausing freezes the countdown (and the ring) without losing the
- * remaining time; Stop cancels the session back to the duration
- * picker. Not tied to any project/task yet, just a standalone session
- * timer — no backend needed for any of this.
+ * about the timer lives inside a single ring: the center holds
+ * whichever's most important right now — a Start icon while idle, the
+ * big countdown digits once running — while the duration picker (idle)
+ * or Pause/Stop controls (running) sit anchored to the ring's own
+ * bottom edge, per explicit request. The progress arc itself shifts
+ * from green through amber to red as the session runs out, and a
+ * synthesized gong (Web Audio API, no audio asset needed) plays on
+ * completion — the AudioContext is created/unlocked inside the Start
+ * click handler specifically so it's not blocked by autoplay policies
+ * when the gong fires later, unprompted, once time runs out.
+ * Introduced an explicit idle/running/paused state machine so pausing
+ * freezes the countdown without losing remaining time, distinct from
+ * Stop which cancels back to the picker. Not tied to any project/task
+ * yet, just a standalone session timer — no backend needed for any of
+ * this.
  */
 export default function LaboratoryQuickBar() {
     const [durationChoice, setDurationChoice] = useState<string>("25");
@@ -67,6 +90,41 @@ export default function LaboratoryQuickBar() {
     const [totalSeconds, setTotalSeconds] = useState(0);
     const [remaining, setRemaining] = useState(0);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const audioCtxRef = useRef<AudioContext | null>(null);
+
+    const ensureAudioContext = (): AudioContext | null => {
+        try {
+            if (!audioCtxRef.current) {
+                const Ctor = getAudioContextCtor();
+                if (!Ctor) return null;
+                audioCtxRef.current = new Ctor();
+            }
+            if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
+            return audioCtxRef.current;
+        } catch {
+            return null;
+        }
+    };
+
+    const playGong = () => {
+        const ctx = audioCtxRef.current;
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        // A few detuned sine harmonics with a slow decay reads as a
+        // soft gong/bell rather than a single flat beep.
+        [220, 330, 440].forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.28 / (i + 1), now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 2.4);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 2.5);
+        });
+    };
 
     useEffect(() => {
         if (focusState === "running") {
@@ -74,6 +132,7 @@ export default function LaboratoryQuickBar() {
                 setRemaining((seconds) => {
                     if (seconds <= 1) {
                         setFocusState("idle");
+                        playGong();
                         return 0;
                     }
                     return seconds - 1;
@@ -91,6 +150,7 @@ export default function LaboratoryQuickBar() {
 
     const startFocus = () => {
         if (!resolvedMinutes) return;
+        ensureAudioContext();
         const seconds = resolvedMinutes * 60;
         setTotalSeconds(seconds);
         setRemaining(seconds);
@@ -133,40 +193,45 @@ export default function LaboratoryQuickBar() {
                     />
                     {running && (
                         <circle
-                            className="lab-quickbar-ring-progress"
                             cx={RING_SIZE / 2}
                             cy={RING_SIZE / 2}
                             r={RING_RADIUS}
                             strokeWidth={RING_STROKE}
                             fill="none"
+                            stroke={progressColor(progress)}
+                            strokeLinecap="round"
                             strokeDasharray={RING_CIRCUMFERENCE}
                             strokeDashoffset={ringOffset}
                             transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+                            style={{ transition: "stroke-dashoffset 1s linear, stroke .4s ease" }}
                         />
                     )}
                 </svg>
 
-                <div className="lab-quickbar-ring-content">
-                    {running ? (
-                        <>
-                            <span className="lab-quickbar-ring-time">{formatRemaining(remaining)}</span>
-                            <div className="lab-quickbar-ring-controls">
-                                {focusState === "running" ? (
-                                    <button type="button" className="lab-quickbar-ring-btn" onClick={pauseFocus} aria-label="Pause focus session">
-                                        <Pause size={12} strokeWidth={2} />
-                                    </button>
-                                ) : (
-                                    <button type="button" className="lab-quickbar-ring-btn" onClick={resumeFocus} aria-label="Resume focus session">
-                                        <Play size={12} strokeWidth={2} />
-                                    </button>
-                                )}
-                                <button type="button" className="lab-quickbar-ring-btn lab-quickbar-ring-btn-stop" onClick={stopFocus} aria-label="Stop focus session">
-                                    <Square size={11} strokeWidth={2} />
+                {running ? (
+                    <>
+                        <span className="lab-quickbar-ring-center lab-quickbar-ring-time">{formatRemaining(remaining)}</span>
+                        <div className="lab-quickbar-ring-edge">
+                            {focusState === "running" ? (
+                                <button type="button" className="lab-quickbar-ring-btn" onClick={pauseFocus} aria-label="Pause focus session">
+                                    <Pause size={10} strokeWidth={2} />
                                 </button>
-                            </div>
-                        </>
-                    ) : (
-                        <>
+                            ) : (
+                                <button type="button" className="lab-quickbar-ring-btn" onClick={resumeFocus} aria-label="Resume focus session">
+                                    <Play size={10} strokeWidth={2} />
+                                </button>
+                            )}
+                            <button type="button" className="lab-quickbar-ring-btn lab-quickbar-ring-btn-stop" onClick={stopFocus} aria-label="Stop focus session">
+                                <Square size={9} strokeWidth={2} />
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <button type="button" className="lab-quickbar-ring-center lab-quickbar-ring-btn-start" onClick={startFocus} disabled={!resolvedMinutes} aria-label="Start focus session">
+                            <Play size={16} strokeWidth={2} />
+                        </button>
+                        <div className="lab-quickbar-ring-edge">
                             {durationChoice === CUSTOM_DURATION ? (
                                 <input
                                     type="number"
@@ -196,12 +261,9 @@ export default function LaboratoryQuickBar() {
                                     presets
                                 </button>
                             )}
-                            <button type="button" className="lab-quickbar-ring-btn lab-quickbar-ring-btn-start" onClick={startFocus} disabled={!resolvedMinutes} aria-label="Start focus session">
-                                <Play size={14} strokeWidth={2} />
-                            </button>
-                        </>
-                    )}
-                </div>
+                        </div>
+                    </>
+                )}
             </div>
         </footer>
     );

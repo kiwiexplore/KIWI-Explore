@@ -14,33 +14,35 @@
 
 .kiwi-panel {
 
-    /* Docked flush against the right edge, filling the full height
-       between the top bar (72px) and the quick bar (96px) — no side
-       gaps, so it uses all the space that's actually left there. Same
-       spot the collapsed .kiwi-dock-tab below occupies, so opening it
-       doesn't jump anywhere. */
+    /* Docked near the right edge, filling the height between the top
+       bar and quick bar (both 72px now) minus a slight gap on all
+       three sides — narrower (almost half its original width) and
+       fully rounded per explicit follow-up feedback, a middle ground
+       between the original floating panel and the flush/no-radius
+       docked version. Same spot the collapsed .kiwi-dock-tab below
+       occupies, so opening it doesn't jump anywhere. */
     position: fixed;
-    top: 72px;
-    right: 0;
-    bottom: 96px;
+    top: 80px;
+    right: 8px;
+    bottom: 80px;
 
-    width: 380px;
+    width: 200px;
     max-width: 90vw;
     box-sizing: border-box;
 
     display: flex;
     flex-direction: column;
 
-    padding: 20px;
-    gap: 16px;
+    padding: 16px;
+    gap: 14px;
 
-    background: rgba(8, 13, 28, 0.86);
+    background: rgba(8, 13, 28, 0.9);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
 
-    border-left: 1px solid var(--border);
-    border-top: 1px solid var(--border);
-    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
 
     z-index: 31;
 
@@ -64,8 +66,8 @@
        unfolding downward from that spot, matching where the expanded
        panel itself starts. */
     position: fixed;
-    top: 72px;
-    right: 0;
+    top: 80px;
+    right: 8px;
 
     display: flex;
     align-items: center;
@@ -78,9 +80,7 @@
     -webkit-backdrop-filter: blur(14px);
 
     border: 1px solid var(--border);
-    border-top: none;
-    border-right: none;
-    border-radius: 0 0 0 14px;
+    border-radius: var(--radius);
 
     color: var(--text-muted);
     font-size: 13px;
@@ -98,7 +98,7 @@
     background: rgba(73, 199, 255, .12);
     border-color: var(--primary);
     color: #eaf6ff;
-    box-shadow: -6px 0 16px rgba(73, 199, 255, .2);
+    box-shadow: 0 4px 16px rgba(73, 199, 255, .2);
 
 }
 
