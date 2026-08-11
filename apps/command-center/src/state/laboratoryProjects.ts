@@ -46,6 +46,33 @@ export interface ProjectFile {
     name: string;
 }
 
+// A link out to something the project depends on but doesn't own —
+// docs, a library, a tool, a reference site. Same {label, url} shape
+// as ProjectDesignRef, kept as its own array/type since it's a
+// different sidebar section (Develop, not Main).
+export interface ProjectResource {
+    id: string;
+    label: string;
+    url: string;
+}
+
+export type TestStatus = "untested" | "passing" | "failing";
+
+export interface ProjectTest {
+    id: string;
+    title: string;
+    status: TestStatus;
+}
+
+// A link out to a formal written document (spec, contract, deck)
+// living somewhere else — distinct from Notes, which are in-app
+// freeform scratch content (see LabNote).
+export interface ProjectDocument {
+    id: string;
+    label: string;
+    url: string;
+}
+
 export interface LaboratoryProject {
     id: string;
     name: string;
@@ -60,6 +87,9 @@ export interface LaboratoryProject {
     designRefs: ProjectDesignRef[];
     prototypes: ProjectPrototype[];
     files: ProjectFile[];
+    resources: ProjectResource[];
+    tests: ProjectTest[];
+    documents: ProjectDocument[];
     // Reuses the exact same LabNote/ResearchEntry shapes as Laboratory's
     // global Notes/Research sections — these are scoped to just this
     // project, unlike the global lists.
@@ -83,6 +113,17 @@ export const PROTOTYPE_STAGE_META: Record<PrototypeStage, { label: string; color
     building: { label: "Building", color: "var(--primary)" },
     testing: { label: "Testing", color: "var(--accent)" },
     shipped: { label: "Shipped", color: "var(--secondary)" },
+};
+
+// Cycle order for clicking a test's status pill: untested -> passing ->
+// failing -> back to untested, same click-to-advance interaction as
+// prototype stages.
+export const TEST_STATUS_ORDER: TestStatus[] = ["untested", "passing", "failing"];
+
+export const TEST_STATUS_META: Record<TestStatus, { label: string; color: string }> = {
+    untested: { label: "Untested", color: "var(--text-muted)" },
+    passing: { label: "Passing", color: "var(--secondary)" },
+    failing: { label: "Failing", color: "var(--danger)" },
 };
 
 // Intentionally spans very different kinds of work (software, music,
@@ -115,6 +156,14 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         files: [
             { id: "file-p1", name: "brain-shader-notes.glsl" },
         ],
+        resources: [
+            { id: "resource-p1", label: "React Three Fiber docs", url: "https://docs.pmnd.rs/react-three-fiber" },
+        ],
+        tests: [
+            { id: "test-p1", title: "Focus timer completes and chimes at 0:00", status: "passing" },
+            { id: "test-p2", title: "Sidebar scroll reaches AI Tools items", status: "failing" },
+        ],
+        documents: [],
         notes: [
             { id: "note-p1", title: "Architecture notes", content: "Keep the account state lifted to App.tsx — both scenes need to read/write the same identity, background, and now calendar.", updatedAt: "Just now" },
         ],
@@ -139,6 +188,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         designRefs: [],
         prototypes: [],
         files: [],
+        resources: [],
+        tests: [],
+        documents: [],
         notes: [],
         research: [],
     },
@@ -156,6 +208,9 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         designRefs: [],
         prototypes: [],
         files: [],
+        resources: [],
+        tests: [],
+        documents: [],
         notes: [],
         research: [],
     },
@@ -179,6 +234,9 @@ export function createMockProject(): LaboratoryProject {
         designRefs: [],
         prototypes: [],
         files: [],
+        resources: [],
+        tests: [],
+        documents: [],
         notes: [],
         research: [],
     };

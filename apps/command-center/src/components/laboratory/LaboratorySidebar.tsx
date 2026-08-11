@@ -29,9 +29,9 @@ const MAIN_ITEMS: SidebarItem[] = [
 
 const DEVELOP_ITEMS: SidebarItem[] = [
     { label: "Tasks", icon: ListChecks, section: "tasks" },
-    { label: "Resources", icon: Library },
-    { label: "Tests", icon: TestTube2 },
-    { label: "Documents", icon: FileText },
+    { label: "Resources", icon: Library, section: "resources" },
+    { label: "Tests", icon: TestTube2, section: "tests" },
+    { label: "Documents", icon: FileText, section: "documents" },
 ];
 
 const LAUNCH_ITEMS: SidebarItem[] = [
@@ -96,8 +96,9 @@ interface LaboratorySidebarProps {
  * original reference mockup's structure. Most items are placeholders
  * (badged "Soon", same honest pattern as InfoPanel's Terms/Privacy) —
  * only Overview/Projects/Research/Notes/Tasks/Ideas/Design
- * Studio/Prototypes are real sections so far, and "KIWI Assistant"
- * opens KiwiPanel directly rather than switching sections.
+ * Studio/Prototypes/Resources/Tests/Documents are real sections so
+ * far, and "KIWI Assistant" opens KiwiPanel directly rather than
+ * switching sections.
  * Deliberately duplicates the top bar's own Projects/Research/Notes
  * tabs rather than replacing them — the reference mockup itself has
  * both a top nav and this sidebar with overlapping items.

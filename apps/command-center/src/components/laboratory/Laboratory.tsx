@@ -10,6 +10,9 @@ import TasksBoard from "./TasksBoard";
 import IdeasBoard from "./IdeasBoard";
 import DesignStudioBoard from "./DesignStudioBoard";
 import PrototypesBoard from "./PrototypesBoard";
+import ResourcesBoard from "./ResourcesBoard";
+import TestsBoard from "./TestsBoard";
+import DocumentsBoard from "./DocumentsBoard";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -20,7 +23,7 @@ import KiwiPanel from "./KiwiPanel";
 import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import ProfileSettings from "../ui/ProfileSettings";
 import { useKiwiChat } from "../../lib/useKiwiChat";
-import { MOCK_PROJECTS, PROTOTYPE_STAGE_ORDER, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
+import { MOCK_PROJECTS, PROTOTYPE_STAGE_ORDER, TEST_STATUS_ORDER, createMockProject, type LaboratoryProject } from "../../state/laboratoryProjects";
 import { MOCK_NOTES, createMockNote, type LabNote } from "../../state/laboratoryNotes";
 import { MOCK_RESEARCH, createMockResearchEntry, type ResearchEntry } from "../../state/laboratoryResearch";
 import { resolveBackgroundImage } from "../../state/backgrounds";
@@ -29,7 +32,7 @@ import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import "./Laboratory.css";
 
-export type LaboratorySection = "overview" | "projects" | "research" | "notes" | "tasks" | "ideas" | "design" | "prototypes";
+export type LaboratorySection = "overview" | "projects" | "research" | "notes" | "tasks" | "ideas" | "design" | "prototypes" | "resources" | "tests" | "documents";
 
 interface LaboratoryProps {
     onBack: () => void;
@@ -242,6 +245,70 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
+    const handleAddResource = (projectId: string, label: string, url: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, resources: [...p.resources, { id: `resource-${Date.now()}`, label, url }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveResource = (projectId: string, resourceId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, resources: p.resources.filter((r) => r.id !== resourceId) }
+                : p
+        )));
+    };
+
+    const handleAddTest = (projectId: string, title: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, tests: [...p.tests, { id: `test-${Date.now()}`, title, status: "untested" }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleCycleTestStatus = (projectId: string, testId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? {
+                    ...p,
+                    tests: p.tests.map((test) => {
+                        if (test.id !== testId) return test;
+                        const nextIndex = (TEST_STATUS_ORDER.indexOf(test.status) + 1) % TEST_STATUS_ORDER.length;
+                        return { ...test, status: TEST_STATUS_ORDER[nextIndex] };
+                    }),
+                    lastActivity: "Just now",
+                }
+                : p
+        )));
+    };
+
+    const handleRemoveTest = (projectId: string, testId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, tests: p.tests.filter((t) => t.id !== testId) }
+                : p
+        )));
+    };
+
+    const handleAddDocument = (projectId: string, label: string, url: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, documents: [...p.documents, { id: `document-${Date.now()}`, label, url }], lastActivity: "Just now" }
+                : p
+        )));
+    };
+
+    const handleRemoveDocument = (projectId: string, documentId: string) => {
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, documents: p.documents.filter((d) => d.id !== documentId) }
+                : p
+        )));
+    };
+
     const handleCreateNote = () => {
         const note = createMockNote();
         setNotes((prev) => [note, ...prev]);
@@ -382,6 +449,34 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                             onAddPrototype={handleAddPrototype}
                             onCyclePrototypeStage={handleCyclePrototypeStage}
                             onRemovePrototype={handleRemovePrototype}
+                        />
+                    )}
+
+                    {section === "resources" && (
+                        <ResourcesBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddResource={handleAddResource}
+                            onRemoveResource={handleRemoveResource}
+                        />
+                    )}
+
+                    {section === "tests" && (
+                        <TestsBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddTest={handleAddTest}
+                            onCycleTestStatus={handleCycleTestStatus}
+                            onRemoveTest={handleRemoveTest}
+                        />
+                    )}
+
+                    {section === "documents" && (
+                        <DocumentsBoard
+                            projects={projects}
+                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onAddDocument={handleAddDocument}
+                            onRemoveDocument={handleRemoveDocument}
                         />
                     )}
 
