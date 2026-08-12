@@ -16,11 +16,14 @@ import SpaceNewsWidget from "./SpaceNewsWidget";
 import SpaceMissionsWidget from "./SpaceMissionsWidget";
 import RecipesWidget from "./RecipesWidget";
 import UpcomingEventsWidget from "./UpcomingEventsWidget";
+import ProjectsWidget from "./ProjectsWidget";
+import NotesWidget from "./NotesWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
+import type { LaboratoryDataState } from "../../state/laboratoryData";
 import "./BrainScene3D.css";
 
 // A uniform dark scrim over the whole photo (it was too bright/busy for
@@ -92,9 +95,13 @@ interface BrainScene3DProps {
     onOpenLaboratory?: () => void;
     account: AccountState;
     calendar: CalendarState;
+    // Same data Laboratory itself edits (state/laboratoryData.ts,
+    // owned by App.tsx) — read-only here, just for the Projects/Notes
+    // widgets below.
+    laboratoryData: LaboratoryDataState;
 }
 
-export default function BrainScene3D({ onOpenLaboratory, account, calendar }: BrainScene3DProps) {
+export default function BrainScene3D({ onOpenLaboratory, account, calendar, laboratoryData }: BrainScene3DProps) {
     const { nickname, setNickname, avatar, activeIconIds, activeLeftWidgetIds, activeRightWidgetIds, background } = account;
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
@@ -274,6 +281,8 @@ export default function BrainScene3D({ onOpenLaboratory, account, calendar }: Br
                         .filter((w): w is (typeof rightWidgets)[number] => Boolean(w))
                         .map((w) => {
                             if (w.id === "recipes") return <RecipesWidget key={w.id} onOpenDetail={openDetail} />;
+                            if (w.id === "projects") return <ProjectsWidget key={w.id} projects={laboratoryData.projects} onOpenDetail={openDetail} />;
+                            if (w.id === "notes") return <NotesWidget key={w.id} notes={laboratoryData.notes} onOpenDetail={openDetail} />;
                             return (
                                 <Widget
                                     key={w.id}
