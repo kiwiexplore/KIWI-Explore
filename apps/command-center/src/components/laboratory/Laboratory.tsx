@@ -264,6 +264,28 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
         )));
     };
 
+    // Returns the new model's id so Model3DViewer can select it
+    // immediately, same "return the id" convention as
+    // handleAddProjectNote/handleAddProjectResearch.
+    const handleAddModel = (projectId: string, name: string, blobUrl: string): string => {
+        const id = `model-${Date.now()}`;
+        setProjects((prev) => prev.map((p) => (
+            p.id === projectId
+                ? { ...p, models: [...p.models, { id, name, blobUrl }], lastActivity: "Just now" }
+                : p
+        )));
+        return id;
+    };
+
+    const handleRemoveModel = (projectId: string, modelId: string) => {
+        setProjects((prev) => prev.map((p) => {
+            if (p.id !== projectId) return p;
+            const removed = p.models.find((m) => m.id === modelId);
+            if (removed) URL.revokeObjectURL(removed.blobUrl);
+            return { ...p, models: p.models.filter((m) => m.id !== modelId) };
+        }));
+    };
+
     const handleAddResource = (projectId: string, label: string, url: string) => {
         setProjects((prev) => prev.map((p) => (
             p.id === projectId
@@ -715,6 +737,8 @@ export default function Laboratory({ onBack, account, calendar }: LaboratoryProp
                                 onRemovePrototype={handleRemovePrototype}
                                 onAddFile={handleAddFile}
                                 onRemoveFile={handleRemoveFile}
+                                onAddModel={handleAddModel}
+                                onRemoveModel={handleRemoveModel}
                                 onAddResource={handleAddResource}
                                 onRemoveResource={handleRemoveResource}
                                 onAddTest={handleAddTest}

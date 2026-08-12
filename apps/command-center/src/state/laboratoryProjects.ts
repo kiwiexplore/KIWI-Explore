@@ -57,6 +57,17 @@ export interface ProjectFile {
     image?: ImageAttachment;
 }
 
+// A real uploaded .glb/.gltf, held as a blobUrl (URL.createObjectURL)
+// rather than a data URL — 3D models can be large, and object URLs
+// reference the Blob directly instead of base64-inflating it. Same
+// "in-memory only, doesn't survive reload" honesty as everything else
+// (see ImageAttachment above) — revoke the URL on removal.
+export interface ProjectModel {
+    id: string;
+    name: string;
+    blobUrl: string;
+}
+
 // A link out to something the project depends on but doesn't own —
 // docs, a library, a tool, a reference site. Same {label, url} shape
 // as ProjectDesignRef, kept as its own array/type since it's a
@@ -150,6 +161,7 @@ export interface LaboratoryProject {
     designRefs: ProjectDesignRef[];
     prototypes: ProjectPrototype[];
     files: ProjectFile[];
+    models: ProjectModel[];
     resources: ProjectResource[];
     tests: ProjectTest[];
     documents: ProjectDocument[];
@@ -246,6 +258,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         files: [
             { id: "file-p1", name: "brain-shader-notes.glsl" },
         ],
+        models: [],
         resources: [
             { id: "resource-p1", label: "React Three Fiber docs", url: "https://docs.pmnd.rs/react-three-fiber" },
         ],
@@ -288,6 +301,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         designRefs: [],
         prototypes: [],
         files: [],
+        models: [],
         resources: [],
         tests: [],
         documents: [],
@@ -314,6 +328,7 @@ export const MOCK_PROJECTS: LaboratoryProject[] = [
         designRefs: [],
         prototypes: [],
         files: [],
+        models: [],
         resources: [],
         tests: [],
         documents: [],
@@ -346,6 +361,7 @@ export function createMockProject(): LaboratoryProject {
         designRefs: [],
         prototypes: [],
         files: [],
+        models: [],
         resources: [],
         tests: [],
         documents: [],

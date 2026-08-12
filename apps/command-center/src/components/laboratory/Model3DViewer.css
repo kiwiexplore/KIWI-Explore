@@ -1,0 +1,143 @@
+.model-viewer {
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+}
+
+.model-viewer-canvas-wrap {
+
+    width: 100%;
+    height: 320px;
+
+    background: rgba(5, 8, 22, 0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    overflow: hidden;
+
+}
+
+.model-viewer-empty {
+
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    color: var(--text-muted);
+
+}
+
+.model-viewer-empty p {
+
+    margin: 0;
+
+    font-size: 12px;
+    max-width: 220px;
+    text-align: center;
+
+}
+
+.model-viewer-list {
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+}
+
+.model-viewer-item {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 7px 8px 7px 12px;
+
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    transition: var(--transition);
+
+}
+
+.model-viewer-item-active {
+
+    border-color: var(--primary);
+    background: rgba(73, 199, 255, .1);
+
+}
+
+.model-viewer-item-name {
+
+    background: none;
+    border: none;
+
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+}
+
+.model-viewer-item-remove {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 22px;
+    height: 22px;
+
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.model-viewer-item-remove:hover {
+
+    background: rgba(255, 79, 109, .12);
+    color: var(--danger);
+
+}
+
+.model-viewer-upload-btn {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 8px 14px;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.model-viewer-upload-btn:hover {
+
+    color: var(--text);
+    border-color: var(--primary);
+
+}

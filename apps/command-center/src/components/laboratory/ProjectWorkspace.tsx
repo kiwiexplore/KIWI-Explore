@@ -10,10 +10,11 @@ import {
 import type { LabNote } from "../../state/laboratoryNotes";
 import type { ResearchEntry } from "../../state/laboratoryResearch";
 import { ImageUploadButton, ImageThumbnail } from "./ImageAttachmentField";
+import Model3DViewer from "./Model3DViewer";
 import "./ProjectWorkspace.css";
 
 const MODULES = [
-    "Overview", "Research", "Ideas", "Design", "Prototype", "Tasks",
+    "Overview", "Research", "Ideas", "Design", "Prototype", "3D Models", "Tasks",
     "Resources", "Tests", "Documents", "Files",
     "Products", "Store", "Marketing",
     "Notes", "AI Lab",
@@ -39,6 +40,8 @@ interface ProjectWorkspaceProps {
     onCyclePrototypeStage: (projectId: string, prototypeId: string) => void;
     onRemovePrototype: (projectId: string, prototypeId: string) => void;
     onAddFile: (projectId: string, name: string, image?: ImageAttachment) => void;
+    onAddModel: (projectId: string, name: string, blobUrl: string) => string;
+    onRemoveModel: (projectId: string, modelId: string) => void;
     onRemoveFile: (projectId: string, fileId: string) => void;
     onAddResource: (projectId: string, label: string, url: string) => void;
     onRemoveResource: (projectId: string, resourceId: string) => void;
@@ -79,6 +82,7 @@ export default function ProjectWorkspace({
     onAddDesignRef, onRemoveDesignRef,
     onAddPrototype, onCyclePrototypeStage, onRemovePrototype,
     onAddFile, onRemoveFile,
+    onAddModel, onRemoveModel,
     onAddResource, onRemoveResource,
     onAddTest, onCycleTestStatus, onRemoveTest,
     onAddDocument, onRemoveDocument,
@@ -335,6 +339,9 @@ export default function ProjectWorkspace({
                         )}
                         {m === "Prototype" && project.prototypes.length > 0 && (
                             <span className="project-workspace-module-count">{project.prototypes.length}</span>
+                        )}
+                        {m === "3D Models" && project.models.length > 0 && (
+                            <span className="project-workspace-module-count">{project.models.length}</span>
                         )}
                         {m === "Files" && project.files.length > 0 && (
                             <span className="project-workspace-module-count">{project.files.length}</span>
@@ -883,6 +890,14 @@ export default function ProjectWorkspace({
                             </button>
                         </div>
                     </div>
+                )}
+
+                {activeModule === "3D Models" && (
+                    <Model3DViewer
+                        models={project.models}
+                        onAddModel={(name, blobUrl) => onAddModel(project.id, name, blobUrl)}
+                        onRemoveModel={(modelId) => onRemoveModel(project.id, modelId)}
+                    />
                 )}
 
                 {activeModule === "Files" && (
