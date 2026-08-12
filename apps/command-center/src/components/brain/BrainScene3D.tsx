@@ -28,6 +28,7 @@ import { fetchTopSongs, fetchTopPodcasts } from "../../lib/itunes";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
+import type { SpotifyState } from "../../state/spotify";
 import "./BrainScene3D.css";
 
 // A uniform dark scrim over the whole photo (it was too bright/busy for
@@ -103,9 +104,13 @@ interface BrainScene3DProps {
     // owned by App.tsx) — read-only here, just for the Projects/Notes
     // widgets below.
     laboratoryData: LaboratoryDataState;
+    // Owned by App.tsx (state/spotify.ts) — shared with Laboratory so
+    // the connection survives switching scenes (see that file's own
+    // doc comment for why it can't just be local state here).
+    spotify: SpotifyState;
 }
 
-export default function BrainScene3D({ onOpenLaboratory, account, calendar, laboratoryData }: BrainScene3DProps) {
+export default function BrainScene3D({ onOpenLaboratory, account, calendar, laboratoryData, spotify }: BrainScene3DProps) {
     const { nickname, setNickname, avatar, activeIconIds, activeLeftWidgetIds, activeRightWidgetIds, background } = account;
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
@@ -219,7 +224,7 @@ export default function BrainScene3D({ onOpenLaboratory, account, calendar, labo
                 overflow: "hidden",
             }}
         >
-            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} onLaboratoryClick={onOpenLaboratory} avatar={avatar} />
+            <TopBar nickname={nickname} onSignInClick={handleSignInClick} onProfileClick={handleProfileClick} onInfoClick={handleInfoClick} onLaboratoryClick={onOpenLaboratory} avatar={avatar} spotify={spotify} />
 
             <div
                 style={{

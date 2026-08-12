@@ -3,7 +3,9 @@ import { ArrowLeft, Bell, Calendar, ChevronDown, Search, UserCircle2 } from "luc
 import KiwiCoreBadge from "./KiwiCoreBadge";
 import LaboratoryStats from "./LaboratoryStats";
 import AvatarGlyph from "../ui/AvatarGlyph";
+import SpotifyPlayerWidget from "../ui/SpotifyPlayerWidget";
 import { DEFAULT_AVATAR, type AvatarChoice } from "../../state/avatars";
+import type { SpotifyState } from "../../state/spotify";
 import "./LaboratoryTopBar.css";
 
 interface LaboratoryTopBarProps {
@@ -20,6 +22,7 @@ interface LaboratoryTopBarProps {
     activeProjectCount: number;
     noteCount: number;
     researchCount: number;
+    spotify: SpotifyState;
 }
 
 /**
@@ -57,7 +60,7 @@ interface LaboratoryTopBarProps {
  */
 export default function LaboratoryTopBar({
     onBack, listening, onOpenSearch, onOpenCalendar, onOpenNotifications, unreadNotificationCount = 0, nickname, avatar, onProfileClick,
-    projectCount, activeProjectCount, noteCount, researchCount,
+    projectCount, activeProjectCount, noteCount, researchCount, spotify,
 }: LaboratoryTopBarProps) {
     return (
         <header className="lab-topbar">
@@ -84,6 +87,7 @@ export default function LaboratoryTopBar({
             />
 
             <div className="lab-topbar-account">
+                <SpotifyPlayerWidget spotify={spotify} />
                 <button type="button" className="lab-topbar-icon-btn" onClick={onOpenSearch} aria-label="Search">
                     <Search size={16} strokeWidth={1.75} />
                 </button>

@@ -2,7 +2,9 @@ import type { MouseEvent } from "react";
 import { Info, Orbit, Satellite, UserCircle2 } from "lucide-react";
 import ActivitySummary from "./ActivitySummary";
 import AvatarGlyph from "../ui/AvatarGlyph";
+import SpotifyPlayerWidget from "../ui/SpotifyPlayerWidget";
 import { DEFAULT_AVATAR, type AvatarChoice } from "../../state/avatars";
+import type { SpotifyState } from "../../state/spotify";
 import "./TopBar.css";
 
 interface TopBarProps {
@@ -14,6 +16,7 @@ interface TopBarProps {
     // Mirrors whatever's picked in Profile & settings (see AvatarGlyph)
     // so the pill here always matches the drawer's own avatar.
     avatar?: AvatarChoice;
+    spotify: SpotifyState;
 }
 
 /**
@@ -41,7 +44,7 @@ interface TopBarProps {
  * scene (About/Terms/Privacy/Updates — see InfoPanel), anchored at its
  * own position, same pattern as Sign in/Profile.
  */
-export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick, onLaboratoryClick, avatar }: TopBarProps) {
+export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfoClick, onLaboratoryClick, avatar, spotify }: TopBarProps) {
     return (
         <header className="top-bar">
             <div className="top-bar-brand">
@@ -59,6 +62,7 @@ export default function TopBar({ nickname, onSignInClick, onProfileClick, onInfo
                 <span className="top-bar-status-dot" />
                 <span className="top-bar-status-text">System Online</span>
                 <span className="top-bar-status-divider" />
+                <SpotifyPlayerWidget spotify={spotify} />
                 <button type="button" className="top-bar-icon-btn" aria-label="Laboratory" onClick={onLaboratoryClick}>
                     <Satellite size={18} strokeWidth={1.75} />
                     <span className="top-bar-tooltip">Laboratory</span>

@@ -37,6 +37,7 @@ import { useNotificationsState } from "../../state/notifications";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
+import type { SpotifyState } from "../../state/spotify";
 import "./Laboratory.css";
 
 export type LaboratorySection =
@@ -51,6 +52,7 @@ interface LaboratoryProps {
     account: AccountState;
     calendar: CalendarState;
     data: LaboratoryDataState;
+    spotify: SpotifyState;
 }
 
 /**
@@ -103,7 +105,7 @@ interface LaboratoryProps {
  * exact same event list the Dashboard's Upcoming Events widget reads,
  * so an event added from CalendarPanel here shows up there too.
  */
-export default function Laboratory({ onBack, account, calendar, data }: LaboratoryProps) {
+export default function Laboratory({ onBack, account, calendar, data, spotify }: LaboratoryProps) {
     const {
         projects, notes, researchEntries,
         createProject, handleProjectChange,
@@ -213,6 +215,7 @@ export default function Laboratory({ onBack, account, calendar, data }: Laborato
                 activeProjectCount={projects.filter((p) => p.status === "active").length}
                 noteCount={notes.length}
                 researchCount={researchEntries.length}
+                spotify={spotify}
             />
 
             <div className="laboratory-body">
