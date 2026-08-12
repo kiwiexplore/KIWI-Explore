@@ -3,7 +3,11 @@ import {
     buildAuthorizeUrl, exchangeCodeForTokens, generateCodeVerifier, generateState, getRedirectUri,
     refreshAccessToken, type SpotifyTokens,
 } from "../lib/spotifyAuth";
-import { fetchCurrentPlayback, nextTrack, pause, play, previousTrack, NoActiveDeviceError, type CurrentPlayback } from "../lib/spotifyApi";
+import {
+    fetchCurrentPlayback, listDevices, nextTrack, pause, play, previousTrack, searchTracks, startTrack, transferPlayback,
+    NoActiveDeviceError, type CurrentPlayback, type TrackResult,
+} from "../lib/spotifyApi";
+import { createSpotifyPlayer } from "../lib/spotifyPlaybackSdk";
 
 // One app-wide Client ID, set once by whoever runs this deployment
 // (apps/command-center/.env: VITE_SPOTIFY_CLIENT_ID=...), not
@@ -47,6 +51,21 @@ export interface SpotifyState {
     togglePlay: () => void;
     next: () => void;
     previous: () => void;
+    // In-browser playback (Web Playback SDK — see lib/spotifyPlaybackSdk.ts).
+    // playerReady means KIWI has registered as a Spotify Connect device and
+    // playTrack() will play here rather than wherever else is active.
+    playerReady: boolean;
+    playerError: string | null;
+    // Why the most recent playTrack() call failed, if it did. Distinct
+    // from `error` (which the background poll clears every few seconds)
+    // so this actually stays visible.
+    playError: string | null;
+    search: (query: string) => Promise<TrackResult[]>;
+    playTrack: (uri: string) => void;
+    // Call synchronously from inside a click handler (not after an
+    // await) before playTrack() — unlocks audio in browsers with strict
+    // autoplay policies. See spotify-sdk.d.ts's activateElement doc.
+    activatePlayer: () => void;
 }
 
 /**
@@ -58,10 +77,9 @@ export interface SpotifyState {
  * full-page redirect to accounts.spotify.com and back, which would
  * otherwise wipe everything. Needs one Spotify Developer app set up
  * for this deployment (see CONFIGURED_CLIENT_ID above) and each
- * visitor's own Spotify Premium to actually play anything — this
- * widget controls whatever's already playing on that person's account
- * (phone, desktop app, etc.) via the Web API rather than streaming
- * audio itself (see lib/spotifyApi.ts's own doc comment for why).
+ * visitor's own Spotify Premium to play music inside KIWI itself
+ * (rather than only remote-controlling a phone/desktop app) — see
+ * lib/spotifyPlaybackSdk.ts for the in-browser device this sets up.
  */
 export function useSpotifyState(): SpotifyState {
     const clientId = CONFIGURED_CLIENT_ID;
@@ -69,8 +87,18 @@ export function useSpotifyState(): SpotifyState {
     const [connecting, setConnecting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [track, setTrack] = useState<CurrentPlayback | null>(null);
+    const [deviceId, setDeviceId] = useState<string | null>(null);
+    const [playerError, setPlayerError] = useState<string | null>(null);
+    // Separate from `error`: the 5s background poll below clears `error`
+    // on every successful check, which was silently wiping out playTrack()
+    // failures within seconds of them happening. This one only changes on
+    // an explicit play attempt, so a real failure reason actually sticks.
+    const [playError, setPlayError] = useState<string | null>(null);
     const tokensRef = useRef(tokens);
+    const deviceIdRef = useRef<string | null>(null);
+    const playerRef = useRef<Spotify.Player | null>(null);
     useEffect(() => { tokensRef.current = tokens; }, [tokens]);
+    useEffect(() => { deviceIdRef.current = deviceId; }, [deviceId]);
 
     const applyTokens = (next: SpotifyTokens) => {
         setTokens(next);
@@ -81,6 +109,11 @@ export function useSpotifyState(): SpotifyState {
         setTokens(null);
         saveTokens(null);
         setTrack(null);
+        playerRef.current?.disconnect();
+        playerRef.current = null;
+        setDeviceId(null);
+        setPlayerError(null);
+        setPlayError(null);
     };
 
     // Ensures a non-expired access token, refreshing if needed —
@@ -134,29 +167,65 @@ export function useSpotifyState(): SpotifyState {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Refreshes `track` from whatever's currently playing on the
+    // account. Shared by the polling effect below and by playTrack(),
+    // which calls it right after issuing a play command so the UI
+    // doesn't wait out a full poll interval to reflect it.
+    const refreshTrack = async () => {
+        const token = await ensureFreshToken();
+        if (!token) return;
+        try {
+            const playback = await fetchCurrentPlayback(token);
+            setTrack(playback);
+            setError(null);
+        } catch (e) {
+            if (e instanceof NoActiveDeviceError) { setTrack(null); setError(e.message); }
+            else setError(e instanceof Error ? e.message : "Could not reach Spotify.");
+        }
+    };
+
     // Poll current playback while connected.
     useEffect(() => {
         if (!tokens) return;
         let cancelled = false;
-
-        const tick = async () => {
-            const token = await ensureFreshToken();
-            if (!token || cancelled) return;
-            try {
-                const playback = await fetchCurrentPlayback(token);
-                if (!cancelled) { setTrack(playback); setError(null); }
-            } catch (e) {
-                if (cancelled) return;
-                if (e instanceof NoActiveDeviceError) { setTrack(null); setError(e.message); }
-                else setError(e instanceof Error ? e.message : "Could not reach Spotify.");
-            }
-        };
-
+        const tick = () => { if (!cancelled) refreshTrack(); };
         tick();
         const interval = setInterval(tick, POLL_INTERVAL_MS);
         return () => { cancelled = true; clearInterval(interval); };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tokens]);
+
+    // Bring up KIWI's own Spotify Connect device (Web Playback SDK) so
+    // playTrack() can play here instead of on whatever device was last
+    // active. Keyed on connected/disconnected only (not on `tokens`
+    // itself, which changes identity on every hourly refresh) — tearing
+    // the device down on every token refresh would drop playback mid-song.
+    useEffect(() => {
+        if (!tokens) return;
+        let cancelled = false;
+
+        createSpotifyPlayer({
+            getOAuthToken: (callback) => { ensureFreshToken().then((token) => { if (token) callback(token); }); },
+            onDeviceReady: (id) => { if (!cancelled) setDeviceId(id); },
+            onDeviceOffline: () => { if (!cancelled) setDeviceId(null); },
+            onError: (message) => { if (!cancelled) setPlayerError(message); },
+        })
+            .then((player) => {
+                if (cancelled) { player.disconnect(); return; }
+                playerRef.current = player;
+            })
+            .catch((e) => {
+                if (!cancelled) setPlayerError(e instanceof Error ? e.message : "Could not start KIWI's Spotify player.");
+            });
+
+        return () => {
+            cancelled = true;
+            playerRef.current?.disconnect();
+            playerRef.current = null;
+            setDeviceId(null);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [Boolean(tokens)]);
 
     const connect = () => {
         if (!clientId) {
@@ -182,11 +251,92 @@ export function useSpotifyState(): SpotifyState {
     const next = () => withToken((token) => nextTrack(token));
     const previous = () => withToken((token) => previousTrack(token));
 
+    const search = async (query: string): Promise<TrackResult[]> => {
+        const token = await ensureFreshToken();
+        if (!token) return [];
+        return searchTracks(token, query);
+    };
+
+    // Polls deviceIdRef rather than waiting on a single readiness event,
+    // since playTrack() can be called before KIWI's device has finished
+    // registering (e.g. right after connecting) and should wait it out
+    // instead of giving up.
+    const waitForDevice = async (timeoutMs = 6000): Promise<string | null> => {
+        const start = Date.now();
+        while (!deviceIdRef.current) {
+            if (Date.now() - start > timeoutMs) return null;
+            await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        return deviceIdRef.current;
+    };
+
+    // Always plays on KIWI's own in-browser device — never falls back to
+    // whatever device happened to be active (e.g. the phone), since that
+    // defeats the point of playing independently of it. Uses playError
+    // (not the shared `error`) so the reason survives the next poll tick —
+    // see playError's own comment above.
+    const playTrack = (uri: string) => {
+        setPlayError(null);
+        (async () => {
+            const token = await ensureFreshToken();
+            if (!token) { setPlayError("Not connected to Spotify — reconnect and try again."); return; }
+            const id = await waitForDevice();
+            if (!id) {
+                setPlayError(playerError ?? "KIWI's Spotify player isn't ready yet — try again in a moment.");
+                return;
+            }
+            // Spotify can 404 a play call aimed at a device that only just
+            // registered, before its backend has caught up with the SDK's
+            // "ready" event — retry that specific failure a few times
+            // rather than surfacing it as a hard error immediately.
+            const retryDelaysMs = [0, 400, 900, 1600];
+            for (let attempt = 0; attempt < retryDelaysMs.length; attempt++) {
+                if (retryDelaysMs[attempt]) await new Promise((resolve) => setTimeout(resolve, retryDelaysMs[attempt]));
+                try {
+                    await transferPlayback(token, id);
+                    // Give the forced transfer a moment to actually land
+                    // before targeting the same device with a specific track.
+                    await new Promise((resolve) => setTimeout(resolve, 300));
+                    await startTrack(token, uri, id);
+                    await refreshTrack();
+                    return;
+                } catch (e) {
+                    const isLastAttempt = attempt === retryDelaysMs.length - 1;
+                    if (!(e instanceof NoActiveDeviceError) || isLastAttempt) {
+                        if (e instanceof NoActiveDeviceError) {
+                            // Diagnostic: ask Spotify what it actually sees,
+                            // with explicit ids so a "same name, different
+                            // id" mismatch is impossible to miss.
+                            const devices = await listDevices(token).catch(() => null);
+                            const seen = devices === null
+                                ? "(couldn't check)"
+                                : devices.length === 0
+                                    ? "none"
+                                    : devices.map((d) => `${d.name} [${d.id}]${d.id === id ? " ← matches" : ""}`).join(", ");
+                            setPlayError(`${e.message} KIWI is using id [${id}]. Spotify's device list: ${seen}.`);
+                        } else {
+                            setPlayError(e instanceof Error ? e.message : "Could not play that track.");
+                        }
+                        return;
+                    }
+                }
+            }
+        })();
+    };
+
+    const activatePlayer = () => {
+        playerRef.current?.activateElement?.();
+    };
+
     return {
         configured: Boolean(clientId),
         redirectUri: getRedirectUri(),
         connected: Boolean(tokens),
         connecting, error, track,
         connect, disconnect, togglePlay, next, previous,
+        playerReady: Boolean(deviceId),
+        playerError,
+        playError,
+        search, playTrack, activatePlayer,
     };
 }

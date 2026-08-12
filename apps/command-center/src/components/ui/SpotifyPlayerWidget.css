@@ -169,6 +169,135 @@
 
 }
 
+.spotify-widget-search {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 0 10px;
+    height: 32px;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+}
+
+.spotify-widget-search-icon {
+
+    flex-shrink: 0;
+    color: var(--text-muted);
+
+}
+
+.spotify-widget-search-input {
+
+    width: 100%;
+
+    background: none;
+    border: none;
+    outline: none;
+
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+
+}
+
+.spotify-widget-search-input::placeholder {
+
+    color: var(--text-muted);
+
+}
+
+.spotify-widget-results {
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    max-height: 200px;
+    overflow-y: auto;
+
+}
+
+.spotify-widget-result {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 6px;
+
+    background: none;
+    border: none;
+    border-radius: 8px;
+
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.spotify-widget-result:hover {
+
+    background: rgba(255, 255, 255, .06);
+
+}
+
+.spotify-widget-result-art {
+
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+
+    border-radius: 4px;
+    object-fit: cover;
+
+}
+
+.spotify-widget-result-text {
+
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+}
+
+.spotify-widget-result-name {
+
+    font-size: 12px;
+    font-weight: 600;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.spotify-widget-result-artist {
+
+    font-size: 11px;
+    color: var(--text-muted);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.spotify-widget-hint {
+
+    margin: 0;
+
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+
+}
+
 .spotify-widget-now-playing {
 
     display: flex;
