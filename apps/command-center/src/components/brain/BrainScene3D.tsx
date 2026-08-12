@@ -18,9 +18,13 @@ import RecipesWidget from "./RecipesWidget";
 import UpcomingEventsWidget from "./UpcomingEventsWidget";
 import ProjectsWidget from "./ProjectsWidget";
 import NotesWidget from "./NotesWidget";
+import TopNewsWidget from "./TopNewsWidget";
+import EntertainmentWidget from "./EntertainmentWidget";
+import ChartWidget from "./ChartWidget";
 import { leftWidgets, rightWidgets } from "./sceneWidgets";
 import { orbitModules } from "../../state/orbitModules";
 import { resolveBackgroundImage } from "../../state/backgrounds";
+import { fetchTopSongs, fetchTopPodcasts } from "../../lib/itunes";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
@@ -237,6 +241,8 @@ export default function BrainScene3D({ onOpenLaboratory, account, calendar, labo
                             if (w.id === "space-news") return <SpaceNewsWidget key={w.id} onOpenDetail={openDetail} />;
                             if (w.id === "space-missions") return <SpaceMissionsWidget key={w.id} onOpenDetail={openDetail} />;
                             if (w.id === "upcoming-events") return <UpcomingEventsWidget key={w.id} events={calendar.events} onOpenDetail={openDetail} />;
+                            if (w.id === "top-news") return <TopNewsWidget key={w.id} onOpenDetail={openDetail} />;
+                            if (w.id === "entertainment") return <EntertainmentWidget key={w.id} onOpenDetail={openDetail} />;
                             return (
                                 <Widget
                                     key={w.id}
@@ -283,6 +289,8 @@ export default function BrainScene3D({ onOpenLaboratory, account, calendar, labo
                             if (w.id === "recipes") return <RecipesWidget key={w.id} onOpenDetail={openDetail} />;
                             if (w.id === "projects") return <ProjectsWidget key={w.id} projects={laboratoryData.projects} onOpenDetail={openDetail} />;
                             if (w.id === "notes") return <NotesWidget key={w.id} notes={laboratoryData.notes} onOpenDetail={openDetail} />;
+                            if (w.id === "music") return <ChartWidget key={w.id} title="🎵 Music" fetchChart={fetchTopSongs} onOpenDetail={openDetail} />;
+                            if (w.id === "podcasts") return <ChartWidget key={w.id} title="🎙️ Podcasts" fetchChart={fetchTopPodcasts} onOpenDetail={openDetail} />;
                             return (
                                 <Widget
                                     key={w.id}
