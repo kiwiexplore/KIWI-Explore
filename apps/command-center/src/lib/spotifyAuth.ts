@@ -9,8 +9,16 @@
 
 export const SPOTIFY_SCOPES = "streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state";
 
+// Spotify requires HTTPS redirect URIs, with one exception: the literal
+// loopback IP 127.0.0.1 over plain HTTP (not the hostname "localhost",
+// even though they resolve to the same place — Spotify's dashboard
+// rejects "localhost" as "not secure"). Normalize to 127.0.0.1 for
+// local dev so this always matches what actually gets registered;
+// real deployments (an HTTPS domain) pass through untouched.
 export function getRedirectUri(): string {
-    return `${window.location.origin}/`;
+    const host = window.location.hostname === "localhost" ? "127.0.0.1" : window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : "";
+    return `${window.location.protocol}//${host}${port}/`;
 }
 
 function base64UrlEncode(bytes: Uint8Array): string {
