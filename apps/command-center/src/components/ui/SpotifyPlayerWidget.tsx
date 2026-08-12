@@ -18,7 +18,6 @@ interface SpotifyPlayerWidgetProps {
  */
 export default function SpotifyPlayerWidget({ spotify }: SpotifyPlayerWidgetProps) {
     const [open, setOpen] = useState(false);
-    const [clientIdDraft, setClientIdDraft] = useState(spotify.clientId);
     const rootRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -29,11 +28,6 @@ export default function SpotifyPlayerWidget({ spotify }: SpotifyPlayerWidgetProp
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [open]);
-
-    const handleConnect = () => {
-        spotify.setClientId(clientIdDraft.trim());
-        spotify.connect();
-    };
 
     return (
         <div className="spotify-widget" ref={rootRef}>
@@ -97,27 +91,21 @@ export default function SpotifyPlayerWidget({ spotify }: SpotifyPlayerWidgetProp
                                 Disconnect
                             </button>
                         </div>
+                    ) : spotify.configured ? (
+                        <div className="spotify-widget-connect">
+                            <p className="spotify-widget-connect-copy">
+                                Play/pause and skip whatever's already playing on your Spotify — right from KIWI.
+                            </p>
+                            {spotify.error && <p className="spotify-widget-error">{spotify.error}</p>}
+                            <button type="button" className="spotify-widget-connect-btn" onClick={spotify.connect} disabled={spotify.connecting}>
+                                {spotify.connecting ? "Connecting…" : "Connect Spotify"}
+                            </button>
+                        </div>
                     ) : (
                         <div className="spotify-widget-connect">
                             <p className="spotify-widget-connect-copy">
-                                Needs your own Spotify Developer app (free) with this exact Redirect URI registered:
+                                Spotify isn't set up for this deployment yet — add VITE_SPOTIFY_CLIENT_ID (redirect URI: <code>{spotify.redirectUri}</code>).
                             </p>
-                            <code className="spotify-widget-redirect-uri">{spotify.redirectUri}</code>
-                            <input
-                                type="text"
-                                className="spotify-widget-input"
-                                placeholder="Spotify Client ID"
-                                value={clientIdDraft}
-                                onChange={(e) => setClientIdDraft(e.target.value)}
-                            />
-                            {spotify.error && <p className="spotify-widget-error">{spotify.error}</p>}
-                            {spotify.connecting ? (
-                                <p className="spotify-widget-connect-copy">Connecting…</p>
-                            ) : (
-                                <button type="button" className="spotify-widget-connect-btn" onClick={handleConnect} disabled={!clientIdDraft.trim()}>
-                                    Connect Spotify
-                                </button>
-                            )}
                             <a
                                 className="spotify-widget-dev-link"
                                 href="https://developer.spotify.com/dashboard"

@@ -5,7 +5,14 @@ import {
 } from "../lib/spotifyAuth";
 import { fetchCurrentPlayback, nextTrack, pause, play, previousTrack, NoActiveDeviceError, type CurrentPlayback } from "../lib/spotifyApi";
 
-const CLIENT_ID_KEY = "kiwi_spotify_client_id";
+// One app-wide Client ID, set once by whoever runs this deployment
+// (apps/command-center/.env: VITE_SPOTIFY_CLIENT_ID=...), not
+// something each visitor enters — the Client ID identifies the KIWI
+// app itself, not the person connecting. Every visitor still
+// authorizes with their own Spotify account; only the app registration
+// is shared. Safe to ship in client-side code: PKCE apps have no
+// client secret, the Client ID alone can't act on anyone's behalf.
+const CONFIGURED_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID ?? "";
 const TOKENS_KEY = "kiwi_spotify_tokens";
 const VERIFIER_KEY = "kiwi_spotify_pkce_verifier";
 const STATE_KEY = "kiwi_spotify_pkce_state";
@@ -26,8 +33,10 @@ function saveTokens(tokens: SpotifyTokens | null) {
 }
 
 export interface SpotifyState {
-    clientId: string;
-    setClientId: (id: string) => void;
+    // Whether a Client ID is configured at all — the widget uses this
+    // to tell "not set up yet" (a deployment/config issue) apart from
+    // "set up but not connected" (the normal signed-out state).
+    configured: boolean;
     redirectUri: string;
     connected: boolean;
     connecting: boolean;
@@ -47,26 +56,21 @@ export interface SpotifyState {
  * app's state, tokens and the pending PKCE verifier genuinely need
  * localStorage, not just in-memory React state: connecting means a
  * full-page redirect to accounts.spotify.com and back, which would
- * otherwise wipe everything. Needs the user's own Spotify Developer
- * app (Client ID, with this app's redirect URI registered) and
- * Spotify Premium to actually play anything — this widget controls
- * whatever's already playing on the user's account (phone, desktop
- * app, etc.) via the Web API rather than streaming audio itself (see
- * lib/spotifyApi.ts's own doc comment for why).
+ * otherwise wipe everything. Needs one Spotify Developer app set up
+ * for this deployment (see CONFIGURED_CLIENT_ID above) and each
+ * visitor's own Spotify Premium to actually play anything — this
+ * widget controls whatever's already playing on that person's account
+ * (phone, desktop app, etc.) via the Web API rather than streaming
+ * audio itself (see lib/spotifyApi.ts's own doc comment for why).
  */
 export function useSpotifyState(): SpotifyState {
-    const [clientId, setClientIdState] = useState(() => localStorage.getItem(CLIENT_ID_KEY) ?? "");
+    const clientId = CONFIGURED_CLIENT_ID;
     const [tokens, setTokens] = useState<SpotifyTokens | null>(() => loadTokens());
     const [connecting, setConnecting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [track, setTrack] = useState<CurrentPlayback | null>(null);
     const tokensRef = useRef(tokens);
     useEffect(() => { tokensRef.current = tokens; }, [tokens]);
-
-    const setClientId = (id: string) => {
-        setClientIdState(id);
-        localStorage.setItem(CLIENT_ID_KEY, id);
-    };
 
     const applyTokens = (next: SpotifyTokens) => {
         setTokens(next);
@@ -155,8 +159,8 @@ export function useSpotifyState(): SpotifyState {
     }, [tokens]);
 
     const connect = () => {
-        if (!clientId.trim()) {
-            setError("Add your Spotify Client ID first.");
+        if (!clientId) {
+            setError("Spotify isn't configured for this deployment yet.");
             return;
         }
         setError(null);
@@ -179,7 +183,7 @@ export function useSpotifyState(): SpotifyState {
     const previous = () => withToken((token) => previousTrack(token));
 
     return {
-        clientId, setClientId,
+        configured: Boolean(clientId),
         redirectUri: getRedirectUri(),
         connected: Boolean(tokens),
         connecting, error, track,
