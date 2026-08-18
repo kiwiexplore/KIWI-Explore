@@ -6,8 +6,8 @@ import GlowLayer from "../brain/GlowLayer";
 import "./KiwiCoreBadge.css";
 
 interface KiwiCoreBadgeProps {
-    // Same meaning as BrainSystem3D/GlowLayer's own `listening` prop —
-    // pauses rotation and boosts glow while Hey Kiwi is listening. Not
+    // Same meaning as GlowLayer's own `listening` prop — boosts the glow
+    // while Hey Kiwi is listening. Not
     // wired to anything yet (KiwiPanel doesn't exist until a later
     // step) — accepted now so that wiring is a one-line change later.
     listening?: boolean;
@@ -38,7 +38,7 @@ export default function KiwiCoreBadge({ listening }: KiwiCoreBadgeProps) {
             <Canvas camera={{ position: [0, 0, 2.6], fov: 50 }} gl={{ alpha: true }}>
                 <primitive object={ambientLight} />
                 <group scale={1.15} position={[0, -0.16, 0]}>
-                    <BrainSystem3D onPulseReady={setPulseLines} listening={listening} interactive={false} />
+                    <BrainSystem3D onPulseReady={setPulseLines} interactive={false} />
                 </group>
                 <GlowLayer selection={pulseLines} lights={[ambientLight]} boosted={listening} />
             </Canvas>

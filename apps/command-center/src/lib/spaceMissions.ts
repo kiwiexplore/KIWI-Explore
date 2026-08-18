@@ -15,6 +15,8 @@ export interface SpaceMission {
     locationName: string;
     imageUrl: string | null;
     missionDescription: string | null;
+    /** Whatever page the API offers on this launch, if any. */
+    infoUrl: string | null;
 }
 
 export async function fetchUpcomingLaunches(limit = 5): Promise<SpaceMission[]> {
@@ -27,6 +29,7 @@ export async function fetchUpcomingLaunches(limit = 5): Promise<SpaceMission[]> 
         status?: { name: string }; launch_service_provider?: { name: string };
         pad?: { name: string; location?: { name: string } };
         image?: string; mission?: { description: string };
+        infoURLs?: { url: string }[]; vidURLs?: { url: string }[];
     }) => ({
         id: l.id,
         name: l.name,
@@ -37,5 +40,6 @@ export async function fetchUpcomingLaunches(limit = 5): Promise<SpaceMission[]> 
         locationName: l.pad?.location?.name ?? "",
         imageUrl: l.image ?? null,
         missionDescription: l.mission?.description ?? null,
+        infoUrl: l.infoURLs?.[0]?.url ?? l.vidURLs?.[0]?.url ?? null,
     }));
 }

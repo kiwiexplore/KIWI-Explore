@@ -1,0 +1,52 @@
+/* Names floating over each region of the brain (drei <Html>, so these
+   are real DOM nodes inside the Canvas overlay). Quiet by default — six
+   labels shouting at once would be exactly the clutter the old orbit
+   ring was removed for — and lighting up on hover/focus. */
+.region-label {
+
+    display: flex;
+
+    font-family: inherit;
+    cursor: pointer;
+    align-items: center;
+    gap: 6px;
+
+    padding: 4px 10px;
+
+    background: rgba(5, 8, 22, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+
+    opacity: 0.55;
+    transition: var(--transition);
+
+    user-select: none;
+
+}
+
+.region-label:hover,
+.region-label-hovered {
+
+    opacity: 1;
+
+    background: rgba(5, 8, 22, 0.8);
+    border-color: rgba(255, 255, 255, 0.28);
+
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.55);
+
+}
+
+.region-label-icon {
+
+    font-size: 12px;
+    line-height: 1;
+
+}

@@ -1,0 +1,1054 @@
+/* The focused region's contents, floating over the brain on the right
+   (the brain shifts left to meet it — see BrainScene3D's camera rig).
+   Same glass treatment as the left nav rail, tinted with whichever
+   region is open via --region-color. */
+.region-panel {
+
+    position: absolute;
+    right: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 4;
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    width: 328px;
+    max-height: calc(100vh - 190px);
+
+    padding: 18px;
+    box-sizing: border-box;
+
+    background: rgba(10, 16, 34, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+
+    border: 1px solid color-mix(in srgb, var(--region-color) 40%, var(--border));
+    border-radius: var(--radius);
+
+    box-shadow:
+        0 18px 48px rgba(0, 0, 0, .5),
+        0 0 30px color-mix(in srgb, var(--region-color) 18%, transparent);
+
+    animation: region-panel-in .28s ease;
+
+}
+
+@keyframes region-panel-in {
+
+    from {
+        opacity: 0;
+        transform: translate(16px, -50%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(0, -50%);
+    }
+
+}
+
+.region-panel-header {
+
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+}
+
+.region-panel-icon {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+
+    background: color-mix(in srgb, var(--region-color) 20%, transparent);
+    border-radius: 12px;
+
+    font-size: 18px;
+
+}
+
+.region-panel-titles {
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    flex: 1;
+    min-width: 0;
+
+}
+
+.region-panel-title {
+
+    margin: 0;
+
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .3px;
+
+}
+
+.region-panel-subtitle {
+
+    color: var(--region-color);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+}
+
+.region-panel-icon-btn,
+.region-panel-back {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    color: var(--text-muted);
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.region-panel-icon-btn:hover,
+.region-panel-back:hover {
+
+    border-color: var(--region-color);
+    color: var(--text);
+
+}
+
+.region-panel-description {
+
+    margin: 0;
+
+    color: var(--text-muted);
+    font-size: 12.5px;
+    line-height: 1.5;
+
+}
+
+/* No scrolling of its own — the panel body around it is the single
+   scroll container, so a long module list and a long module detail
+   scroll exactly the same way. */
+.region-panel-modules {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+}
+
+.region-panel-module {
+
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    width: 100%;
+    padding: 11px 12px;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    color: var(--text);
+    text-align: left;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.region-panel-module:hover {
+
+    background: color-mix(in srgb, var(--region-color) 12%, transparent);
+    border-color: var(--region-color);
+    transform: translateX(-2px);
+
+}
+
+.region-panel-module-icon {
+
+    font-size: 17px;
+    flex: 0 0 auto;
+
+}
+
+.region-panel-module-text {
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    flex: 1;
+    min-width: 0;
+
+}
+
+.region-panel-module-label {
+
+    font-size: 13px;
+    font-weight: 600;
+
+}
+
+.region-panel-module-summary {
+
+    color: var(--text-muted);
+    font-size: 11px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+/* Replaced the unread-style count badges that used to sit here: those
+   numbers were invented, and next to a row now showing its real state
+   they read as a contradiction rather than extra information. A chevron
+   says the same useful half — there's more behind this row. */
+.region-panel-module-chevron {
+
+    flex: 0 0 auto;
+
+    color: var(--text-muted);
+
+}
+
+.region-panel-module:hover .region-panel-module-chevron {
+
+    color: var(--region-color);
+
+}
+
+/* Back arrow sits where the region's emoji does in the overview, so the
+   header doesn't jump sideways when a module opens. */
+.region-panel-back {
+
+    width: 30px;
+    height: 30px;
+
+    border-radius: 10px;
+
+}
+
+/* The scrolling half of the panel. Only this part scrolls — the header
+   (title, back, expand, close) stays put, which is what keeps "go back"
+   reachable however long the contents get. */
+.region-panel-body {
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    min-height: 0;
+    overflow-y: auto;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+
+}
+
+/* Widened on demand for contents the rail's width would cramp (a week of
+   forecasts, a list of stories). Capped against the viewport so it can
+   never grow past the screen on a small window. */
+.region-panel-wide {
+
+    width: min(620px, 46vw);
+
+}
+
+.region-panel-empty {
+
+    margin: 0;
+    padding: 14px;
+
+    background: rgba(255, 255, 255, .03);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+
+}
+
+/* ---- Module contents (see regionContent/) ------------------------- */
+
+.module-muted {
+
+    color: var(--text-muted);
+    font-size: 12px;
+
+}
+
+.module-detail {
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+
+}
+
+.module-headline {
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+}
+
+.module-headline-figure {
+
+    color: var(--text);
+    font-size: 26px;
+    font-weight: 700;
+
+}
+
+.module-headline-note {
+
+    color: var(--text-muted);
+    font-size: 12px;
+
+}
+
+.module-facts {
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+
+    color: var(--text-muted);
+    font-size: 11.5px;
+
+}
+
+.module-subhead {
+
+    margin: 2px 0 0;
+
+    color: var(--region-color);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+}
+
+.module-list {
+
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+
+}
+
+/* One line of data: a fixed-width lead (time, day, rank), the thing
+   itself, and an optional trailing note. The grid keeps every row's
+   columns aligned down the list instead of ragged. */
+.module-row {
+
+    display: grid;
+    grid-template-columns: 68px 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+
+    padding: 7px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    color: var(--text);
+    font-size: 12px;
+
+}
+
+.module-row-lead {
+
+    color: var(--region-color);
+    font-size: 11px;
+    font-weight: 600;
+
+}
+
+.module-row-trail {
+
+    color: var(--text-muted);
+    font-size: 11px;
+
+    text-align: right;
+
+}
+
+.module-link {
+
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    padding: 8px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    color: var(--text);
+    text-decoration: none;
+
+    transition: var(--transition);
+
+}
+
+.module-link:hover {
+
+    background: color-mix(in srgb, var(--region-color) 12%, transparent);
+
+}
+
+.module-link-title {
+
+    font-size: 12.5px;
+    line-height: 1.4;
+
+}
+
+.module-link-meta {
+
+    color: var(--text-muted);
+    font-size: 11px;
+
+}
+
+/* A story with enough of itself on show to be worth the click: picture,
+   headline, a couple of sentences, source. The whole card lights up as
+   one, though only the link inside it is clickable — the star sits
+   outside so a button never ends up nested in an anchor. */
+.story-card {
+
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    transition: var(--transition);
+
+}
+
+.story-card:hover,
+.story-card:focus-within {
+
+    background: color-mix(in srgb, var(--region-color) 12%, transparent);
+
+}
+
+.story-card-link {
+
+    display: flex;
+    flex: 1;
+    gap: 10px;
+    min-width: 0;
+
+    padding: 8px 10px;
+
+    background: none;
+    border: 0;
+
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+
+    cursor: pointer;
+
+}
+
+.story-card-image {
+
+    flex: 0 0 auto;
+    width: 58px;
+    height: 58px;
+
+    background: rgba(255, 255, 255, .05);
+    border-radius: 8px;
+
+    object-fit: cover;
+
+}
+
+.story-card-body {
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+
+}
+
+.story-card-title {
+
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.35;
+
+}
+
+/* Three lines is the most a card can give the summary before the list
+   stops being a list. Clamped rather than truncated in JS so the cut
+   follows the panel's own width, which changes when it's widened. */
+.story-card-excerpt {
+
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    color: var(--text-muted);
+    font-size: 11.5px;
+    line-height: 1.45;
+
+}
+
+.story-card-meta {
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    letter-spacing: .2px;
+
+}
+
+/* Keep / unkeep a recipe. */
+.module-save {
+
+    align-self: flex-start;
+
+    padding: 8px 10px 0 0;
+
+    background: none;
+    border: 0;
+
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.module-save:hover {
+
+    color: var(--text);
+
+}
+
+.module-save-on {
+
+    color: #ffc24b;
+
+}
+
+/* A week of prices as a line — see Sparkline. */
+.sparkline {
+
+    width: 100%;
+    height: 22px;
+
+}
+
+.sparkline polyline {
+
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+
+    /* The line is drawn in its own square and stretched to the row's
+       width, which would stretch the stroke with it. */
+    vector-effect: non-scaling-stroke;
+
+}
+
+.sparkline-up polyline {
+
+    stroke: #6ee7a5;
+
+}
+
+.sparkline-down polyline {
+
+    stroke: #ff7a8f;
+
+}
+
+.module-coin {
+
+    display: grid;
+    grid-template-columns: 46px minmax(64px, auto) 1fr auto;
+    align-items: center;
+    gap: 10px;
+
+    padding: 7px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    color: var(--text);
+    font-size: 12px;
+
+}
+
+.module-coin-price {
+
+    font-variant-numeric: tabular-nums;
+
+}
+
+/* The next 24 hours, side by side. Scrolls rather than wraps: it reads
+   as a timeline that way, and the panel is narrow. */
+.module-hours {
+
+    display: flex;
+    gap: 6px;
+
+    overflow-x: auto;
+    padding-bottom: 4px;
+
+    scrollbar-width: thin;
+
+}
+
+.module-hour {
+
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+
+    padding: 7px 9px;
+
+    background: rgba(255, 255, 255, .04);
+    border-radius: 10px;
+
+    font-size: 11px;
+
+}
+
+/* Night hours sit back, so the daylight part of the strip reads first. */
+.module-hour-night {
+
+    background: rgba(255, 255, 255, .015);
+    color: var(--text-muted);
+
+}
+
+.module-hour-time {
+
+    color: var(--region-color);
+    font-size: 10px;
+    font-weight: 600;
+
+}
+
+.module-hour-icon {
+
+    font-size: 13px;
+    line-height: 1;
+
+}
+
+.module-hour-temp {
+
+    font-size: 12px;
+    font-weight: 600;
+
+}
+
+.module-hour-rain {
+
+    color: var(--text-muted);
+    font-size: 10px;
+
+}
+
+/* One day of the week ahead: sky, rain, wind, high/low. */
+.module-day {
+
+    display: grid;
+    grid-template-columns: 38px 1fr auto;
+    align-items: baseline;
+    gap: 4px 10px;
+
+    padding: 7px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    color: var(--text);
+    font-size: 12px;
+
+}
+
+/* The numbers behind the day, on their own line under it — five columns
+   of them across a 328px rail is exactly the ragged mess the grid is
+   here to avoid. */
+.module-day-detail {
+
+    grid-column: 2 / -1;
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    line-height: 1.4;
+
+}
+
+/* A data row that opens something — a launch, say. Same grid as
+   .module-row, minus everything a <button> brings with it. */
+.module-row-button {
+
+    width: 100%;
+
+    border: 0;
+    font: inherit;
+    text-align: left;
+
+    cursor: pointer;
+
+}
+
+.module-row-button:hover {
+
+    background: color-mix(in srgb, var(--region-color) 12%, transparent);
+
+}
+
+/* ---- One story, opened inside the panel (see StoryReader) --------- */
+.story-reader {
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+}
+
+.story-reader-back {
+
+    display: flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 5px;
+
+    padding: 0;
+
+    background: none;
+    border: 0;
+
+    color: var(--region-color);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+}
+
+.story-reader-back:hover {
+
+    text-decoration: underline;
+
+}
+
+/* The picture at a size worth looking at — the whole reason for this
+   level. Capped in height so a portrait shot can't push the text off
+   the bottom of the panel. */
+.story-reader-image {
+
+    width: 100%;
+    max-height: 200px;
+
+    background: rgba(255, 255, 255, .05);
+    border-radius: 12px;
+
+    object-fit: cover;
+
+}
+
+.story-reader-title {
+
+    margin: 0;
+
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+
+}
+
+.story-reader-subtitle {
+
+    margin: -4px 0 0;
+
+    color: var(--text-muted);
+    font-size: 11px;
+
+}
+
+.story-reader-body {
+
+    margin: 0;
+
+    color: var(--text);
+    font-size: 12.5px;
+    line-height: 1.6;
+
+}
+
+.story-reader-facts {
+
+    margin-top: 2px;
+
+}
+
+/* The way out, and the last thing on the page on purpose: you decide
+   here, having read it, rather than on a headline. */
+.story-reader-source {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    margin-top: 2px;
+    padding: 9px;
+
+    background: color-mix(in srgb, var(--region-color) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--region-color) 40%, transparent);
+    border-radius: 12px;
+
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+
+    transition: var(--transition);
+
+}
+
+.story-reader-source:hover {
+
+    background: color-mix(in srgb, var(--region-color) 26%, transparent);
+
+}
+
+.module-keep {
+
+    align-self: flex-start;
+
+    padding: 7px 12px;
+
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.module-keep:hover {
+
+    border-color: var(--region-color);
+    color: var(--text);
+
+}
+
+.module-keep-on {
+
+    border-color: #ffc24b;
+    color: #ffc24b;
+
+}
+
+/* A social network KIWI can't read yet — see SocialModule. Name and a
+   way in on the first line, why it's only that on the second. */
+.module-network {
+
+    display: grid;
+    grid-template-columns: 20px 1fr auto;
+    align-items: baseline;
+    gap: 4px 10px;
+
+    padding: 8px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    font-size: 12px;
+
+}
+
+.module-network-icon {
+
+    font-size: 13px;
+    line-height: 1;
+
+}
+
+.module-network-name {
+
+    color: var(--text);
+    font-weight: 600;
+
+}
+
+.module-network-open {
+
+    color: var(--region-color);
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+
+}
+
+.module-network-open:hover {
+
+    text-decoration: underline;
+
+}
+
+.module-network-note {
+
+    grid-column: 2 / -1;
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    line-height: 1.4;
+
+}
+
+.module-note {
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    padding: 9px 11px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+}
+
+.module-note-excerpt {
+
+    color: var(--text-muted);
+    font-size: 11.5px;
+    line-height: 1.45;
+
+}
+
+.module-progress-row {
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    padding: 10px 11px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    font-size: 12.5px;
+
+}
+
+.module-progress-head {
+
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+
+}
+
+.module-progress-track {
+
+    height: 4px;
+
+    background: rgba(255, 255, 255, .09);
+    border-radius: 999px;
+
+    overflow: hidden;
+
+}
+
+.module-progress-fill {
+
+    display: block;
+    height: 100%;
+
+    background: var(--region-color);
+    border-radius: 999px;
+
+}
+
+/* Direction of a price move. Paired with an arrow in the markup, never
+   colour alone. */
+.module-up {
+
+    color: #6ee7a5;
+
+}
+
+.module-down {
+
+    color: #ff7a8f;
+
+}
+
+/* A quiet aside inside a module — why something isn't here yet, mostly. */
+.module-note {
+
+    margin: 2px 0 0;
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    line-height: 1.5;
+    font-style: italic;
+
+}

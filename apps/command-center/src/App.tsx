@@ -26,18 +26,23 @@ type View = "dashboard" | "laboratory";
 // which would tear down anything scoped to a single view.
 export default function App() {
   const [view, setView] = useState<View>("dashboard");
+  // Set only when the dashboard is being returned TO from the
+  // Laboratory, so the brain scene knows to start the camera out at the
+  // Moon and fly it home rather than opening in its usual orbit. A
+  // first load doesn't come from anywhere, so it doesn't fly.
+  const [arriving, setArriving] = useState(false);
   const account = useAccountState();
   const calendar = useCalendarState();
   const laboratoryData = useLaboratoryDataState();
   const spotify = useSpotifyState();
 
   if (view === "laboratory") {
-    return <Laboratory onBack={() => setView("dashboard")} account={account} calendar={calendar} data={laboratoryData} spotify={spotify} />;
+    return <Laboratory onBack={() => { setArriving(true); setView("dashboard"); }} account={account} calendar={calendar} data={laboratoryData} spotify={spotify} />;
   }
   return (
     <BrainScene3D
       onOpenLaboratory={() => setView("laboratory")}
-      account={account}
+      arriving={arriving}
       calendar={calendar}
       laboratoryData={laboratoryData}
       spotify={spotify}

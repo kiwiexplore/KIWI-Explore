@@ -1,91 +1,125 @@
-/* 10 widgets per side column (per explicit request — no more separate
-   bottom row, it felt too cluttered piled on top of the columns).
-   Panels keep their own natural/compact height (NOT stretched to fill
-   the column — an earlier version used flex:1 to grow 3-4 widgets to
-   fill the space, but with 10 that would squeeze them illegibly thin
-   instead of scrolling) so the column's total content height exceeds
-   its available space and the vertical scrollbar below actually
-   engages, letting you page through all 10 at their normal size. */
-.side-widget-column {
+/* Brain-first layout: one full-viewport Canvas with every piece of UI
+   floating over it. This replaced a three-column grid (widgets | brain |
+   widgets) — both widget columns and the orbiting icon ring were removed
+   per explicit request, since together they left the brain penned into a
+   narrow middle column. */
+.brain-scene {
 
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+    position: relative;
 
-    overflow-y: auto;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
 
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-
-}
-
-.side-widget-column::-webkit-scrollbar {
-
-    width: 8px;
+    background-color: var(--space);
+    background-size: auto, auto, cover;
+    background-position: center, center, center;
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-attachment: fixed, fixed, fixed;
 
 }
 
-.side-widget-column::-webkit-scrollbar-track {
+/* Sits under everything else (the top bar, nav rail, region panel and
+   voice bar all carry their own higher z-index) but still receives
+   pointer events wherever those don't cover it — dragging and clicking
+   the brain has to work across the whole screen. */
+.brain-scene-canvas {
 
-    background: transparent;
-
-}
-
-.side-widget-column::-webkit-scrollbar-thumb {
-
-    background: var(--border);
-    border-radius: 999px;
-
-}
-
-.side-widget-column::-webkit-scrollbar-thumb:hover {
-
-    background: var(--primary);
+    position: absolute;
+    inset: 0;
+    z-index: 1;
 
 }
 
-.side-widget-column .panel {
+.brain-scene .top-bar {
 
-    flex: 0 0 auto;
-
-    padding: 18px 20px;
-
-}
-
-.side-widget-column .panel-header {
-
-    font-size: 14px;
+    position: absolute;
+    top: 0;
+    left: 0;
 
 }
 
-.side-widget-column .panel-body {
-
-    font-size: 13px;
-
-}
-
-/* The "Hey Kiwi" voice bar, moved here (below the brain) from the top
-   bar — per explicit request, so it has proper room to fit once the
-   bottom widget row is gone. Pulled up closer to the brain (negative
-   margin, into the Canvas's own mostly-empty lower area — the brain's
-   visible silhouette doesn't fill its whole camera frame) rather than
-   sitting the usual flex gap below it. Bottom padding kept generous —
-   reserved room for the conversation panel, which floats above the
-   input row itself (see VoiceBar.css's .voice-bar-panel) so opening it
-   doesn't reflow this row's own height. */
+/* The "Hey Kiwi" voice bar — centered along the bottom edge, over the
+   brain rather than below it now that the Canvas covers the whole
+   viewport. Kept clear of the very bottom so the conversation panel,
+   which floats above the input row (see VoiceBar.css's .voice-bar-panel),
+   has room to open without running off screen. */
 .brain-voice-bar-row {
+
+    position: absolute;
+    left: 50%;
+    bottom: 36px;
+    transform: translateX(-50%);
+    z-index: 4;
 
     display: flex;
     justify-content: center;
 
-    margin-top: -110px;
-    padding: 0 24px 48px;
+    padding: 0 24px;
 
-    /* Pulled up into the Canvas's own bounding box above (see the
-       comment) — without this, the (invisible but still hit-testable)
-       Canvas element sitting earlier in paint order could intercept
-       clicks meant for the mic button underneath the overlap. */
-    position: relative;
-    z-index: 2;
+}
+
+/* ---- Leaving for the Laboratory ----------------------------------- */
+
+/* Everything floating over the scene steps aside while the camera flies
+   out to the Moon — the canvas keeps rendering, the interface doesn't
+   ride along. The glare itself is exempt: it's the thing covering up. */
+.brain-scene-departing > *:not(.brain-scene-canvas):not(.brain-departure-glare) {
+
+    opacity: 0;
+
+    transition: opacity .55s ease;
+    pointer-events: none;
+
+}
+
+/* Sunlight off the surface. Held back for most of the flight, then in
+   quickly — the timing matches DEPARTURE_MS in BrainScene3D, which is
+   when the Laboratory takes over behind it. */
+.brain-departure-glare {
+
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+
+    background:
+        radial-gradient(circle at 62% 46%, rgba(255, 255, 255, 1) 0%, rgba(226, 230, 238, .92) 38%, rgba(150, 158, 172, .75) 70%, rgba(10, 12, 20, .55) 100%);
+
+    opacity: 0;
+    pointer-events: none;
+
+    animation: brain-departure-glare 1.5s ease-in 1.2s forwards;
+
+}
+
+@keyframes brain-departure-glare {
+
+    from { opacity: 0; }
+    to { opacity: 1; }
+
+}
+
+/* Arriving back from the Laboratory: the surface glare is already
+   filling the screen when this scene opens, and clears as the camera
+   pulls away from the Moon. */
+.brain-arrival-glare {
+
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+
+    background:
+        radial-gradient(circle at 62% 46%, rgba(255, 255, 255, 1) 0%, rgba(226, 230, 238, .92) 38%, rgba(150, 158, 172, .75) 70%, rgba(10, 12, 20, .55) 100%);
+
+    pointer-events: none;
+
+    animation: brain-arrival-glare 1.3s ease-out forwards;
+
+}
+
+@keyframes brain-arrival-glare {
+
+    from { opacity: 1; }
+    to { opacity: 0; }
 
 }

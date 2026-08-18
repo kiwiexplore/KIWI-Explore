@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import Panel from "../ui/Panel";
-import { fetchRandomRecipes, type Recipe } from "../../lib/recipes";
+import { fetchProteinRecipes, type Recipe } from "../../lib/recipes";
 import "./RecipesWidget.css";
 
 interface RecipesWidgetProps {
@@ -45,7 +45,7 @@ export default function RecipesWidget({ onOpenDetail }: RecipesWidgetProps) {
         let cancelled = false;
         (async () => {
             try {
-                const data = await fetchRandomRecipes(5);
+                const data = await fetchProteinRecipes(5);
                 if (!cancelled) setRecipes(data);
             } catch {
                 if (!cancelled) setError(true);
