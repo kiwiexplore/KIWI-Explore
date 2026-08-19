@@ -1,0 +1,139 @@
+/* The navigation dial (see BrainMiniMap.tsx). Its own card in the
+   bottom-left corner, under the nav rail rather than inside it — the
+   rail lists where you can go, this shows where you ARE, and they're
+   easier to read as two things. The rail's own max-height leaves room
+   for it (see BrainNavPanel.css) so they never collide. */
+.brain-dial {
+
+    position: absolute;
+    left: 26px;
+    bottom: 26px;
+    z-index: 4;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+
+    width: 152px;
+
+    padding: 10px 10px 8px;
+    box-sizing: border-box;
+
+    background: rgba(10, 16, 34, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .45);
+
+}
+
+.brain-dial-svg {
+
+    width: 100%;
+    height: auto;
+
+}
+
+.brain-dial-slice {
+
+    cursor: pointer;
+
+}
+
+.brain-dial-segment {
+
+    fill: currentColor;
+    stroke: rgba(4, 8, 20, .8);
+    stroke-width: 1;
+
+    opacity: .22;
+
+    transition: var(--transition);
+
+}
+
+.brain-dial-slice:hover .brain-dial-segment,
+.brain-dial-slice-active .brain-dial-segment {
+
+    opacity: .62;
+
+}
+
+.brain-dial-slice-icon {
+
+    font-size: 9px;
+
+    opacity: .75;
+
+    pointer-events: none;
+    user-select: none;
+
+    transition: var(--transition);
+
+}
+
+.brain-dial-slice:hover .brain-dial-slice-icon,
+.brain-dial-slice-active .brain-dial-slice-icon {
+
+    font-size: 11px;
+
+    opacity: 1;
+
+}
+
+.brain-dial-core-disc {
+
+    fill: rgba(255, 255, 255, .04);
+    stroke: var(--border);
+    stroke-width: 1;
+
+    transition: var(--transition);
+
+}
+
+/* Inside a region the middle is a way back out, so it has to look
+   pressable; at the top level it's just a label. */
+.brain-dial-core-back {
+
+    cursor: pointer;
+
+}
+
+.brain-dial-core-back .brain-dial-core-disc {
+
+    stroke: currentColor;
+
+}
+
+.brain-dial-core-back:hover .brain-dial-core-disc {
+
+    fill: color-mix(in srgb, currentColor 16%, transparent);
+
+}
+
+.brain-dial-core-icon {
+
+    font-size: 16px;
+
+    pointer-events: none;
+    user-select: none;
+
+}
+
+.brain-dial-label {
+
+    color: var(--text-muted);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+
+    text-align: center;
+
+    transition: var(--transition);
+
+}

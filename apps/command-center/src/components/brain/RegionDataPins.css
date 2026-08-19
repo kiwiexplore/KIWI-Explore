@@ -1,0 +1,62 @@
+/* Facts pinned to the neurons of an open region (see RegionDataPins).
+   Each one is a button that opens the module it came from, so it has to
+   look reachable — but it also sits inside the brain, so it stays small
+   and dark enough not to bury the network behind it. */
+.region-pin {
+
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    max-width: 250px;
+
+    padding: 4px 10px 4px 8px;
+
+    background: rgba(4, 8, 20, .84);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+
+    border: 1px solid;
+    border-radius: 999px;
+
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    white-space: nowrap;
+    text-align: left;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+    opacity: .82;
+
+}
+
+.region-pin:hover {
+
+    background: rgba(8, 14, 32, .95);
+
+    opacity: 1;
+    transform: translateY(-1px);
+
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .5);
+
+}
+
+.region-pin-dot {
+
+    width: 5px;
+    height: 5px;
+    flex: 0 0 auto;
+
+    border-radius: 50%;
+
+}
+
+.region-pin-text {
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}

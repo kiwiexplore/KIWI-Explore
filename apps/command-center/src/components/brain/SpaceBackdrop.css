@@ -1,0 +1,36 @@
+/* Names pinned to the bodies in the environment (see SpaceBackdrop).
+   Deliberately faint: they're there for when you look for them, not to
+   be read. Anything brighter turns a sky into a diagram. */
+.space-label {
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+
+    color: rgba(202, 213, 232, .62);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .9);
+
+    pointer-events: none;
+    user-select: none;
+
+}
+
+/* A short leader line up to the body itself, so a name can sit clear of
+   the disc without losing what it belongs to. */
+.space-label::before {
+
+    content: "";
+
+    width: 1px;
+    height: 7px;
+
+    background: linear-gradient(to top, rgba(198, 209, 228, 0), rgba(198, 209, 228, .38));
+
+}

@@ -1,0 +1,178 @@
+/* The left navigation rail. Floats OVER the full-screen brain Canvas
+   (see BrainScene3D) rather than taking a grid column of its own — the
+   brain now owns the whole viewport, so every piece of UI on this scene
+   is an overlay. Deliberately narrow and glass-backed so the brain stays
+   visible behind and around it. */
+.brain-nav {
+
+    position: absolute;
+    left: 26px;
+    /* Top-aligned with the KIWI wordmark rather than centred on the
+       viewport: centred, a tall rail grew down into the dial in the
+       bottom-left corner and the two overlapped. */
+    top: 64px;
+    z-index: 4;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    width: 244px;
+    /* Reaches from the wordmark down to just above the dial in the
+       bottom-left corner (see BrainMiniMap.css) — the rail's rows scroll
+       rather than growing into it. */
+    max-height: calc(100vh - 290px);
+
+    padding: 16px 14px;
+    box-sizing: border-box;
+
+    background: rgba(10, 16, 34, 0.52);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    box-shadow: 0 18px 48px rgba(0, 0, 0, .45);
+
+}
+
+.brain-nav-header {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 0 6px 4px;
+
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+
+}
+
+/* The region rows are the part that gives way when the window is short:
+   the header and the "Whole brain" button stay put while this scrolls. */
+.brain-nav-list {
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    min-height: 0;
+    overflow-y: auto;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+
+}
+
+.brain-nav-item {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    width: 100%;
+    padding: 9px 10px;
+
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 12px;
+
+    color: var(--text);
+    text-align: left;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+/* Hover and keyboard focus light the row the same way the matching
+   region lights up on the brain — same --region-color per row. */
+.brain-nav-item-hovered,
+.brain-nav-item:hover {
+
+    background: rgba(255, 255, 255, .05);
+    border-color: color-mix(in srgb, var(--region-color) 45%, transparent);
+
+}
+
+.brain-nav-item-active {
+
+    background: color-mix(in srgb, var(--region-color) 16%, transparent);
+    border-color: var(--region-color);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--region-color) 30%, transparent);
+
+}
+
+.brain-nav-item-icon {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+
+    background: color-mix(in srgb, var(--region-color) 18%, transparent);
+    border-radius: 9px;
+
+    font-size: 14px;
+
+}
+
+.brain-nav-item-text {
+
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    min-width: 0;
+    flex: 1;
+
+}
+
+.brain-nav-item-domain {
+
+    font-size: 13px;
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.brain-nav-item-label {
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    letter-spacing: .3px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.brain-nav-item-chevron {
+
+    color: var(--text-muted);
+    flex: 0 0 auto;
+
+    opacity: .5;
+    transition: var(--transition);
+
+}
+
+.brain-nav-item:hover .brain-nav-item-chevron,
+.brain-nav-item-active .brain-nav-item-chevron {
+
+    opacity: 1;
+    transform: translateX(2px);
+
+}

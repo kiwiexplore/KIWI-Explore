@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
 import LaboratorySidebar from "./LaboratorySidebar";
 import LaboratoryQuickBar from "./LaboratoryQuickBar";
@@ -29,8 +29,6 @@ import NoteEditor from "./NoteEditor";
 import ResearchGrid from "./ResearchGrid";
 import ResearchDetail from "./ResearchDetail";
 import KiwiPanel from "./KiwiPanel";
-import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
-import ProfileSettings from "../ui/ProfileSettings";
 import { useKiwiChat } from "../../lib/useKiwiChat";
 import { resolveBackgroundImage } from "../../state/backgrounds";
 import { useNotificationsState } from "../../state/notifications";
@@ -92,20 +90,33 @@ interface LaboratoryProps {
  * KiwiCoreBadge's rotation-pause/glow-boost reaction, exactly like
  * BrainScene3D does for VoiceBar/the Dashboard's own brain.
  *
- * `account` is owned by App.tsx and passed down here too — the profile
- * pill (see LaboratoryTopBar) reflects whoever is actually signed in
- * on the Dashboard, and clicking it opens the exact same
- * ProfileSettings drawer (same DetailDrawer pattern as BrainScene3D,
- * including the "build the body fresh every render" fix for the same
- * stale-closure bug — see profileAnchor below). Background is also
- * account state now, so this page's own backdrop reflects whatever the
- * user picked from either scene, not a fixed default.
+ * `account` is owned by App.tsx and passed down here only for the page
+ * backdrop. The profile pill and its settings drawer that used to live
+ * in this scene's top bar are gone (removed per explicit request, along
+ * with the Dashboard's own sign-in — the account isn't needed at this
+ * stage), so nothing here reads or writes an identity any more.
  *
  * `calendar` is likewise owned by App.tsx (state/calendar.ts) — the
  * exact same event list the Dashboard's Upcoming Events widget reads,
  * so an event added from CalendarPanel here shows up there too.
  */
+// How long the glare takes to cover the room before the dashboard
+// takes over. Matches the arrival's own timing on the other side.
+const LEAVE_MS = 1300;
+
 export default function Laboratory({ onBack, account, calendar, data, spotify }: LaboratoryProps) {
+    // Leaving is a flight, not a cut: the glare comes up over the room
+    // the same way it came down on arrival, and the dashboard picks the
+    // camera up out at the Moon and flies it home (see BrainScene3D's
+    // `arriving`). The two halves have to agree on this timing.
+    const [leaving, setLeaving] = useState(false);
+
+    useEffect(() => {
+        if (!leaving) return;
+        const timer = window.setTimeout(onBack, LEAVE_MS);
+        return () => window.clearTimeout(timer);
+    }, [leaving, onBack]);
+
     const {
         projects, notes, researchEntries,
         createProject, handleProjectChange,
@@ -153,23 +164,6 @@ export default function Laboratory({ onBack, account, calendar, data, spotify }:
     const openSearch = () => { setSearchOpen(true); setNotificationsOpen(false); };
     const openNotifications = () => { setNotificationsOpen(true); setSearchOpen(false); };
 
-    // Same "build fresh every render" approach as BrainScene3D's own
-    // profileAnchor — storing a pre-rendered <ProfileSettings/> node
-    // would freeze its props at click-time (see that file's own
-    // comment for the full explanation of the stale-closure bug this
-    // avoids).
-    const [profileAnchor, setProfileAnchor] = useState<{ x: number; y: number } | null>(null);
-    const handleProfileClick = (event: MouseEvent<HTMLElement>) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        setProfileAnchor({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-    };
-    const profileDetail: DetailDrawerContent | null = profileAnchor ? {
-        title: "Profile & settings",
-        anchor: profileAnchor,
-        maxHeight: 620,
-        body: <ProfileSettings account={account} onSignOut={() => { account.setNickname(null); setProfileAnchor(null); }} />,
-    } : null;
-
     // These three wrap the data-layer's own create*() (see
     // state/laboratoryData.ts) with local navigation — selecting the
     // new item and switching section is UI behavior specific to this
@@ -198,19 +192,19 @@ export default function Laboratory({ onBack, account, calendar, data, spotify }:
 
     return (
         <div
-            className="laboratory"
-            style={{ backgroundImage: `linear-gradient(rgba(2,6,17,0.55), rgba(2,6,17,0.55)), ${resolveBackgroundImage(account.background)}` }}
+            className={`laboratory${leaving ? " laboratory-leaving" : ""}`}
+            // The wash is what keeps text over the background readable.
+            // Lighter than it was: it was tuned against a starfield, and
+            // at 55% it flattened the moonscape into grey card.
+            style={{ backgroundImage: `linear-gradient(rgba(2,6,17,0.38), rgba(2,6,17,0.38)), ${resolveBackgroundImage(account.background)}` }}
         >
             <LaboratoryTopBar
-                onBack={onBack}
+                onBack={() => setLeaving(true)}
                 listening={kiwiChat.listening}
                 onOpenSearch={openSearch}
                 onOpenCalendar={() => setCalendarOpen(true)}
                 onOpenNotifications={openNotifications}
                 unreadNotificationCount={notifications.unreadCount}
-                nickname={account.nickname}
-                avatar={account.avatar}
-                onProfileClick={handleProfileClick}
                 projectCount={projects.length}
                 activeProjectCount={projects.filter((p) => p.status === "active").length}
                 noteCount={notes.length}
@@ -481,7 +475,9 @@ export default function Laboratory({ onBack, account, calendar, data, spotify }:
                 <WhiteboardCanvas projects={projects} onClose={() => setWhiteboardOpen(false)} onAddFile={handleAddFile} />
             )}
 
-            <DetailDrawer content={profileDetail} onClose={() => setProfileAnchor(null)} />
+            {/* Sunlight off the regolith as the camera lifts away — the
+                same wash that brought you in, run backwards. */}
+            {leaving && <div className="laboratory-leaving-glare" aria-hidden="true" />}
         </div>
     );
 }

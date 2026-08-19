@@ -1,6 +1,7 @@
 import { brainNodes3D, brainConnectionSegments, brainEdges3D } from "../../state/neuralNetwork3D";
 import { isNodeKept, KEPT_NODE_INDICES, NECK_ZONE_Y, BRAIN_CENTER, BRAIN_HALF_RANGE } from "./keptNodes";
 import { isBelowStemCutoff, crossesFissure, STEM_CUTOFF_Y, FISSURE_Y_THRESHOLD } from "./brainTopology";
+import { brainRegions } from "../../state/brainRegions";
 
 const MIN_DEGREE = 5; // every kept node should have at least this many visible connections
 // The neck taper naturally has fewer, more colinear points (see
@@ -42,6 +43,48 @@ const ZTIP_THRESHOLD = 0.72; // normalized |z| from center, as a fraction of the
 const ZTIP_MIN_DEGREE = 6;
 const ZTIP_MAX_SYNTH_DIST = 0.5;
 const ZTIP_MAX_SYNTH_DIST_SQ = ZTIP_MAX_SYNTH_DIST * ZTIP_MAX_SYNTH_DIST;
+
+// Deep interior tracts (see the pass at the bottom of the builder).
+// Every Nth kept node starts a few of them — a rate, not an absolute
+// count, so the interior's density scales with however many nodes the
+// keep pass leaves rather than needing to be re-tuned alongside it.
+const TRACT_EVERY_NTH = 3;
+const TRACTS_PER_NODE = 2;
+// Long enough to actually be crossing the volume rather than hopping
+// between neighbors on the same wall.
+const TRACT_MIN_LENGTH = 0.75;
+// Endpoints must point roughly opposite ways from the brain's center
+// (dot product of their outward directions below this).
+const TRACT_MAX_FACING = 0.1;
+// Sideways bow as a fraction of the tract's own length — tracts sweep
+// through the interior rather than running dead straight through it.
+const TRACT_BOW = 0.18;
+
+// The neck has to stay a NECK: narrow, and reading as a tube dropping
+// out of the brain rather than a funnel. Its own points are sparse, so
+// both the baked data and the gap-filling passes were happy to reach a
+// long way sideways from a neck node up into the lobes — and a handful
+// of those long diagonals is exactly what made the neck look like it
+// flared out into the brain. Any connection with a neck-zone endpoint is
+// therefore capped on HORIZONTAL span specifically (the vertical run is
+// the neck; the sideways run is the flare).
+const NECK_MAX_HORIZONTAL = 0.2;
+
+function horizontalSpread(a: number, b: number): number {
+    const dx = brainNodes3D[a * 3] - brainNodes3D[b * 3];
+    const dz = brainNodes3D[a * 3 + 2] - brainNodes3D[b * 3 + 2];
+    return Math.sqrt(dx * dx + dz * dz);
+}
+
+/**
+ * True for a connection that would splay out of the neck sideways. Used
+ * by every pass that can create a line (baked, synthetic and the
+ * last-resort fallback), so there's one rule rather than three.
+ */
+function flaresOutOfNeck(a: number, b: number): boolean {
+    const inNeck = brainNodes3D[a * 3 + 1] < NECK_ZONE_Y || brainNodes3D[b * 3 + 1] < NECK_ZONE_Y;
+    return inNeck && horizontalSpread(a, b) > NECK_MAX_HORIZONTAL;
+}
 
 function isZTip(idx: number): boolean {
     const nz = (brainNodes3D[idx * 3 + 2] - BRAIN_CENTER[2]) / BRAIN_HALF_RANGE[2];
@@ -94,6 +137,7 @@ function buildConnectionPositions(): Float32Array {
         if (isBelowStemCutoff(a) || isBelowStemCutoff(b)) return;
         if (!isNodeKept(a) || !isNodeKept(b)) return;
         if (crossesFissure(a, b)) return;
+        if (flaresOutOfNeck(a, b)) return;
 
         // seg = [ax,ay,az, mx,my,mz, bx,by,bz] -> two segments: a-m, m-b
         kept.push(
@@ -137,12 +181,45 @@ function buildConnectionPositions(): Float32Array {
         kept.push(ax, ay, az, mx, my, mz, mx, my, mz, bx, by, bz);
     };
 
+    // Same bookkeeping as connect(), but bows the line SIDEWAYS instead
+    // of outward from the shell — used only by the deep-tract pass below,
+    // where the whole point is to cross the interior. The offset
+    // direction is a per-pair pseudo-random vector made perpendicular to
+    // the tract itself, so no two tracts between nearby walls lie on top
+    // of each other.
+    const connectThrough = (idx: number, other: number) => {
+        existingPairs.add(pairKey(idx, other));
+        degree.set(idx, (degree.get(idx) ?? 0) + 1);
+        degree.set(other, (degree.get(other) ?? 0) + 1);
+
+        const ax = brainNodes3D[idx * 3], ay = brainNodes3D[idx * 3 + 1], az = brainNodes3D[idx * 3 + 2];
+        const bx = brainNodes3D[other * 3], by = brainNodes3D[other * 3 + 1], bz = brainNodes3D[other * 3 + 2];
+        const seed = idx * 7919 + other;
+
+        const dx = bx - ax, dy = by - ay, dz = bz - az;
+        const length = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+        // Random direction, then the component along the tract removed —
+        // Gram-Schmidt, so what's left is genuinely sideways.
+        let rx = hash(seed) - 0.5, ry = hash(seed * 1.9) - 0.5, rz = hash(seed * 2.7) - 0.5;
+        const along = (rx * dx + ry * dy + rz * dz) / (length * length);
+        rx -= along * dx; ry -= along * dy; rz -= along * dz;
+        const rLen = Math.sqrt(rx * rx + ry * ry + rz * rz) || 1;
+
+        const bow = length * TRACT_BOW;
+        const mx = (ax + bx) / 2 + (rx / rLen) * bow;
+        const my = (ay + by) / 2 + (ry / rLen) * bow;
+        const mz = (az + bz) / 2 + (rz / rLen) * bow;
+
+        kept.push(ax, ay, az, mx, my, mz, mx, my, mz, bx, by, bz);
+    };
+
     const nearestCandidates = (idx: number, maxDistSq: number) => {
         const candidates: { other: number; distSq: number; angle: number }[] = [];
         for (const other of KEPT_NODE_INDICES) {
             if (other === idx) continue;
             if (existingPairs.has(pairKey(idx, other))) continue;
             if (crossesFissure(idx, other)) continue;
+            if (flaresOutOfNeck(idx, other)) continue;
 
             const dx = brainNodes3D[idx * 3] - brainNodes3D[other * 3];
             const dy = brainNodes3D[idx * 3 + 1] - brainNodes3D[other * 3 + 1];
@@ -281,6 +358,57 @@ function buildConnectionPositions(): Float32Array {
         connect(a, b);
     }
 
+    // Deep-tract pass: long connections that dive THROUGH the inside of
+    // the brain, wall to wall, rather than hugging the shell like every
+    // pass above. Added per explicit request — with navigation now flying
+    // the camera inside a region (see BrainScene3D), the interior used to
+    // be a hollow shell with nothing in it, and a real brain's white
+    // matter is mostly exactly these long-range tracts.
+    //
+    // Partners are picked far away AND roughly opposite (facing back
+    // across the center), within the same hemisphere so the longitudinal
+    // fissure stays an open groove. Every tract gets its own sideways
+    // bow, so they sweep through the volume as separate arcs instead of
+    // all piling through the exact center as one bright knot.
+    const tractCandidates = KEPT_NODE_INDICES.filter((idx) => !isBelowStemCutoff(idx));
+    tractCandidates.forEach((idx, n) => {
+        if (n % TRACT_EVERY_NTH !== 0) return;
+
+        const ax = brainNodes3D[idx * 3], ay = brainNodes3D[idx * 3 + 1], az = brainNodes3D[idx * 3 + 2];
+        const aOutX = ax - BRAIN_CENTER[0], aOutY = ay - BRAIN_CENTER[1], aOutZ = az - BRAIN_CENTER[2];
+        const aLen = Math.sqrt(aOutX * aOutX + aOutY * aOutY + aOutZ * aOutZ) || 1;
+
+        let picked = 0;
+        // Walk the candidate list from a per-node offset rather than
+        // always scanning from the start, so tracts fan out across the
+        // whole volume instead of every source node reaching for the
+        // same handful of partners near the front of the array.
+        const start = Math.floor(hash(idx * 3.77) * tractCandidates.length);
+        for (let step = 0; step < tractCandidates.length && picked < TRACTS_PER_NODE; step++) {
+            const other = tractCandidates[(start + step) % tractCandidates.length];
+            if (other === idx) continue;
+            if (existingPairs.has(pairKey(idx, other))) continue;
+            if (crossesFissure(idx, other)) continue;
+            if (flaresOutOfNeck(idx, other)) continue;
+
+            const bx = brainNodes3D[other * 3], by = brainNodes3D[other * 3 + 1], bz = brainNodes3D[other * 3 + 2];
+            const dist = Math.sqrt((ax - bx) ** 2 + (ay - by) ** 2 + (az - bz) ** 2);
+            if (dist < TRACT_MIN_LENGTH) continue;
+
+            // Facing back across the center: the two endpoints point in
+            // roughly opposite directions from the middle, which is what
+            // makes the line pass through the interior instead of
+            // skimming along one wall.
+            const bOutX = bx - BRAIN_CENTER[0], bOutY = by - BRAIN_CENTER[1], bOutZ = bz - BRAIN_CENTER[2];
+            const bLen = Math.sqrt(bOutX * bOutX + bOutY * bOutY + bOutZ * bOutZ) || 1;
+            const facing = (aOutX * bOutX + aOutY * bOutY + aOutZ * bOutZ) / (aLen * bLen);
+            if (facing > TRACT_MAX_FACING) continue;
+
+            connectThrough(idx, other);
+            picked++;
+        }
+    });
+
     // Fallback pass: at the lower KEEP_FRACTION, a handful of nodes can
     // still end up totally isolated (their nearest kept neighbors all
     // sit beyond MAX_SYNTH_DIST) — the brain needs to read as ONE
@@ -297,3 +425,71 @@ function buildConnectionPositions(): Float32Array {
 }
 
 export const connectionPositions: Float32Array = buildConnectionPositions();
+
+// The cyan the whole web used to be drawn in, kept for every vertex that
+// falls outside all regions — those gaps between areas are what keeps
+// the coloring below from reading as six flat blocks.
+const BASE_LINE_COLOR: [number, number, number] = [0.44, 0.83, 1.0];
+// Lines sit behind the neuron dots visually, so they carry the region's
+// color at lower strength than the dots do (see NeuronLayer) — enough to
+// tell the areas apart at a glance without the web shouting over them.
+const LINE_REGION_TINT = 0.95;
+const LINE_DIM = 0.72;
+
+/**
+ * Per-vertex colors for the connection web, so each region's own share
+ * of the network carries that region's color — this is what actually
+ * makes the areas readable at a glance (per explicit request: tell the
+ * regions apart by color, no markers or glow sprites). The neuron dots
+ * do the same thing, but they're small; the lines are what fills the
+ * space between them.
+ *
+ * Computed from the finished vertex buffer rather than at each place
+ * that pushes into it: a vertex's color depends only on WHERE it ended
+ * up, so one pass over the positions covers baked segments, synthetic
+ * gap-fill, the fissure seam and the deep tracts alike, with nothing to
+ * keep in sync when any of those passes change. Runs once at module
+ * load, same as the positions themselves.
+ */
+function buildConnectionColors(): { colors: Float32Array; regions: Float32Array } {
+    const vertexCount = connectionPositions.length / 3;
+    const colors = new Float32Array(connectionPositions.length);
+    // Which region each vertex belongs to (-1 for none), handed to the
+    // line shader so a focused region's own web can be lifted and
+    // everything else pushed back — impossible with a plain material,
+    // where the whole web is one uniform colour and opacity.
+    const regions = new Float32Array(vertexCount).fill(-1);
+
+    for (let v = 0; v < vertexCount; v++) {
+        const x = connectionPositions[v * 3];
+        const y = connectionPositions[v * 3 + 1];
+        const z = connectionPositions[v * 3 + 2];
+
+        let best = -1;
+        let bestDistance = Infinity;
+        brainRegions.forEach((region, index) => {
+            const dx = x - region.anchor[0];
+            const dy = y - region.anchor[1];
+            const dz = z - region.anchor[2];
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (distance <= region.radius && distance < bestDistance) {
+                bestDistance = distance;
+                best = index;
+            }
+        });
+
+        regions[v] = best;
+
+        const target = best >= 0 ? brainRegions[best].rgb : BASE_LINE_COLOR;
+        const tint = best >= 0 ? LINE_REGION_TINT : 0;
+        colors[v * 3] = (BASE_LINE_COLOR[0] + (target[0] - BASE_LINE_COLOR[0]) * tint) * LINE_DIM;
+        colors[v * 3 + 1] = (BASE_LINE_COLOR[1] + (target[1] - BASE_LINE_COLOR[1]) * tint) * LINE_DIM;
+        colors[v * 3 + 2] = (BASE_LINE_COLOR[2] + (target[2] - BASE_LINE_COLOR[2]) * tint) * LINE_DIM;
+    }
+
+    return { colors, regions };
+}
+
+const built = buildConnectionColors();
+export const connectionColors: Float32Array = built.colors;
+export const connectionRegions: Float32Array = built.regions;

@@ -14,6 +14,25 @@ export interface DailyForecast {
     code: number;
     max: number;
     min: number;
+    /** Chance of any precipitation at all, as a percentage. */
+    rainChance: number;
+    /** How much, in mm, if it does. */
+    rainTotal: number;
+    windMax: number;
+    uvMax: number;
+    sunrise: string;
+    sunset: string;
+}
+
+/** One hour of the near forecast — the shape of the day ahead. */
+export interface HourlyForecast {
+    time: string;
+    temperature: number;
+    code: number;
+    rainChance: number;
+    windSpeed: number;
+    /** False overnight, which is what shades the night hours. */
+    isDay: boolean;
 }
 
 export interface WeatherData {
@@ -22,7 +41,36 @@ export interface WeatherData {
     humidity: number;
     windSpeed: number;
     code: number;
+    /** Where the wind is coming FROM, in degrees. */
+    windDirection: number;
+    windGusts: number;
+    /** mm in the last hour. */
+    precipitation: number;
+    cloudCover: number;
+    pressure: number;
+    isDay: boolean;
+    /** From now on, hour by hour — see fetchWeather. */
+    hourly: HourlyForecast[];
     daily: DailyForecast[];
+}
+
+/** Wind direction as a compass point, which is how anyone reads it. */
+export function describeWindDirection(degrees: number): string {
+    const points = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    return points[Math.round(degrees / 45) % 8];
+}
+
+/**
+ * The UV index in the words people actually act on. The bands are the
+ * WHO's own (1-2 low, 3-5 moderate, 6-7 high, 8-10 very high, 11+
+ * extreme), not a scale invented here.
+ */
+export function describeUvIndex(uv: number): string {
+    if (uv < 3) return "Low";
+    if (uv < 6) return "Moderate";
+    if (uv < 8) return "High";
+    if (uv < 11) return "Very high";
+    return "Extreme";
 }
 
 // Darfield, New Zealand — used only if the browser can't/won't provide a
@@ -115,7 +163,11 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
     const url =
         `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
         `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m` +
-        `&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=4`;
+        `,wind_direction_10m,wind_gusts_10m,precipitation,cloud_cover,surface_pressure,is_day` +
+        `&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m,is_day` +
+        `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+        `,precipitation_sum,wind_speed_10m_max,uv_index_max,sunrise,sunset` +
+        `&timezone=auto&forecast_days=7`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Open-Meteo request failed: ${res.status}`);
     const data = await res.json();
@@ -125,7 +177,33 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
         code: data.daily.weather_code[i],
         max: data.daily.temperature_2m_max[i],
         min: data.daily.temperature_2m_min[i],
+        rainChance: data.daily.precipitation_probability_max?.[i] ?? 0,
+        rainTotal: data.daily.precipitation_sum?.[i] ?? 0,
+        windMax: data.daily.wind_speed_10m_max?.[i] ?? 0,
+        uvMax: data.daily.uv_index_max?.[i] ?? 0,
+        sunrise: data.daily.sunrise?.[i] ?? "",
+        sunset: data.daily.sunset?.[i] ?? "",
     }));
+
+    // The hourly series starts at midnight local time, so most of it is
+    // already in the past by the time anyone looks. Only what's still
+    // ahead is of any use — found by the hour Open-Meteo itself says is
+    // current, rather than by comparing the browser's clock against
+    // timestamps in a timezone that may not be its own.
+    const times: string[] = data.hourly?.time ?? [];
+    const currentHour = (data.current?.time ?? "").slice(0, 13);
+    const from = Math.max(0, times.findIndex((time) => time.slice(0, 13) >= currentHour));
+    const hourly: HourlyForecast[] = times.slice(from, from + 24).map((time, offset) => {
+        const i = from + offset;
+        return {
+            time,
+            temperature: data.hourly.temperature_2m[i],
+            code: data.hourly.weather_code[i],
+            rainChance: data.hourly.precipitation_probability?.[i] ?? 0,
+            windSpeed: data.hourly.wind_speed_10m?.[i] ?? 0,
+            isDay: (data.hourly.is_day?.[i] ?? 1) === 1,
+        };
+    });
 
     return {
         temperature: data.current.temperature_2m,
@@ -133,6 +211,13 @@ export async function fetchWeather(latitude: number, longitude: number): Promise
         humidity: data.current.relative_humidity_2m,
         windSpeed: data.current.wind_speed_10m,
         code: data.current.weather_code,
+        windDirection: data.current.wind_direction_10m ?? 0,
+        windGusts: data.current.wind_gusts_10m ?? 0,
+        precipitation: data.current.precipitation ?? 0,
+        cloudCover: data.current.cloud_cover ?? 0,
+        pressure: data.current.surface_pressure ?? 0,
+        isDay: (data.current.is_day ?? 1) === 1,
+        hourly,
         daily,
     };
 }

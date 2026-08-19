@@ -34,3 +34,40 @@
     overflow-y: auto;
 
 }
+
+/* ---- Leaving for the dashboard ------------------------------------ */
+
+/* The room steps back as the camera lifts off the surface. */
+.laboratory-leaving > *:not(.laboratory-leaving-glare) {
+
+    opacity: 0;
+
+    transition: opacity .5s ease;
+    pointer-events: none;
+
+}
+
+/* Sunlight off the regolith, filling the screen just as the dashboard
+   takes over behind it — timing matches LEAVE_MS in Laboratory.tsx. */
+.laboratory-leaving-glare {
+
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+
+    background:
+        radial-gradient(circle at 50% 62%, rgba(255, 255, 255, 1) 0%, rgba(226, 230, 238, .92) 40%, rgba(150, 158, 172, .78) 72%, rgba(10, 12, 20, .6) 100%);
+
+    opacity: 0;
+    pointer-events: none;
+
+    animation: laboratory-leaving-glare 1.1s ease-in forwards;
+
+}
+
+@keyframes laboratory-leaving-glare {
+
+    from { opacity: 0; }
+    to { opacity: 1; }
+
+}
