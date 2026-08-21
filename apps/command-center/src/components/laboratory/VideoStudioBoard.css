@@ -57,7 +57,7 @@
     padding: 12px 14px;
     border: 1px solid rgba(255, 79, 109, .4);
     border-radius: 12px;
-    background: rgba(255, 79, 109, .08);
+    background: linear-gradient(rgba(255, 79, 109, .08), rgba(255, 79, 109, .08)), #0d1526;
 
     font-size: 12.5px;
     line-height: 1.6;
@@ -70,7 +70,7 @@
 .video-studio-banner-setup {
 
     border-color: rgba(73, 199, 255, .4);
-    background: rgba(73, 199, 255, .08);
+    background: linear-gradient(rgba(73, 199, 255, .08), rgba(73, 199, 255, .08)), #0d1526;
 
 }
 
@@ -129,7 +129,7 @@
     padding: 10px 14px;
     border: 1px solid var(--border);
     border-radius: 10px;
-    background: rgba(5, 8, 22, .5);
+    background: rgba(5, 8, 22, 0.74);
 
     font: inherit;
     font-size: 13px;
@@ -173,7 +173,7 @@
     padding: 16px;
     border: 1px solid var(--border);
     border-radius: 14px;
-    background: rgba(16, 25, 46, .6);
+    background: rgba(16, 25, 46, 0.92);
 
     font: inherit;
     text-align: left;
@@ -327,7 +327,7 @@
     padding: 7px 10px;
     border: 1px solid var(--border);
     border-radius: 8px;
-    background: rgba(5, 8, 22, .6);
+    background: rgba(5, 8, 22, 0.76);
 
     font: inherit;
     font-size: 12px;
@@ -370,7 +370,7 @@
     padding: 18px;
     border: 1px solid var(--border);
     border-radius: 14px;
-    background: rgba(16, 25, 46, .5);
+    background: rgba(16, 25, 46, 0.9);
 
 }
 
@@ -432,7 +432,7 @@
 
     border: 1px solid var(--border);
     border-radius: 10px;
-    background: rgba(5, 8, 22, .5);
+    background: rgba(5, 8, 22, 0.74);
     cursor: pointer;
 
     font: inherit;
@@ -503,7 +503,7 @@
     padding: 12px 14px;
     border: 1px solid rgba(255, 79, 109, .45);
     border-radius: 10px;
-    background: rgba(255, 79, 109, .1);
+    background: linear-gradient(rgba(255, 79, 109, .1), rgba(255, 79, 109, .1)), #0d1526;
 
     font-size: 12.5px;
     line-height: 1.6;
@@ -538,7 +538,7 @@
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: 10px;
-    background: rgba(5, 8, 22, .4);
+    background: rgba(5, 8, 22, 0.74);
 
 }
 
@@ -591,7 +591,7 @@
 
     border: 1px solid var(--border);
     border-radius: 10px;
-    background: rgba(5, 8, 22, .4);
+    background: rgba(5, 8, 22, 0.74);
     overflow: hidden;
 
 }
@@ -661,5 +661,89 @@
 
     white-space: pre-wrap;
     word-break: break-word;
+
+}
+
+/* --- the detail as a sequence -------------------------------------- */
+/*
+ * The detail used to be five equal-looking panels stacked down the page,
+ * which said nothing about what came first. Numbering them, and dimming
+ * the ones you haven't reached, lets the page itself answer "what now"
+ * without reading every box.
+ */
+
+.video-studio-step-head {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+}
+
+.video-studio-step-num {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 22px;
+    height: 22px;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+
+}
+
+.video-studio-step-done .video-studio-step-num {
+
+    border-color: var(--secondary);
+    color: var(--secondary);
+
+}
+
+.video-studio-step-current {
+
+    border-color: rgba(73, 199, 255, .4);
+    background: linear-gradient(rgba(73, 199, 255, .07), rgba(73, 199, 255, .07)), #0d1526;
+
+}
+
+.video-studio-step-current .video-studio-step-num {
+
+    border-color: var(--primary);
+    color: var(--primary);
+
+}
+
+.video-studio-step-current h2 {
+
+    color: var(--primary);
+
+}
+
+.video-studio-step-now {
+
+    padding: 2px 9px;
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--primary);
+
+}
+
+/* Reachable, just not yet relevant — the controls inside still work if
+   you want to jump ahead. */
+.video-studio-step-upcoming {
+
+    opacity: .62;
 
 }

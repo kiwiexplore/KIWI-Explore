@@ -93,7 +93,7 @@
 
     padding: 18px 20px;
 
-    background: rgba(16, 25, 46, 0.4);
+    background: rgba(16, 25, 46, 0.9);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 
@@ -156,7 +156,7 @@
 
     padding: 12px 16px;
 
-    background: rgba(117, 102, 255, .08);
+    background: linear-gradient(rgba(117, 102, 255, .08), rgba(117, 102, 255, .08)), #0d1526;
     border: 1px solid rgba(117, 102, 255, .25);
     border-radius: var(--radius);
 

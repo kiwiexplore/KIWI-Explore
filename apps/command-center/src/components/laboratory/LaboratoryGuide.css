@@ -1,18 +1,134 @@
 /*
- * The Laboratory's guide page — the seven phases as one vertical
- * track. Built so the eye lands on the active phase first: finished
- * ones fade back to a single ticked line, later ones dim, and only the
- * current one keeps full contrast and its description.
+ * "Your videos" — every video under the step it's waiting on. Tuned so
+ * the page can be read at a glance: the step numbers form a single
+ * column down the left, and a card's second line always answers "what
+ * do I do with this".
  */
+
+.lab-guide-muted {
+
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+
+}
+
+/* --- start a video ------------------------------------------------ */
+
+.lab-guide-new {
+
+    display: flex;
+    gap: 10px;
+
+}
+
+.lab-guide-new-input {
+
+    flex: 1;
+    min-width: 0;
+
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(5, 8, 22, 0.74);
+
+    font: inherit;
+    font-size: 13.5px;
+    color: var(--text);
+
+    transition: border-color var(--transition);
+
+}
+
+.lab-guide-new-input:focus {
+
+    outline: none;
+    border-color: var(--primary);
+
+}
+
+.lab-guide-new-btn {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+
+    padding: 0 20px;
+    border: 1px solid var(--primary);
+    border-radius: 12px;
+    background: rgba(73, 199, 255, .14);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+
+}
+
+.lab-guide-new-btn:disabled {
+
+    opacity: .4;
+    cursor: not-allowed;
+
+}
+
+/* --- something went wrong ----------------------------------------- */
+
+.lab-guide-attention {
+
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 79, 109, .45);
+    border-radius: 12px;
+    background: linear-gradient(rgba(255, 79, 109, .1), rgba(255, 79, 109, .1)), #0d1526;
+
+}
+
+.lab-guide-attention svg {
+
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--danger);
+
+}
+
+.lab-guide-attention div {
+
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+}
+
+.lab-guide-attention strong {
+
+    font-size: 13px;
+    color: var(--text);
+
+}
+
+.lab-guide-attention span {
+
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+
+}
+
+/* --- empty state -------------------------------------------------- */
 
 .lab-guide-empty {
 
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
+    gap: 18px;
 
-    padding: 24px;
+    padding: 28px;
     border: 1px dashed var(--border);
     border-radius: 14px;
 
@@ -21,113 +137,18 @@
 .lab-guide-empty p {
 
     margin: 0;
-
-    font-size: 13px;
+    font-size: 13.5px;
     line-height: 1.6;
     color: var(--text-muted);
 
 }
 
-.lab-guide-create {
-
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    padding: 10px 18px;
-    border: 1px solid var(--primary);
-    border-radius: 10px;
-    background: rgba(73, 199, 255, .12);
-    cursor: pointer;
-
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--primary);
-
-}
-
-/* --- which project the journey is about -------------------------- */
-
-.lab-guide-focus {
+.lab-guide-preview {
 
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-
-    padding: 14px 18px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: rgba(16, 25, 46, .55);
-
-}
-
-.lab-guide-focus-picker {
-
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-
-}
-
-.lab-guide-focus-picker select {
-
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(5, 8, 22, .6);
-    cursor: pointer;
-
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: none;
-    color: var(--text);
-
-}
-
-.lab-guide-open-project {
-
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-
-    padding: 8px 14px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: none;
-    cursor: pointer;
-
-    font: inherit;
-    font-size: 12px;
-    color: var(--text-muted);
-
-    transition: color var(--transition), border-color var(--transition);
-
-}
-
-.lab-guide-open-project:hover {
-
-    color: var(--text);
-    border-color: var(--primary);
-
-}
-
-/* --- the track ---------------------------------------------------- */
-
-.lab-guide-phases {
-
-    display: flex;
-    flex-direction: column;
+    gap: 10px 18px;
 
     margin: 0;
     padding: 0;
@@ -135,227 +156,244 @@
 
 }
 
-.lab-guide-phase {
+.lab-guide-preview li {
 
-    position: relative;
-
-    display: grid;
-    grid-template-columns: 34px 1fr;
-    gap: 16px;
-
-    padding-bottom: 22px;
-
-}
-
-/* The connecting line runs between the dots, so the last phase
-   doesn't trail one off the bottom of the list. */
-.lab-guide-phase:not(:last-child) .lab-guide-phase-marker::after {
-
-    content: "";
-    position: absolute;
-    top: 30px;
-    bottom: -4px;
-    left: 50%;
-
-    width: 1px;
-    transform: translateX(-50%);
-    background: var(--border);
-
-}
-
-.lab-guide-phase-marker {
-
-    position: relative;
     display: flex;
-    justify-content: center;
-    padding-top: 2px;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 12px;
+    color: var(--text-muted);
 
 }
 
-.lab-guide-phase-dot {
+.lab-guide-preview span {
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
 
     border: 1px solid var(--border);
     border-radius: 50%;
-    background: var(--space);
 
-    color: var(--text-muted);
-
-}
-
-.lab-guide-phase-done .lab-guide-phase-dot {
-
-    border-color: var(--secondary);
-    color: var(--secondary);
+    font-size: 10px;
 
 }
 
-.lab-guide-phase-active .lab-guide-phase-dot {
+/* --- the pipeline ------------------------------------------------- */
 
-    border-color: var(--primary);
-    color: var(--primary);
-    box-shadow: 0 0 0 4px rgba(73, 199, 255, .12);
-
-}
-
-.lab-guide-phase-body {
+.lab-guide-pipeline {
 
     display: flex;
     flex-direction: column;
-    gap: 8px;
 
-    padding: 14px 18px;
-    border: 1px solid transparent;
-    border-radius: 12px;
+    margin: 0;
+    /* The step headings are text sitting directly on the page, and the
+       moonscape behind it is high-contrast enough to eat them. Putting
+       the whole pipeline on one dark surface keeps the backdrop visible
+       around the panel instead of underneath the words. */
+    padding: 22px 24px 6px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: rgba(16, 25, 46, 0.9);
 
-    transition: border-color var(--transition), background var(--transition);
-
-}
-
-/* Only the phase you're on gets a card of its own — giving every phase
-   one would flatten the list back into the wall of panels this page
-   exists to replace. */
-.lab-guide-phase-active .lab-guide-phase-body {
-
-    border-color: rgba(73, 199, 255, .35);
-    background: rgba(73, 199, 255, .06);
+    list-style: none;
 
 }
 
-.lab-guide-phase-upcoming .lab-guide-phase-body {
+.lab-guide-step {
 
-    opacity: .55;
+    position: relative;
+    padding: 0 0 20px 46px;
 
 }
 
-.lab-guide-phase-head {
+/* One continuous line threading the step numbers together. */
+.lab-guide-step:not(:last-child)::before {
+
+    content: "";
+    position: absolute;
+    top: 26px;
+    bottom: 0;
+    left: 13px;
+
+    width: 1px;
+    background: var(--border);
+
+}
+
+.lab-guide-step-head {
 
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 10px;
 
+    min-height: 28px;
+
 }
 
-.lab-guide-phase-step {
+.lab-guide-step-num {
 
-    font-size: 10px;
+    position: absolute;
+    left: 0;
+    top: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 27px;
+    height: 27px;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--space);
+
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1.6px;
-    text-transform: uppercase;
     color: var(--text-muted);
 
 }
 
-.lab-guide-phase-head h3 {
+.lab-guide-step h3 {
 
     margin: 0;
 
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
     color: var(--text);
 
 }
 
-.lab-guide-phase-done .lab-guide-phase-head h3 {
+.lab-guide-step-count {
 
-    color: var(--text-muted);
-    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(73, 199, 255, .15);
+
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--primary);
 
 }
 
-.lab-guide-phase-detail {
+.lab-guide-step-todo {
+
+    flex: 1;
+    min-width: 180px;
 
     font-size: 12px;
     color: var(--text-muted);
 
 }
 
-.lab-guide-phase-done .lab-guide-phase-detail {
+/* A step with nothing in it is still part of the road — it just stops
+   asking for attention. */
+.lab-guide-step-empty {
 
-    color: var(--secondary);
-
-}
-
-.lab-guide-phase-here {
-
-    padding: 2px 9px;
-    border: 1px solid var(--primary);
-    border-radius: 999px;
-
-    font-size: 9.5px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--primary);
+    opacity: .4;
+    padding-bottom: 14px;
 
 }
 
-.lab-guide-phase-blurb,
-.lab-guide-phase-reason {
+.lab-guide-step-empty .lab-guide-step-todo {
 
-    margin: 0;
-
-    font-size: 12.5px;
-    line-height: 1.6;
-    color: var(--text-muted);
+    display: none;
 
 }
 
-.lab-guide-phase-reason {
-
-    font-style: italic;
-    opacity: .85;
-
-}
-
-.lab-guide-phase-links {
+.lab-guide-step-cards {
 
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 8px;
 
-    margin-top: 2px;
+    margin-top: 12px;
 
 }
 
-.lab-guide-phase-link {
+/* --- one video ---------------------------------------------------- */
 
-    display: inline-flex;
+.lab-guide-card {
+
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "title arrow"
+        "next  arrow";
     align-items: center;
-    gap: 5px;
+    gap: 3px 14px;
 
-    padding: 7px 12px;
+    padding: 13px 16px;
     border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(5, 8, 22, .45);
+    border-radius: 12px;
+    background: rgba(16, 25, 46, 0.92);
     cursor: pointer;
 
     font: inherit;
-    font-size: 12px;
-    color: var(--text);
+    text-align: left;
 
-    transition: border-color var(--transition), color var(--transition);
+    transition: border-color var(--transition), transform var(--transition);
 
 }
 
-.lab-guide-phase-link:hover {
+.lab-guide-card:hover {
 
     border-color: var(--primary);
-    color: var(--primary);
+    transform: translateX(2px);
 
 }
 
-/* Finished phases keep their links, but quietly — they're a way back,
-   not a call to action. */
-.lab-guide-phase-done .lab-guide-phase-link {
+.lab-guide-card-failed {
 
+    border-color: rgba(255, 79, 109, .5);
+
+}
+
+.lab-guide-card-title {
+
+    grid-area: title;
+
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+
+}
+
+.lab-guide-card-next {
+
+    grid-area: next;
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    font-size: 12px;
     color: var(--text-muted);
+
+}
+
+.lab-guide-card-failed .lab-guide-card-next {
+
+    color: var(--danger);
+
+}
+
+.lab-guide-card-arrow {
+
+    grid-area: arrow;
+    color: var(--text-muted);
+
+}
+
+.lab-guide-card:hover .lab-guide-card-arrow {
+
+    color: var(--primary);
 
 }

@@ -6,7 +6,7 @@
 
     padding: 9px 18px;
 
-    background: rgba(16, 25, 46, 0.5);
+    background: rgba(16, 25, 46, 0.9);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 
@@ -37,5 +37,13 @@
     height: 14px;
 
     background: var(--border);
+
+}
+
+/* A failure count is the one number on this bar worth interrupting for. */
+.lab-stats-item-alert,
+.lab-stats-item-alert strong {
+
+    color: var(--danger);
 
 }

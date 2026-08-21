@@ -23,8 +23,6 @@ import TrendScannerBoard from "./TrendScannerBoard";
 import ContentHubBoard from "./ContentHubBoard";
 import LaboratoryGuide from "./LaboratoryGuide";
 import VideoStudioBoard from "./VideoStudioBoard";
-import MindMapView from "./MindMapView";
-import WhiteboardCanvas from "./WhiteboardCanvas";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
 import NotesGrid from "./NotesGrid";
@@ -37,7 +35,6 @@ import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { NotificationsState } from "../../state/notifications";
 import { useContentHubState } from "../../state/contentHub";
 import { useVideoStudioState } from "../../state/videoStudio";
-import { deriveJourney } from "../../state/laboratoryJourney";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
@@ -154,9 +151,10 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // Which project the Guide (and the sidebar's phase markers) are
     // reading. Falls back to the first project so there's always
     // something to follow; null only when there are no projects at all.
-    const [guideProjectId, setGuideProjectId] = useState<string | null>(null);
-    const focusProject = projects.find((p) => p.id === guideProjectId) ?? projects[0] ?? null;
-    const journey = deriveJourney(focusProject);
+    // Which video is open in Video Studio. Held here because the
+    // pipeline board on the Guide page opens one directly — the board
+    // itself shouldn't have to be told after the fact.
+    const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
 
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
@@ -172,8 +170,6 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     const [searchOpen, setSearchOpen] = useState(false);
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
-    const [mindMapOpen, setMindMapOpen] = useState(false);
-    const [whiteboardOpen, setWhiteboardOpen] = useState(false);
 
     // Both stay local rather than being lifted to App.tsx the way
     // notifications/account/calendar were: every item is already
@@ -228,10 +224,10 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 onOpenCalendar={() => setCalendarOpen(true)}
                 onOpenNotifications={openNotifications}
                 unreadNotificationCount={notifications.unreadCount}
-                projectCount={projects.length}
-                activeProjectCount={projects.filter((p) => p.status === "active").length}
-                noteCount={notes.length}
-                researchCount={researchEntries.length}
+                videoCount={videoStudio.projects.length}
+                inProgressCount={videoStudio.projects.filter((p) => p.stage !== "published").length}
+                publishedCount={videoStudio.projects.filter((p) => p.stage === "published").length}
+                failedCount={videoStudio.projects.filter((p) => p.transcriptStatus === "failed").length}
                 spotify={spotify}
             />
 
@@ -241,7 +237,6 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                     onSectionChange={setSection}
                     onCreateProject={handleCreateProject}
                     onOpenKiwi={() => setKiwiOpen(true)}
-                    journey={journey}
                 />
 
                 <main className="laboratory-main">
@@ -388,18 +383,20 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
 
                     {section === "guide" && (
                         <LaboratoryGuide
-                            projects={projects}
-                            focusProject={focusProject}
-                            onFocusProject={setGuideProjectId}
-                            onGoToSection={setSection}
-                            onOpenProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onCreateProject={handleCreateProject}
+                            videoStudio={videoStudio}
+                            onOpenVideo={(id) => { setSelectedVideoId(id); setSection("video-studio"); }}
                         />
                     )}
 
                     {section === "content-hub" && <ContentHubBoard contentHub={contentHub} />}
 
-                    {section === "video-studio" && <VideoStudioBoard videoStudio={videoStudio} />}
+                    {section === "video-studio" && (
+                        <VideoStudioBoard
+                            videoStudio={videoStudio}
+                            selectedId={selectedVideoId}
+                            onSelect={setSelectedVideoId}
+                        />
+                    )}
 
                     {section === "projects" && (
                         selectedProject ? (
@@ -466,11 +463,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 </main>
             </div>
 
-            <LaboratoryQuickBar
-                onOpenSection={setSection}
-                onOpenMindMap={() => setMindMapOpen(true)}
-                onOpenWhiteboard={() => setWhiteboardOpen(true)}
-            />
+            <LaboratoryQuickBar />
 
             <KiwiPanel
                 isOpen={kiwiOpen}
@@ -509,10 +502,6 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 />
             )}
 
-            {mindMapOpen && <MindMapView projects={projects} onClose={() => setMindMapOpen(false)} />}
-            {whiteboardOpen && (
-                <WhiteboardCanvas projects={projects} onClose={() => setWhiteboardOpen(false)} onAddFile={handleAddFile} />
-            )}
 
             {/* Sunlight off the regolith as the camera lifts away — the
                 same wash that brought you in, run backwards. */}

@@ -533,7 +533,7 @@
     margin-top: 6px;
     padding: 8px 10px;
 
-    background: rgba(5, 8, 22, 0.6);
+    background: rgba(5, 8, 22, 0.76);
     border: 1px solid var(--border);
     border-radius: 10px;
 
@@ -574,7 +574,7 @@
 
     padding: 9px 12px;
 
-    background: rgba(5, 8, 22, 0.6);
+    background: rgba(5, 8, 22, 0.76);
     border: 1px solid var(--border);
     border-radius: 10px;
 

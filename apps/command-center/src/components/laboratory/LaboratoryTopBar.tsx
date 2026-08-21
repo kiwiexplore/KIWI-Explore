@@ -13,10 +13,10 @@ interface LaboratoryTopBarProps {
     onOpenCalendar?: () => void;
     onOpenNotifications?: () => void;
     unreadNotificationCount?: number;
-    projectCount: number;
-    activeProjectCount: number;
-    noteCount: number;
-    researchCount: number;
+    videoCount: number;
+    inProgressCount: number;
+    publishedCount: number;
+    failedCount: number;
     spotify: SpotifyState;
 }
 
@@ -48,7 +48,7 @@ interface LaboratoryTopBarProps {
  */
 export default function LaboratoryTopBar({
     onBack, listening, onOpenSearch, onOpenCalendar, onOpenNotifications, unreadNotificationCount = 0,
-    projectCount, activeProjectCount, noteCount, researchCount, spotify,
+    videoCount, inProgressCount, publishedCount, failedCount, spotify,
 }: LaboratoryTopBarProps) {
     return (
         <header className="lab-topbar">
@@ -68,10 +68,10 @@ export default function LaboratoryTopBar({
             </div>
 
             <LaboratoryStats
-                projectCount={projectCount}
-                activeProjectCount={activeProjectCount}
-                noteCount={noteCount}
-                researchCount={researchCount}
+                videoCount={videoCount}
+                inProgressCount={inProgressCount}
+                publishedCount={publishedCount}
+                failedCount={failedCount}
             />
 
             <div className="lab-topbar-account">

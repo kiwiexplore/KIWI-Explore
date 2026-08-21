@@ -85,7 +85,7 @@
 
     padding: 18px 20px;
 
-    background: rgba(16, 25, 46, 0.4);
+    background: rgba(16, 25, 46, 0.9);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 
@@ -156,7 +156,7 @@
 
     padding: 11px 14px;
 
-    background: rgba(5, 8, 22, 0.6);
+    background: rgba(5, 8, 22, 0.76);
     border: 1px solid var(--border);
     border-radius: 10px;
 
@@ -218,7 +218,7 @@
 
     padding: 10px 14px;
 
-    background: rgba(255, 79, 109, .08);
+    background: linear-gradient(rgba(255, 79, 109, .08), rgba(255, 79, 109, .08)), #0d1526;
     border: 1px solid rgba(255, 79, 109, .3);
     border-radius: 10px;
 
@@ -247,7 +247,7 @@
 
 .content-hub-item {
 
-    background: rgba(16, 25, 46, 0.4);
+    background: rgba(16, 25, 46, 0.9);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 
@@ -315,7 +315,7 @@
 
     padding: 6px 8px;
 
-    background: rgba(5, 8, 22, 0.6);
+    background: rgba(5, 8, 22, 0.76);
     border: 1px solid var(--border);
     border-radius: 8px;
 
@@ -386,7 +386,7 @@
 
     padding: 14px 16px;
 
-    background: rgba(5, 8, 22, 0.5);
+    background: rgba(5, 8, 22, 0.74);
     border: 1px solid var(--border);
     border-radius: 10px;
 
@@ -437,7 +437,7 @@
 
     padding: 12px 16px;
 
-    background: rgba(117, 102, 255, .08);
+    background: linear-gradient(rgba(117, 102, 255, .08), rgba(117, 102, 255, .08)), #0d1526;
     border: 1px solid rgba(117, 102, 255, .25);
     border-radius: var(--radius);
 

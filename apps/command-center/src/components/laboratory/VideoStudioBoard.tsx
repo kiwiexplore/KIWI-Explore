@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
-    AlertTriangle, ArrowLeft, Clapperboard, FileText, Info, Instagram, Loader2, Megaphone,
+    AlertTriangle, ArrowLeft, Check, Clapperboard, FileText, Info, Instagram, Loader2, Megaphone,
     Music2, Plus, RotateCcw, Scissors, Trash2, Wand2,
 } from "lucide-react";
 import type { VideoBusyAction, VideoStudioState } from "../../state/videoStudio";
@@ -81,6 +81,31 @@ function GatedButton({ label, icon: Icon, onClick, blockedReason, busy, busyLabe
             </button>
             {blocked && <span className="video-studio-action-reason" id={reasonId}>{blockedReason}</span>}
         </div>
+    );
+}
+
+type StepState = "done" | "current" | "upcoming";
+
+/**
+ * One step of the video's own pipeline. The detail used to be five
+ * equal-looking panels stacked down the page, which said nothing about
+ * order — this numbers them and marks what's finished, so the page
+ * itself tells you where you are without reading every box.
+ */
+function Step({ n, title, state, children }: {
+    n: number; title: string; state: StepState; children: React.ReactNode;
+}) {
+    return (
+        <section className={`video-studio-panel video-studio-step video-studio-step-${state}`}>
+            <div className="video-studio-step-head">
+                <span className="video-studio-step-num">
+                    {state === "done" ? <Check size={11} strokeWidth={3.5} /> : n}
+                </span>
+                <h2>{title}</h2>
+                {state === "current" && <span className="video-studio-step-now">Now</span>}
+            </div>
+            {children}
+        </section>
     );
 }
 
@@ -193,6 +218,20 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
         ? null
         : "Needs something to work from — draft a script, or finish a transcript of the recording.";
 
+    // Each step is done once the thing it produces exists. The first one
+    // that isn't is "now" — the same first-empty rule the pipeline board
+    // uses, so the two never disagree about where a video stands.
+    const done = [
+        Boolean(script),
+        Boolean(project.sourceVideoPath),
+        project.transcriptStatus === "done",
+        project.clips.length > 0,
+        derived.length > 0,
+        project.stage === "published",
+    ];
+    const currentIndex = done.indexOf(false);
+    const stepState = (i: number): StepState => done[i] ? "done" : i === currentIndex ? "current" : "upcoming";
+
     return (
         <div className="video-studio-detail">
             <button type="button" className="video-studio-back" onClick={onBack}>
@@ -242,8 +281,34 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
                 </span>
             </div>
 
-            <section className="video-studio-panel">
-                <h2>Recording</h2>
+            <Step n={1} title="Script" state={stepState(0)}>
+                {script ? (
+                    <ContentItemRow item={script} />
+                ) : (
+                    <>
+                        <textarea
+                            className="video-studio-brief"
+                            value={brief}
+                            onChange={(e) => setBrief(e.target.value)}
+                            placeholder="Optional: what should this video cover? Angle, audience, anything it must mention."
+                            rows={3}
+                        />
+                        <div className="video-studio-actions">
+                            <GatedButton
+                                label="Draft a script"
+                                icon={Wand2}
+                                onClick={() => videoStudio.draftScript(project.id, brief.trim())}
+                                blockedReason={null}
+                                busy={busy === "script"}
+                                busyLabel="Writing…"
+                                primary
+                            />
+                        </div>
+                    </>
+                )}
+            </Step>
+
+            <Step n={2} title="Recording" state={stepState(1)}>
                 <div className="video-studio-path-row">
                     <input
                         className="video-studio-path-input"
@@ -268,10 +333,9 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
                     A path on the machine running the backend — raw footage is far too large to push through the browser,
                     and the server reads it directly.
                 </p>
-            </section>
+            </Step>
 
-            <section className="video-studio-panel">
-                <h2>Transcript</h2>
+            <Step n={3} title="Transcript" state={stepState(2)}>
                 <div className="video-studio-transcript-status">
                     <span className="video-studio-badge" style={{ color: transcriptMeta.color, borderColor: transcriptMeta.color }}>
                         {transcriptMeta.label}
@@ -308,20 +372,26 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
                         busyLabel="Starting…"
                         primary
                     />
+                </div>
+            </Step>
+
+            {/* Always rendered, even with nothing in it — a step that
+                appears only once it has content leaves a hole in the
+                numbering (3 then 5) and hides where the work goes. */}
+            <Step n={4} title="Clips" state={stepState(3)}>
+                <div className="video-studio-actions">
                     <GatedButton
-                        label="Find clips"
+                        label={project.clips.length > 0 ? "Find clips again" : "Find clips"}
                         icon={Scissors}
                         onClick={() => videoStudio.findClips(project.id)}
                         blockedReason={clipsBlocked}
                         busy={busy === "clips"}
                         busyLabel="Reading transcript…"
+                        primary={project.clips.length === 0}
                     />
                 </div>
-            </section>
 
-            {project.clips.length > 0 && (
-                <section className="video-studio-panel">
-                    <h2>Suggested clips</h2>
+                {project.clips.length > 0 && (
                     <div className="video-studio-clips">
                         {project.clips.map((clip, i) => (
                             <div key={`${clip.start}-${i}`} className="video-studio-clip">
@@ -333,39 +403,11 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
                             </div>
                         ))}
                     </div>
-                </section>
-            )}
-
-            <section className="video-studio-panel">
-                <h2>Script</h2>
-                {script ? (
-                    <ContentItemRow item={script} />
-                ) : (
-                    <>
-                        <textarea
-                            className="video-studio-brief"
-                            value={brief}
-                            onChange={(e) => setBrief(e.target.value)}
-                            placeholder="Optional: what should this video cover? Angle, audience, anything it must mention."
-                            rows={3}
-                        />
-                        <div className="video-studio-actions">
-                            <GatedButton
-                                label="Draft a script"
-                                icon={Wand2}
-                                onClick={() => videoStudio.draftScript(project.id, brief.trim())}
-                                blockedReason={null}
-                                busy={busy === "script"}
-                                busyLabel="Writing…"
-                                primary
-                            />
-                        </div>
-                    </>
                 )}
-            </section>
+            </Step>
 
-            <section className="video-studio-panel">
-                <h2>Ads and posts</h2>
+
+            <Step n={5} title="Posts and ads" state={stepState(4)}>
                 <p className="video-studio-hint">
                     Generated from this video's transcript when there is one, otherwise from its script. They're saved
                     as content items, so they also show up in Content Hub with their own schedule.
@@ -388,7 +430,7 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
                         {derived.map((item) => <ContentItemRow key={item.id} item={item} />)}
                     </div>
                 )}
-            </section>
+            </Step>
         </div>
     );
 }
@@ -408,8 +450,19 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
  * routes/video.ts — a disabled button is an explanation, not a
  * guarantee.
  */
-export default function VideoStudioBoard({ videoStudio }: { videoStudio: VideoStudioState }) {
-    const [selectedId, setSelectedId] = useState<number | null>(null);
+interface VideoStudioBoardProps {
+    videoStudio: VideoStudioState;
+    /**
+     * Which video is open, owned by Laboratory.tsx rather than here —
+     * the pipeline board sends you straight into one, and two components
+     * both holding an opinion about which is open would need syncing.
+     * Controlled from above, so there's nothing to sync.
+     */
+    selectedId: number | null;
+    onSelect: (id: number | null) => void;
+}
+
+export default function VideoStudioBoard({ videoStudio, selectedId, onSelect }: VideoStudioBoardProps) {
     const [newTitle, setNewTitle] = useState("");
 
     const selected = videoStudio.projects.find((p) => p.id === selectedId) ?? null;
@@ -419,7 +472,7 @@ export default function VideoStudioBoard({ videoStudio }: { videoStudio: VideoSt
         if (!newTitle.trim()) return;
         const created = await videoStudio.create(newTitle.trim());
         setNewTitle("");
-        if (created) setSelectedId(created.id);
+        if (created) onSelect(created.id);
     };
 
     return (
@@ -447,7 +500,7 @@ export default function VideoStudioBoard({ videoStudio }: { videoStudio: VideoSt
                     project={selected}
                     busy={videoStudio.busy[selected.id]}
                     videoStudio={videoStudio}
-                    onBack={() => setSelectedId(null)}
+                    onBack={() => onSelect(null)}
                 />
             ) : (
                 <>
@@ -473,7 +526,7 @@ export default function VideoStudioBoard({ videoStudio }: { videoStudio: VideoSt
                     ) : (
                         <div className="video-studio-grid">
                             {videoStudio.projects.map((project) => (
-                                <VideoCard key={project.id} project={project} onOpen={() => setSelectedId(project.id)} />
+                                <VideoCard key={project.id} project={project} onOpen={() => onSelect(project.id)} />
                             ))}
                         </div>
                     )}
