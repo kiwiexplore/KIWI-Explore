@@ -1,0 +1,133 @@
+/* The day's facts, in a row above the brain. Floats over the scene like
+   everything else here — see BrainScene3D. */
+.today-strip {
+
+    position: absolute;
+    /* Clear of the top bar rather than tucked under it — the bar is its
+       own strip and these are a second one. */
+    top: 84px;
+    /* One row, between the nav rail and the right edge. It does not
+       wrap and it does not scroll: how many tiles are shown is chosen
+       to FIT that space (see TILE_WINDOW), and the rest come round on
+       the rotation instead of being cut off or pushed onto a second
+       line over the brain. */
+    /* The nav rail's right edge sits at 270px; this clears it. */
+    left: 290px;
+    right: 24px;
+    z-index: 6;
+
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 8px;
+
+}
+
+
+.today-strip::-webkit-scrollbar {
+
+    display: none;
+
+}
+
+.today-strip-waiting {
+
+    padding: 8px 14px;
+
+    background: rgba(5, 8, 22, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    font-size: 11.5px;
+
+}
+
+/* One fact, and a way into where it came from. */
+.today-tile {
+
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    /* Five of these plus their gaps clear the narrowest width the strip
+       is shown at, which is what keeps the row from wrapping. */
+    max-width: 180px;
+
+    padding: 7px 12px;
+
+    background: rgba(5, 8, 22, 0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text);
+    font-family: inherit;
+    text-align: left;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.today-tile:hover {
+
+    background: rgba(10, 16, 36, 0.85);
+    border-color: rgba(255, 255, 255, 0.28);
+
+}
+
+.today-tile-icon {
+
+    font-size: 15px;
+    line-height: 1;
+
+}
+
+.today-tile-text {
+
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+
+}
+
+.today-tile-label {
+
+    color: var(--text-muted);
+    font-size: 9.5px;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.today-tile-value {
+
+    font-size: 12px;
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+/* Narrower than this and four tiles can't sit between the rail and the
+   edge without shrinking into nothing — the row drops out rather than
+   becoming unreadable. */
+@media (max-width: 1000px) {
+
+    .today-strip {
+        display: none;
+    }
+
+}

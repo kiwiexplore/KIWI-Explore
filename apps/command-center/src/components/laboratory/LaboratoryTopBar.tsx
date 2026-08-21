@@ -1,4 +1,5 @@
 import { ArrowLeft, Bell, Calendar, Search } from "lucide-react";
+import MailButton from "../ui/MailButton";
 import KiwiCoreBadge from "./KiwiCoreBadge";
 import LaboratoryStats from "./LaboratoryStats";
 import SpotifyPlayerWidget from "../ui/SpotifyPlayerWidget";
@@ -78,6 +79,7 @@ export default function LaboratoryTopBar({
                 <button type="button" className="lab-topbar-icon-btn" onClick={onOpenSearch} aria-label="Search">
                     <Search size={16} strokeWidth={1.75} />
                 </button>
+                <MailButton className="lab-topbar-icon-btn" badgeClassName="lab-topbar-badge" />
                 <button type="button" className="lab-topbar-icon-btn" onClick={onOpenCalendar} aria-label="Calendar">
                     <Calendar size={16} strokeWidth={1.75} />
                 </button>

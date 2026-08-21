@@ -11,7 +11,11 @@
     gap: 24px;
 
     position: relative;
-    z-index: 5;
+    /* Above the scene's own overlays: the markets panel drops out of
+       this bar, and the today strip below it would otherwise paint
+       over the panel — .brain-scene's children make their own
+       stacking order, and 5 lost to it. */
+    z-index: 30;
 
 }
 
@@ -21,7 +25,7 @@
     align-items: center;
     gap: 10px;
 
-    flex: 1;
+    flex: 0 0 auto;
 
 }
 
@@ -54,10 +58,10 @@
    one side. Absolute positioning relative to .top-bar sidesteps that. */
 .top-bar-center {
 
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    display: flex;
+    flex: 2;
+    justify-content: flex-end;
+    min-width: 0;
 
 }
 
@@ -232,5 +236,28 @@
 
     background: rgba(73, 199, 255, .22);
     box-shadow: 0 0 10px rgba(73, 199, 255, .4);
+
+}
+
+/* Unread count on the bell — the same signal the Laboratory's bar
+   carries, over the same list (see App.tsx). */
+.top-bar-badge {
+
+    position: absolute;
+    top: 2px;
+    right: 2px;
+
+    min-width: 15px;
+    padding: 0 4px;
+    box-sizing: border-box;
+
+    background: #FF4F6D;
+    border-radius: 999px;
+
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
 
 }

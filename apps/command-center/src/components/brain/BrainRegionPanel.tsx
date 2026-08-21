@@ -90,16 +90,19 @@ export default function BrainRegionPanel({ region, context, openModuleId, onOpen
                     <span className="region-panel-subtitle">{openModule ? region.domain : region.label}</span>
                 </div>
 
-                {openModule && (
-                    <button
-                        type="button"
-                        className="region-panel-icon-btn"
-                        onClick={() => setWide((current) => !current)}
-                        aria-label={wide ? "Shrink panel" : "Expand panel"}
-                    >
-                        {wide ? <Minimize2 size={14} strokeWidth={2} /> : <Maximize2 size={14} strokeWidth={2} />}
-                    </button>
-                )}
+                {/* At every level, not just inside a module. It used to
+                    appear only once one was open, which meant widening
+                    the panel and stepping back out left you wide with
+                    no way to narrow again — the button that got you
+                    there had gone. */}
+                <button
+                    type="button"
+                    className="region-panel-icon-btn"
+                    onClick={() => setWide((current) => !current)}
+                    aria-label={wide ? "Shrink panel" : "Expand panel"}
+                >
+                    {wide ? <Minimize2 size={14} strokeWidth={2} /> : <Maximize2 size={14} strokeWidth={2} />}
+                </button>
 
                 <button type="button" className="region-panel-icon-btn" onClick={onClose} aria-label="Close region">
                     <X size={15} strokeWidth={2} />

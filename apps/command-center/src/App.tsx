@@ -4,6 +4,7 @@ import Laboratory from "./components/laboratory/Laboratory";
 import { useAccountState } from "./state/account";
 import { useCalendarState } from "./state/calendar";
 import { useLaboratoryDataState } from "./state/laboratoryData";
+import { useNotificationsState } from "./state/notifications";
 import { useSpotifyState } from "./state/spotify";
 
 type View = "dashboard" | "laboratory";
@@ -35,9 +36,13 @@ export default function App() {
   const calendar = useCalendarState();
   const laboratoryData = useLaboratoryDataState();
   const spotify = useSpotifyState();
+  // Lifted here so the dashboard and the Laboratory read ONE list: a
+  // notification dismissed in either is dismissed in both, which is the
+  // whole point of putting the same bell in both top bars.
+  const notifications = useNotificationsState();
 
   if (view === "laboratory") {
-    return <Laboratory onBack={() => { setArriving(true); setView("dashboard"); }} account={account} calendar={calendar} data={laboratoryData} spotify={spotify} />;
+    return <Laboratory onBack={() => { setArriving(true); setView("dashboard"); }} account={account} calendar={calendar} data={laboratoryData} spotify={spotify} notifications={notifications} />;
   }
   return (
     <BrainScene3D
@@ -46,6 +51,7 @@ export default function App() {
       calendar={calendar}
       laboratoryData={laboratoryData}
       spotify={spotify}
+      notifications={notifications}
     />
   );
 }

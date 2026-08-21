@@ -10,7 +10,8 @@
  */
 const MODULES_WITH_CONTENT = new Set([
     "weather", "news", "space", "entertainment", "finance", "adventure", "meals",
-    "calendar", "projects", "documents", "research", "social",
+    "calendar", "projects", "documents", "research", "social", "systems",
+    "learning", "health", "communication",
 ]);
 
 export function hasModuleContent(moduleId: string): boolean {

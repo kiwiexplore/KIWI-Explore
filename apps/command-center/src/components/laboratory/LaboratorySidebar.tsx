@@ -1,7 +1,7 @@
 import {
-    BarChart3, Boxes, FileText, FlaskConical, FolderKanban, Image as ImageIcon,
+    BarChart3, Boxes, Clapperboard, FileText, FlaskConical, FolderKanban, Image as ImageIcon,
     LayoutDashboard, Lightbulb, Library, ListChecks, Megaphone, Package, Palette,
-    Plus, Radar, Sparkles, StickyNote, Store, TestTube2, TrendingUp, type LucideIcon,
+    Plus, Radar, Sparkles, StickyNote, Store, TestTube2, TrendingUp, Video, type LucideIcon,
 } from "lucide-react";
 import type { LaboratorySection } from "./Laboratory";
 import "./LaboratorySidebar.css";
@@ -43,6 +43,8 @@ const LAUNCH_ITEMS: SidebarItem[] = [
 
 const AI_ITEMS: SidebarItem[] = [
     { label: "KIWI Assistant", icon: Sparkles, action: "kiwi" },
+    { label: "Content Hub", icon: Video, section: "content-hub" },
+    { label: "Video Studio", icon: Clapperboard, section: "video-studio" },
     { label: "Image Generation", icon: ImageIcon, section: "image-generation" },
     { label: "Market Analysis", icon: TrendingUp, section: "market-analysis" },
     { label: "Trend Scanner", icon: Radar, section: "trend-scanner" },

@@ -6,8 +6,11 @@
 
     position: absolute;
     right: 26px;
-    top: 50%;
-    transform: translateY(-50%);
+    /* Anchored just under the top bar rather than centred: a short
+       panel then sits high instead of floating in the middle, and a
+       long one grows DOWN towards the bottom of the screen instead of
+       staying the same size and scrolling. */
+    top: 74px;
     z-index: 4;
 
     display: flex;
@@ -15,7 +18,9 @@
     gap: 12px;
 
     width: 328px;
-    max-height: calc(100vh - 190px);
+    /* Down to within a thumb's width of the bottom edge. The voice bar
+       sits centred, so there's nothing under this column to clear. */
+    max-height: calc(100vh - 100px);
 
     padding: 18px;
     box-sizing: border-box;
@@ -37,14 +42,17 @@
 
 @keyframes region-panel-in {
 
+    /* Slides in from the right only. The vertical half-shift these
+       used to carry belonged to the old centred position and, left
+       behind, dragged the panel clean off the top of the screen. */
     from {
         opacity: 0;
-        transform: translate(16px, -50%);
+        transform: translateX(16px);
     }
 
     to {
         opacity: 1;
-        transform: translate(0, -50%);
+        transform: none;
     }
 
 }
@@ -905,6 +913,207 @@
 
 }
 
+/* The day in a paragraph, written by Claude over every source at once
+   (see feed-service/src/brief.mjs). Set apart from the list below it,
+   because it is the one thing on this panel that was WRITTEN rather
+   than fetched — and it credits the newsrooms it was written from. */
+.module-brief {
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    padding: 11px 12px;
+
+    background: color-mix(in srgb, var(--region-color) 9%, transparent);
+    border-left: 2px solid var(--region-color);
+    border-radius: 10px;
+
+}
+
+.module-brief-text {
+
+    margin: 0;
+
+    color: var(--text);
+    font-size: 12.5px;
+    line-height: 1.55;
+
+}
+
+.module-brief-meta {
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    letter-spacing: .2px;
+
+}
+
+/* Adding something of your own — the two modules whose data is typed in
+   rather than fetched (see PersonalModules). */
+.module-form {
+
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 6px;
+
+}
+
+.module-input,
+.module-select {
+
+    padding: 7px 10px;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+
+}
+
+.module-select {
+
+    width: 84px;
+
+}
+
+.module-input:focus,
+.module-select:focus {
+
+    border-color: var(--region-color);
+    outline: none;
+
+}
+
+.module-add {
+
+    padding: 7px 12px;
+
+    background: color-mix(in srgb, var(--region-color) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--region-color) 45%, transparent);
+    border-radius: 9px;
+
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.module-add:hover {
+
+    background: color-mix(in srgb, var(--region-color) 32%, transparent);
+
+}
+
+/* One thing you're partway through: title, kind, the counter, and a bar
+   under all of it. */
+.module-track {
+
+    display: grid;
+    grid-template-columns: 1fr auto auto auto auto auto;
+    align-items: center;
+    gap: 4px 8px;
+
+    padding: 8px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    font-size: 12px;
+
+}
+
+.module-track-title {
+
+    min-width: 0;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.module-track-kind {
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+
+}
+
+.module-track-figure {
+
+    min-width: 34px;
+
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+
+}
+
+.module-track-bar {
+
+    grid-column: 1 / -1;
+
+    height: 3px;
+
+    background: rgba(255, 255, 255, .08);
+    border-radius: 2px;
+
+    overflow: hidden;
+
+}
+
+.module-track-fill {
+
+    display: block;
+    height: 100%;
+
+    background: var(--region-color);
+
+    transition: width .2s ease;
+
+}
+
+.module-step {
+
+    padding: 2px 6px;
+
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.module-step:hover {
+
+    border-color: var(--region-color);
+    color: var(--text);
+
+}
+
+.module-step-drop:hover {
+
+    border-color: #ff7a8f;
+    color: #ff7a8f;
+
+}
+
 /* A social network KIWI can't read yet — see SocialModule. Name and a
    way in on the first line, why it's only that on the second. */
 .module-network {
@@ -1050,5 +1259,64 @@
     font-size: 10.5px;
     line-height: 1.5;
     font-style: italic;
+
+}
+
+/* One message in the inbox glance — see MailModule. Sender and date on
+   the first line, subject under it, because the subject is the part
+   that runs long. */
+.module-mail {
+
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px 8px;
+
+    padding: 8px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    font-size: 12px;
+
+}
+
+/* Unread carries a bar as well as weight — a bold-versus-regular
+   difference alone is easy to miss down a list. */
+.module-mail-unread {
+
+    border-left: 2px solid var(--region-color);
+
+}
+
+.module-mail-from {
+
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.module-mail-when {
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+
+}
+
+.module-mail-subject {
+
+    grid-column: 1 / -1;
+
+    color: var(--text-muted);
+    font-size: 11.5px;
+    line-height: 1.4;
+
+}
+
+.module-mail-unread .module-mail-subject {
+
+    color: var(--text);
 
 }

@@ -73,12 +73,15 @@ export function describeUvIndex(uv: number): string {
     return "Extreme";
 }
 
-// Darfield, New Zealand — used only if the browser can't/won't provide a
-// real location (geolocation denied, unsupported, or timed out).
+// The last resort, and only that: reached when the browser refuses a
+// location AND the network can't be placed either. Liberec, because
+// that's where this dashboard lives — a hardcoded town on the far side
+// of the world (which is what used to be here) reads as broken rather
+// than as a fallback.
 export const FALLBACK_LOCATION: WeatherLocation = {
-    latitude: -43.4833,
-    longitude: 172.1167,
-    label: "Darfield, New Zealand",
+    latitude: 50.7671,
+    longitude: 15.0562,
+    label: "Liberec, Czechia",
 };
 
 const WEATHER_CODES: Record<number, { emoji: string; label: string }> = {
@@ -152,11 +155,47 @@ export async function reverseGeocode(latitude: number, longitude: number): Promi
     }
 }
 
+/**
+ * Where the network says it is, when the browser won't say.
+ *
+ * The same BigDataCloud endpoint used for reverse geocoding places the
+ * caller's own IP when it's given no coordinates — no key, no
+ * permission prompt, and roughly city-accurate. Nothing like as good as
+ * a real fix, but far better than a guess: it lands in the right
+ * country, which is the difference between "your weather" and
+ * somebody else's.
+ */
+async function getNetworkLocation(): Promise<WeatherLocation | null> {
+    try {
+        const res = await fetch("https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=en");
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (typeof data.latitude !== "number" || typeof data.longitude !== "number") return null;
+
+        const city = data.city || data.locality || data.principalSubdivision;
+        const country = data.countryName;
+        return {
+            latitude: data.latitude,
+            longitude: data.longitude,
+            label: city && country ? `${city}, ${country}` : country ?? "Your area",
+        };
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Best available answer to "where am I", in that order: what the
+ * browser will tell us, then what the network implies, then Liberec.
+ */
 export async function resolveLocation(): Promise<WeatherLocation> {
     const coords = await getBrowserLocation();
-    if (!coords) return FALLBACK_LOCATION;
-    const label = await reverseGeocode(coords.latitude, coords.longitude);
-    return { ...coords, label: label ?? `${coords.latitude.toFixed(2)}, ${coords.longitude.toFixed(2)}` };
+    if (coords) {
+        const label = await reverseGeocode(coords.latitude, coords.longitude);
+        return { ...coords, label: label ?? `${coords.latitude.toFixed(2)}, ${coords.longitude.toFixed(2)}` };
+    }
+
+    return await getNetworkLocation() ?? FALLBACK_LOCATION;
 }
 
 export async function fetchWeather(latitude: number, longitude: number): Promise<WeatherData> {

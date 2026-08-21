@@ -20,6 +20,8 @@ import AnalyticsPage from "./AnalyticsPage";
 import ImageGenerationBoard from "./ImageGenerationBoard";
 import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import TrendScannerBoard from "./TrendScannerBoard";
+import ContentHubBoard from "./ContentHubBoard";
+import VideoStudioBoard from "./VideoStudioBoard";
 import MindMapView from "./MindMapView";
 import WhiteboardCanvas from "./WhiteboardCanvas";
 import ProjectGrid from "./ProjectGrid";
@@ -31,7 +33,9 @@ import ResearchDetail from "./ResearchDetail";
 import KiwiPanel from "./KiwiPanel";
 import { useKiwiChat } from "../../lib/useKiwiChat";
 import { resolveBackgroundImage } from "../../state/backgrounds";
-import { useNotificationsState } from "../../state/notifications";
+import type { NotificationsState } from "../../state/notifications";
+import { useContentHubState } from "../../state/contentHub";
+import { useVideoStudioState } from "../../state/videoStudio";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
@@ -43,10 +47,11 @@ export type LaboratorySection =
     | "tasks" | "ideas" | "design" | "prototypes"
     | "resources" | "tests" | "documents"
     | "products" | "store" | "marketing" | "analytics"
-    | "image-generation" | "market-analysis" | "trend-scanner";
+    | "image-generation" | "market-analysis" | "trend-scanner" | "content-hub" | "video-studio";
 
 interface LaboratoryProps {
     onBack: () => void;
+    notifications: NotificationsState;
     account: AccountState;
     calendar: CalendarState;
     data: LaboratoryDataState;
@@ -104,7 +109,7 @@ interface LaboratoryProps {
 // takes over. Matches the arrival's own timing on the other side.
 const LEAVE_MS = 1300;
 
-export default function Laboratory({ onBack, account, calendar, data, spotify }: LaboratoryProps) {
+export default function Laboratory({ onBack, account, calendar, data, spotify, notifications }: LaboratoryProps) {
     // Leaving is a flight, not a cut: the glare comes up over the room
     // the same way it came down on arrival, and the dashboard picks the
     // camera up out at the Moon and flies it home (see BrainScene3D's
@@ -157,7 +162,13 @@ export default function Laboratory({ onBack, account, calendar, data, spotify }:
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [mindMapOpen, setMindMapOpen] = useState(false);
     const [whiteboardOpen, setWhiteboardOpen] = useState(false);
-    const notifications = useNotificationsState();
+
+    // Both stay local rather than being lifted to App.tsx the way
+    // notifications/account/calendar were: every item is already
+    // persisted server-side (apps/server's content_items and
+    // video_projects), so a remount refetches instead of losing work.
+    const contentHub = useContentHubState();
+    const videoStudio = useVideoStudioState();
 
     // Search and Notifications both drop down from the same top-right
     // spot — opening one closes the other so they never stack.
@@ -361,6 +372,10 @@ export default function Laboratory({ onBack, account, calendar, data, spotify }:
                             onRemoveTrendTopic={handleRemoveTrendTopic}
                         />
                     )}
+
+                    {section === "content-hub" && <ContentHubBoard contentHub={contentHub} />}
+
+                    {section === "video-studio" && <VideoStudioBoard videoStudio={videoStudio} />}
 
                     {section === "projects" && (
                         selectedProject ? (

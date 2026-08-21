@@ -14,5 +14,15 @@ node_modules/
 # Build
 dist/
 
+# Local databases + anything the server writes at runtime
+# (apps/server/data holds kiwi.db plus extracted audio and transcripts)
+*.sqlite
+*.sqlite3
+*.db
+apps/server/data/
+
 # VS Code
 .vscode/settings.json
+
+# Build info
+*.tsbuildinfo

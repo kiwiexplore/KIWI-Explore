@@ -1,20 +1,16 @@
 import { useMemo } from "react";
 import { useAsyncData } from "./useAsyncData";
+import {
+    adventureData, entertainmentData, mealsData, newsData, spaceData, weatherData,
+} from "./dataSources";
 import type { RegionContentContext } from "./types";
-import { describeWeatherCode, fetchWeather, resolveLocation } from "../../../lib/weather";
-import { fetchTopStories } from "../../../lib/hackerNews";
-import { fetchSpaceNews } from "../../../lib/spaceNews";
-import { fetchUpcomingLaunches } from "../../../lib/spaceMissions";
-import { fetchTodaysSchedule } from "../../../lib/tvmaze";
-import { fetchTopSongs } from "../../../lib/itunes";
-import { fetchCoins } from "../../../lib/markets";
-import { fetchWorldNews } from "../../../lib/worldNews";
-import { fetchLiberecNews } from "../../../lib/liberecNews";
-import { fetchDaylight, daylightRemaining } from "../../../lib/daylight";
-import { fetchProteinRecipes } from "../../../lib/recipes";
+import { describeWeatherCode } from "../../../lib/weather";
+import { fetchFinanceNews } from "../../../lib/financeNews";
+import { daylightRemaining } from "../../../lib/daylight";
 import type { BrainRegionDefinition } from "../../../state/brainRegions";
 import {
-    articleStoryKey, launchStoryKey, liberecStoryKey, recipeStoryKey, techStoryKey, worldStoryKey,
+    articleStoryKey, financeStoryKey, launchStoryKey, liberecStoryKey, recipeStoryKey,
+    techStoryKey, worldStoryKey,
 } from "../storyKeys";
 
 // Long strings turn the pins into billboards that cover the network
@@ -61,34 +57,13 @@ export interface RegionFact {
 export function useRegionFacts(region: BrainRegionDefinition | null, context: RegionContentContext): RegionFact[] {
     const id = region?.id ?? null;
 
-    const weather = useAsyncData(id === "occipital" ? "weather" : null, async () => {
-        const location = await resolveLocation();
-        return { location, weather: await fetchWeather(location.latitude, location.longitude) };
-    });
-    const news = useAsyncData(id === "occipital" ? "news" : null, async () => {
-        const settle = <T,>(promise: Promise<T[]>) => promise.catch((): T[] => []);
-        const [liberec, world, tech] = await Promise.all([
-            settle(fetchLiberecNews(10)), settle(fetchWorldNews(8)), settle(fetchTopStories(6)),
-        ]);
-        return { liberec, world, tech };
-    });
-    const space = useAsyncData(id === "occipital" ? "space" : null, async () => {
-        const [launches, articles] = await Promise.all([fetchUpcomingLaunches(4), fetchSpaceNews(5)]);
-        return { launches, articles };
-    });
-    const entertainment = useAsyncData(id === "temporal-right" ? "entertainment" : null, async () => {
-        const [shows, songs] = await Promise.all([fetchTodaysSchedule(6), fetchTopSongs(6)]);
-        return { shows, songs };
-    });
-    const markets = useAsyncData(id === "frontal" ? "markets" : null, async () => {
-        const [coins] = await Promise.all([fetchCoins(6)]);
-        return { coins };
-    });
-    const adventure = useAsyncData(id === "temporal-right" ? "adventure" : null, async () => {
-        const location = await resolveLocation();
-        return { daylight: await fetchDaylight(location.latitude, location.longitude) };
-    });
-    const meals = useAsyncData(id === "stem" ? "meals" : null, () => fetchProteinRecipes(5));
+    const weather = useAsyncData(id === "occipital" ? "weather" : null, weatherData);
+    const news = useAsyncData(id === "occipital" ? "news" : null, newsData);
+    const space = useAsyncData(id === "occipital" ? "space" : null, spaceData);
+    const entertainment = useAsyncData(id === "temporal-right" ? "entertainment" : null, entertainmentData);
+    const financeNews = useAsyncData(id === "frontal" ? "finance-news" : null, () => fetchFinanceNews(12));
+    const adventure = useAsyncData(id === "temporal-right" ? "adventure" : null, adventureData);
+    const meals = useAsyncData(id === "stem" ? "meals" : null, mealsData);
 
     const { calendar, laboratoryData } = context;
 
@@ -104,11 +79,7 @@ export function useRegionFacts(region: BrainRegionDefinition | null, context: Re
             calendar.events
                 .filter((event) => event.date >= today)
                 .forEach((event) => add("calendar", `${event.time ?? event.date} · ${event.title}`));
-            markets.data?.coins.forEach((coin) => add(
-                "finance",
-                `${coin.symbol} $${coin.price >= 1000 ? Math.round(coin.price).toLocaleString() : coin.price.toFixed(2)}`
-                + ` ${coin.change24h >= 0 ? "▲" : "▼"} ${Math.abs(coin.change24h).toFixed(1)}%`,
-            ));
+            financeNews.data?.forEach((story) => add("finance", story.title, financeStoryKey(story.id)));
         }
 
         if (id === "parietal") {
@@ -155,6 +126,6 @@ export function useRegionFacts(region: BrainRegionDefinition | null, context: Re
     }, [
         region, id, calendar.events, laboratoryData,
         news.data, space.data, weather.data, entertainment.data,
-        markets.data, adventure.data, meals.data,
+        financeNews.data, adventure.data, meals.data,
     ]);
 }

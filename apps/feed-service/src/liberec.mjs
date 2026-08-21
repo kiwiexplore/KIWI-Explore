@@ -27,6 +27,12 @@ import { attr, blocks, decode, tag } from "./rss.mjs";
 
 const DENIK_FEED = "https://liberecky.denik.cz/rss/vse.xml";
 const DRBNA_SITEMAP = "https://liberecka.drbna.cz/feed/google.xml";
+// The two the dashboard reads for itself. The service reads them too,
+// but only for the digest (see brief.mjs), which has to weigh every
+// source against the others before it can say what today was about —
+// and it can't do that over half the news.
+const IDNES_FEED = "https://servis.idnes.cz/rss.aspx?c=liberec";
+const CRO_FEED = "https://liberec.rozhlas.cz/rss.xml";
 
 // How many Drbna articles get their page fetched for a perex and a
 // photo. Each one is a request to someone else's server, so this stays
@@ -126,6 +132,39 @@ async function drbnaStories(xml) {
         .slice(0, DRBNA_ENRICHED);
 
     return Promise.all(newest.map(drbnaDetail));
+}
+
+/** A plain RSS channel — what both of the browser-readable feeds are. */
+function rssStories(xml, source) {
+    return blocks(xml).map((item, index) => ({
+        id: tag(item, "guid") || `${source}-${index}`,
+        title: tag(item, "title"),
+        url: cleanLink(tag(item, "link")),
+        summary: tag(item, "description"),
+        image: attr(item, "media:content", "url") ?? attr(item, "enclosure", "url"),
+        source,
+        category: tag(item, "category"),
+        publishedAt: tag(item, "pubDate"),
+    }));
+}
+
+/**
+ * Every Liberec source, including the two the browser can read on its
+ * own — for the digest, which needs the whole day rather than the half
+ * of it that happens to need a server.
+ */
+export async function allLiberecStories() {
+    const settle = (promise) => promise.catch(() => []);
+
+    const [own, idnes, cro] = await Promise.all([
+        settle(liberecStories()),
+        settle(fetchText(IDNES_FEED).then((xml) => rssStories(xml, "iDNES.cz"))),
+        settle(fetchText(CRO_FEED).then((xml) => rssStories(xml, "ČRo Liberec"))),
+    ]);
+
+    return [...own, ...idnes, ...cro]
+        .filter((story) => story.title && story.url)
+        .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 }
 
 /**

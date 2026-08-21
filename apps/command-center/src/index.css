@@ -1,3 +1,62 @@
 @import "./styles/theme.css";
 @import "tailwindcss";
 @import "./styles/theme.css";
+/* The app's own text colour, set once at the root.
+ *
+ * Nothing did this before: components that named a colour were fine and
+ * everything else inherited from <body>, which had none — so it fell
+ * through to the browser's default, which is BLACK, on an interface
+ * that is dark everywhere. It only showed up where a component happened
+ * not to say (the markets panel's figures, among others), which is why
+ * it read as "sometimes there's black text": it was never sometimes,
+ * it was everywhere nobody had covered.
+ */
+html,
+body {
+
+    color: var(--text);
+
+}
+
+/* Form controls, everywhere.
+ *
+ * Native inputs and selects take the OPERATING SYSTEM's colours unless
+ * told otherwise, which on a dark interface like this one means black
+ * text that all but disappears — and a <select>'s drop-down list is
+ * drawn by the OS too, so it needs saying separately. Setting it here
+ * rather than per component means a control added later is readable by
+ * default instead of by remembering.
+ */
+input,
+textarea,
+select,
+button {
+
+    color: var(--text);
+    font-family: inherit;
+
+}
+
+select {
+
+    /* Without this the control keeps the platform's own paint job and
+       ignores the colour above. */
+    appearance: none;
+    -webkit-appearance: none;
+
+}
+
+select option {
+
+    background: #0b1020;
+    color: #eaf2ff;
+
+}
+
+/* A placeholder that inherits the text colour is as loud as the value. */
+::placeholder {
+
+    color: var(--text-muted);
+    opacity: 1;
+
+}

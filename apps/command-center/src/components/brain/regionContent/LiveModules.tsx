@@ -1,25 +1,22 @@
 import { useAsyncData } from "./useAsyncData";
+import {
+    adventureData, entertainmentData, mealsData, newsData, spaceData, weatherData,
+} from "./dataSources";
 import StoryCard from "./StoryCard";
 import StoryReader, { type StoryDetail } from "./StoryReader";
-import Sparkline from "./Sparkline";
 import type { ModuleViewProps } from "./types";
 import {
-    describeUvIndex, describeWeatherCode, describeWindDirection, fetchWeather, resolveLocation,
+    describeUvIndex, describeWeatherCode, describeWindDirection,
     type WeatherData, type WeatherLocation,
 } from "../../../lib/weather";
-import { fetchTopStories } from "../../../lib/hackerNews";
-import { fetchSpaceNews } from "../../../lib/spaceNews";
-import { fetchUpcomingLaunches } from "../../../lib/spaceMissions";
-import { fetchTodaysSchedule } from "../../../lib/tvmaze";
-import { fetchTopSongs } from "../../../lib/itunes";
-import { fetchCoins, fetchRates } from "../../../lib/markets";
-import { fetchWorldNews } from "../../../lib/worldNews";
-import { fetchLiberecNews } from "../../../lib/liberecNews";
-import { fetchDaylight, daylightRemaining } from "../../../lib/daylight";
-import { fetchProteinRecipes, type Recipe } from "../../../lib/recipes";
+import { fetchFinanceNews } from "../../../lib/financeNews";
+import { fetchLiberecBrief } from "../../../lib/liberecNews";
+import { daylightRemaining } from "../../../lib/daylight";
+import type { Recipe } from "../../../lib/recipes";
 import { removeSavedRecipe, toggleSavedRecipe, useSavedRecipes } from "../../../state/savedRecipes";
 import {
-    articleStoryKey, launchStoryKey, liberecStoryKey, recipeStoryKey, techStoryKey, worldStoryKey,
+    articleStoryKey, financeStoryKey, launchStoryKey, liberecStoryKey, recipeStoryKey,
+    techStoryKey, worldStoryKey,
 } from "../storyKeys";
 
 /**
@@ -66,11 +63,7 @@ function formatWeekday(value: string): string {
 }
 
 export function WeatherModule({ mode }: ModuleViewProps) {
-    const { data, error, loading } = useAsyncData("weather", async () => {
-        const location = await resolveLocation();
-        const weather = await fetchWeather(location.latitude, location.longitude);
-        return { location, weather };
-    });
+    const { data, error, loading } = useAsyncData("weather", weatherData);
 
     if (loading) return <Loading mode={mode} />;
     if (error || !data) return <Failed mode={mode} />;
@@ -165,13 +158,11 @@ export function NewsModule({ mode, context }: ModuleViewProps) {
     // is why each is caught on its own rather than through
     // Promise.all's all-or-nothing: the regional feed is a single
     // publisher's RSS, by far the most likely of the three to be down.
-    const { data, error, loading } = useAsyncData("news", async () => {
-        const settle = <T,>(promise: Promise<T[]>) => promise.catch((): T[] => []);
-        const [liberec, world, tech] = await Promise.all([
-            settle(fetchLiberecNews(10)), settle(fetchWorldNews(8)), settle(fetchTopStories(6)),
-        ]);
-        return { liberec, world, tech };
-    });
+    const { data, error, loading } = useAsyncData("news", newsData);
+    // Its own fetch, and deliberately not part of the one above: the
+    // digest is the slowest thing on the page by far (a model writes it)
+    // and the headlines must not wait on it.
+    const digest = useAsyncData("liberec-brief", fetchLiberecBrief);
 
     if (loading) return <Loading mode={mode} />;
     if (error || !data) return <Failed mode={mode} />;
@@ -250,6 +241,23 @@ export function NewsModule({ mode, context }: ModuleViewProps) {
             {liberec.length > 0 && (
                 <>
                     <h4 className="module-subhead">Liberec &amp; Liberecký kraj</h4>
+
+                    {digest.loading && <p className="module-note">Píšu přehled dne…</p>}
+                    {digest.data?.brief && (
+                        <div className="module-brief">
+                            <p className="module-brief-text">{digest.data.brief}</p>
+                            <span className="module-brief-meta">
+                                Přehled dne od Claudea · {digest.data.sources.join(" · ")}
+                            </span>
+                        </div>
+                    )}
+                    {digest.data?.configured === false && (
+                        <p className="module-note">
+                            Přehled dne napíše Claude, jakmile bude mít feed-service
+                            klíč: <code>ANTHROPIC_API_KEY</code> v <code>apps/feed-service/.env</code>.
+                        </p>
+                    )}
+
                     <ul className="module-list">
                         {liberec.map((story) => (
                             <li key={story.id}>
@@ -307,13 +315,7 @@ export function NewsModule({ mode, context }: ModuleViewProps) {
 }
 
 export function SpaceModule({ mode, context }: ModuleViewProps) {
-    const { data, error, loading } = useAsyncData("space", async () => {
-        // Launches and articles are two different sources, but they're
-        // one subject as far as the reader is concerned — the module
-        // shows what's flying next, then what's being written about it.
-        const [launches, articles] = await Promise.all([fetchUpcomingLaunches(4), fetchSpaceNews(5)]);
-        return { launches, articles };
-    });
+    const { data, error, loading } = useAsyncData("space", spaceData);
 
     if (loading) return <Loading mode={mode} />;
     if (error || !data) return <Failed mode={mode} />;
@@ -414,10 +416,7 @@ export function SpaceModule({ mode, context }: ModuleViewProps) {
 }
 
 export function EntertainmentModule({ mode }: ModuleViewProps) {
-    const { data, error, loading } = useAsyncData("entertainment", async () => {
-        const [shows, songs] = await Promise.all([fetchTodaysSchedule(6), fetchTopSongs(6)]);
-        return { shows, songs };
-    });
+    const { data, error, loading } = useAsyncData("entertainment", entertainmentData);
 
     if (loading) return <Loading mode={mode} />;
     if (error || !data) return <Failed mode={mode} />;
@@ -462,61 +461,72 @@ export function EntertainmentModule({ mode }: ModuleViewProps) {
     );
 }
 
-function formatPrice(value: number): string {
-    if (value >= 1000) return `$${Math.round(value).toLocaleString()}`;
-    if (value >= 1) return `$${value.toFixed(2)}`;
-    return `$${value.toFixed(4)}`;
-}
+export function FinanceModule({ mode, context }: ModuleViewProps) {
+    const news = useAsyncData("finance-news", () => fetchFinanceNews(12));
 
-export function FinanceModule({ mode }: ModuleViewProps) {
-    const { data, error, loading } = useAsyncData("markets", async () => {
-        const [coins, rates] = await Promise.all([fetchCoins(6), fetchRates()]);
-        return { coins, rates };
-    });
+    if (news.loading && !news.data) return <Loading mode={mode} />;
+    if (news.error) return <Failed mode={mode} />;
 
-    if (loading) return <Loading mode={mode} />;
-    if (error || !data) return <Failed mode={mode} />;
-
-    const { coins, rates } = data;
-
+    // The numbers moved out of here (per explicit request): prices,
+    // lines and rates all live in the markets bar across the top of the
+    // dashboard now, where they're one click from anywhere rather than
+    // three levels down. What's left in the region is the reading.
     if (mode === "summary") {
-        const lead = coins[0];
-        if (!lead) return <>{rates.rates.map((rate) => `${rate.code} ${rate.rate.toFixed(2)}`).join(" · ")}</>;
-        return <>{lead.symbol} {formatPrice(lead.price)} {lead.change24h >= 0 ? "▲" : "▼"} {Math.abs(lead.change24h).toFixed(1)}%</>;
+        const lead = news.data?.[0];
+        return <>{lead ? lead.title : "Markets & money"}</>;
+    }
+
+    const story = news.data?.find((item) => financeStoryKey(item.id) === context.openStoryId);
+    if (story) {
+        return (
+            <StoryReader
+                story={{
+                    title: story.title,
+                    subtitle: [story.source, story.category, new Date(story.publishedAt).toLocaleString()]
+                        .filter(Boolean).join(" · "),
+                    image: story.image,
+                    body: story.summary,
+                    url: story.url,
+                    sourceLabel: `Read it on ${story.source}`,
+                }}
+                backLabel="Finance"
+                onBack={() => context.openStory(null)}
+            />
+        );
     }
 
     return (
         <div className="module-detail">
-            <h4 className="module-subhead">Crypto · 24h · 7d line</h4>
-            <ul className="module-list">
-                {coins.map((coin) => (
-                    <li key={coin.id} className="module-coin">
-                        <span className="module-row-lead">{coin.symbol}</span>
-                        <span className="module-coin-price">{formatPrice(coin.price)}</span>
-                        <Sparkline values={coin.week} rising={coin.change24h >= 0} />
-                        {/* The arrow carries the direction as well as the
-                            colour does — a red/green-only signal is
-                            invisible to a good few readers. */}
-                        <span className={`module-row-trail ${coin.change24h >= 0 ? "module-up" : "module-down"}`}>
-                            {coin.change24h >= 0 ? "▲" : "▼"} {Math.abs(coin.change24h).toFixed(1)}%
-                        </span>
-                    </li>
-                ))}
-            </ul>
-
-            <h4 className="module-subhead">Rates · {rates.base} · {rates.date}</h4>
-            <ul className="module-list">
-                {rates.rates.map((rate) => (
-                    <li key={rate.code} className="module-row">
-                        <span className="module-row-lead">{rate.code}</span>
-                        <span>{rate.rate.toFixed(3)}</span>
-                        <span className="module-row-trail">per 1 {rates.base}</span>
-                    </li>
-                ))}
-            </ul>
+            {/* Ahead of the charts on purpose. A price and a seven-day
+                line say WHAT moved; they never say why, and the why is
+                what this module was missing. */}
+            {news.data && news.data.length > 0 && (
+                <>
+                    <h4 className="module-subhead">Markets &amp; money</h4>
+                    <ul className="module-list">
+                        {news.data.map((item) => (
+                            <li key={item.id}>
+                                <StoryCard
+                                    title={item.title}
+                                    excerpt={item.summary}
+                                    meta={[item.source, new Date(item.publishedAt).toLocaleDateString()]
+                                        .filter(Boolean).join(" · ")}
+                                    image={item.image}
+                                    onOpen={() => context.openStory(financeStoryKey(item.id))}
+                                />
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
+            {news.loading && <p className="module-note">Loading the desks…</p>}
+            {news.data && news.data.length === 0 && (
+                <p className="module-note">No stories from the money desks right now.</p>
+            )}
 
             <p className="module-note">
-                Stocks and indices need an API key, so they aren't here yet.
+                Prices, charts and exchange rates are in the markets bar at
+                the top of the screen — including a converter.
             </p>
         </div>
     );
@@ -525,14 +535,7 @@ export function FinanceModule({ mode }: ModuleViewProps) {
 export function AdventureModule({ mode }: ModuleViewProps) {
     // The two halves of "should I go out today": how much light is left,
     // and what the sky is doing. Both keyed off the same location.
-    const { data, error, loading } = useAsyncData("adventure", async () => {
-        const location = await resolveLocation();
-        const [daylight, weather] = await Promise.all([
-            fetchDaylight(location.latitude, location.longitude),
-            fetchWeather(location.latitude, location.longitude),
-        ]);
-        return { location, daylight, weather };
-    });
+    const { data, error, loading } = useAsyncData("adventure", adventureData);
 
     if (loading) return <Loading mode={mode} />;
     if (error || !data) return <Failed mode={mode} />;
@@ -624,7 +627,7 @@ function recipeStory(recipe: Recipe): StoryDetail {
 }
 
 export function MealsModule({ mode, context }: ModuleViewProps) {
-    const { data, error, loading } = useAsyncData("meals", () => fetchProteinRecipes(5));
+    const { data, error, loading } = useAsyncData("meals", mealsData);
     const saved = useSavedRecipes();
 
     if (loading) return <Loading mode={mode} />;
