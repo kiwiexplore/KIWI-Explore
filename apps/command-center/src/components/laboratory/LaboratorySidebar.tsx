@@ -1,69 +1,84 @@
 import {
-    BarChart3, Boxes, Clapperboard, FileText, FlaskConical, FolderKanban, Image as ImageIcon,
-    LayoutDashboard, Lightbulb, Library, ListChecks, Megaphone, Package, Palette,
-    Plus, Radar, Sparkles, StickyNote, Store, TestTube2, TrendingUp, Video, type LucideIcon,
+    BarChart3, Boxes, Check, Clapperboard, Compass, FileText, FlaskConical, FolderKanban,
+    Image as ImageIcon, LayoutDashboard, Library, Lightbulb, ListChecks, Megaphone, Package,
+    Palette, Plus, Radar, Sparkles, StickyNote, Store, TestTube2, TrendingUp, Video,
+    type LucideIcon,
 } from "lucide-react";
 import type { LaboratorySection } from "./Laboratory";
+import type { PhaseProgress } from "../../state/laboratoryJourney";
 import "./LaboratorySidebar.css";
 
 interface SidebarItem {
     label: string;
     icon: LucideIcon;
-    // Real, navigable sections switch Laboratory's own `section` state.
-    // Everything else is a placeholder for now (per explicit request:
-    // build the structure first, most modules land later).
     section?: LaboratorySection;
     // "kiwi" opens KiwiPanel instead of switching section.
     action?: "kiwi";
 }
 
-const MAIN_ITEMS: SidebarItem[] = [
-    { label: "Overview", icon: LayoutDashboard, section: "overview" },
+// Where you start, and the one thing the whole journey is about.
+// Deliberately outside the numbered phases: neither of these is a step.
+const START_ITEMS: SidebarItem[] = [
+    { label: "Guide", icon: Compass, section: "guide" },
     { label: "Projects", icon: FolderKanban, section: "projects" },
-    { label: "Ideas", icon: Lightbulb, section: "ideas" },
-    { label: "Research", icon: FlaskConical, section: "research" },
-    { label: "Notes", icon: StickyNote, section: "notes" },
-    { label: "Design Studio", icon: Palette, section: "design" },
-    { label: "Prototypes", icon: Boxes, section: "prototypes" },
 ];
 
-const DEVELOP_ITEMS: SidebarItem[] = [
-    { label: "Tasks", icon: ListChecks, section: "tasks" },
-    { label: "Resources", icon: Library, section: "resources" },
-    { label: "Tests", icon: TestTube2, section: "tests" },
-    { label: "Documents", icon: FileText, section: "documents" },
-];
-
-const LAUNCH_ITEMS: SidebarItem[] = [
-    { label: "Products", icon: Package, section: "products" },
-    { label: "Store", icon: Store, section: "store" },
-    { label: "Marketing", icon: Megaphone, section: "marketing" },
-    { label: "Analytics", icon: BarChart3, section: "analytics" },
-];
-
-const AI_ITEMS: SidebarItem[] = [
+const KIWI_ITEMS: SidebarItem[] = [
     { label: "KIWI Assistant", icon: Sparkles, action: "kiwi" },
-    { label: "Content Hub", icon: Video, section: "content-hub" },
-    { label: "Video Studio", icon: Clapperboard, section: "video-studio" },
-    { label: "Image Generation", icon: ImageIcon, section: "image-generation" },
-    { label: "Market Analysis", icon: TrendingUp, section: "market-analysis" },
-    { label: "Trend Scanner", icon: Radar, section: "trend-scanner" },
 ];
 
-interface SidebarSectionProps {
+/**
+ * Icons live here rather than in state/laboratoryJourney.ts — that file
+ * describes the shape of the work and shouldn't have to import a UI
+ * library to do it. The phases and their sections come from there, so
+ * this nav and the Guide page can't drift out of step with each other.
+ */
+const SECTION_ICONS: Partial<Record<LaboratorySection, LucideIcon>> = {
+    ideas: Lightbulb,
+    notes: StickyNote,
+    research: FlaskConical,
+    "market-analysis": TrendingUp,
+    "trend-scanner": Radar,
+    design: Palette,
+    "image-generation": ImageIcon,
+    tasks: ListChecks,
+    prototypes: Boxes,
+    resources: Library,
+    documents: FileText,
+    tests: TestTube2,
+    "video-studio": Clapperboard,
+    "content-hub": Video,
+    products: Package,
+    store: Store,
+    marketing: Megaphone,
+    analytics: BarChart3,
+    overview: LayoutDashboard,
+};
+
+interface SidebarGroupProps {
     title: string;
     items: SidebarItem[];
     activeSection: LaboratorySection;
     onSectionChange: (section: LaboratorySection) => void;
     onOpenKiwi?: () => void;
+    /** Step number and state — the numbered phase groups only. */
+    step?: number;
+    status?: PhaseProgress["status"];
 }
 
-function SidebarSection({ title, items, activeSection, onSectionChange, onOpenKiwi }: SidebarSectionProps) {
+function SidebarGroup({ title, items, activeSection, onSectionChange, onOpenKiwi, step, status }: SidebarGroupProps) {
     return (
-        <div className="lab-sidebar-section">
-            <div className="lab-sidebar-section-title">{title}</div>
+        <div className={`lab-sidebar-section${status ? ` lab-sidebar-section-${status}` : ""}`}>
+            <div className="lab-sidebar-section-title">
+                {step !== undefined && (
+                    <span className="lab-sidebar-step" aria-hidden="true">
+                        {status === "done" ? <Check size={10} strokeWidth={3.5} /> : step}
+                    </span>
+                )}
+                <span>{title}</span>
+                {status === "active" && <span className="lab-sidebar-step-here" aria-label="current phase" />}
+            </div>
             {items.map((item) => {
-                const clickable = Boolean(item.section) || item.action === "kiwi";
                 const isActive = item.section !== undefined && item.section === activeSection;
                 return (
                     <button
@@ -74,11 +89,9 @@ function SidebarSection({ title, items, activeSection, onSectionChange, onOpenKi
                             if (item.section) onSectionChange(item.section);
                             else if (item.action === "kiwi") onOpenKiwi?.();
                         }}
-                        disabled={!clickable}
                     >
                         <item.icon size={15} strokeWidth={1.75} />
                         <span>{item.label}</span>
-                        {!clickable && <span className="lab-sidebar-item-badge">Soon</span>}
                     </button>
                 );
             })}
@@ -91,28 +104,61 @@ interface LaboratorySidebarProps {
     onSectionChange: (section: LaboratorySection) => void;
     onCreateProject: () => void;
     onOpenKiwi?: () => void;
+    /** The focused project's progress — same source as the Guide page. */
+    journey: PhaseProgress[];
 }
 
 /**
- * Laboratory's left nav — MAIN/DEVELOP/LAUNCH/AI TOOLS, matching the
- * original reference mockup's structure. Most items are placeholders
- * Every item is now a real section — "KIWI Assistant" opens KiwiPanel
- * directly rather than switching sections; the other three AI Tools
- * items (Image Generation/Market Analysis/Trend Scanner) are real
- * pages too, but honestly UI-only — see each board's own doc comment,
- * same "no AI behind this yet" state as useKiwiChat.
- * Deliberately duplicates the top bar's own Projects/Research/Notes
- * tabs rather than replacing them — the reference mockup itself has
- * both a top nav and this sidebar with overlapping items.
+ * Laboratory's left nav, grouped as the seven phases of one journey
+ * rather than the four unexplained buckets (MAIN/DEVELOP/LAUNCH/AI
+ * TOOLS) it used to have. Every section that was here is still here and
+ * still does exactly what it did — what changed is the order and the
+ * labelling, because twenty-odd equally weighted items with no stated
+ * relationship to one another is what made this hard to navigate.
+ *
+ * The group headers carry the phase's number and its state for whichever
+ * project the Guide is following: a tick once there's something in it, a
+ * dot for the one you're on. Nothing is ever disabled — the ordering is
+ * advice, and somebody who wants to open Marketing on day one is allowed
+ * to.
  */
-export default function LaboratorySidebar({ section, onSectionChange, onCreateProject, onOpenKiwi }: LaboratorySidebarProps) {
+export default function LaboratorySidebar({
+    section, onSectionChange, onCreateProject, onOpenKiwi, journey,
+}: LaboratorySidebarProps) {
     return (
         <aside className="lab-sidebar">
             <div className="lab-sidebar-scroll">
-                <SidebarSection title="Main" items={MAIN_ITEMS} activeSection={section} onSectionChange={onSectionChange} onOpenKiwi={onOpenKiwi} />
-                <SidebarSection title="Develop" items={DEVELOP_ITEMS} activeSection={section} onSectionChange={onSectionChange} onOpenKiwi={onOpenKiwi} />
-                <SidebarSection title="Launch" items={LAUNCH_ITEMS} activeSection={section} onSectionChange={onSectionChange} onOpenKiwi={onOpenKiwi} />
-                <SidebarSection title="AI Tools" items={AI_ITEMS} activeSection={section} onSectionChange={onSectionChange} onOpenKiwi={onOpenKiwi} />
+                <SidebarGroup
+                    title="Start here"
+                    items={START_ITEMS}
+                    activeSection={section}
+                    onSectionChange={onSectionChange}
+                    onOpenKiwi={onOpenKiwi}
+                />
+
+                {journey.map(({ phase, status }) => (
+                    <SidebarGroup
+                        key={phase.id}
+                        title={phase.label}
+                        step={phase.step}
+                        status={status}
+                        items={phase.sections.map((entry) => ({
+                            label: entry.label,
+                            icon: SECTION_ICONS[entry.section] ?? LayoutDashboard,
+                            section: entry.section,
+                        }))}
+                        activeSection={section}
+                        onSectionChange={onSectionChange}
+                    />
+                ))}
+
+                <SidebarGroup
+                    title="Ask KIWI"
+                    items={KIWI_ITEMS}
+                    activeSection={section}
+                    onSectionChange={onSectionChange}
+                    onOpenKiwi={onOpenKiwi}
+                />
             </div>
 
             <button type="button" className="lab-sidebar-new-project" onClick={onCreateProject}>

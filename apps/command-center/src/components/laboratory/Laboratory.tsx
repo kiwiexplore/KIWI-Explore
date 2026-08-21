@@ -21,6 +21,7 @@ import ImageGenerationBoard from "./ImageGenerationBoard";
 import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import TrendScannerBoard from "./TrendScannerBoard";
 import ContentHubBoard from "./ContentHubBoard";
+import LaboratoryGuide from "./LaboratoryGuide";
 import VideoStudioBoard from "./VideoStudioBoard";
 import MindMapView from "./MindMapView";
 import WhiteboardCanvas from "./WhiteboardCanvas";
@@ -36,6 +37,7 @@ import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { NotificationsState } from "../../state/notifications";
 import { useContentHubState } from "../../state/contentHub";
 import { useVideoStudioState } from "../../state/videoStudio";
+import { deriveJourney } from "../../state/laboratoryJourney";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
@@ -43,7 +45,7 @@ import type { SpotifyState } from "../../state/spotify";
 import "./Laboratory.css";
 
 export type LaboratorySection =
-    | "overview" | "projects" | "research" | "notes"
+    | "guide" | "overview" | "projects" | "research" | "notes"
     | "tasks" | "ideas" | "design" | "prototypes"
     | "resources" | "tests" | "documents"
     | "products" | "store" | "marketing" | "analytics"
@@ -144,7 +146,17 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
         createResearchEntry, handleResearchChange, handleAddProjectResearch, handleProjectResearchChange,
     } = data;
 
-    const [section, setSection] = useState<LaboratorySection>("overview");
+    // The Guide is the landing screen: opening the Laboratory on a page
+    // that says where you are beats opening on one of twenty sections
+    // with no indication of which one you wanted.
+    const [section, setSection] = useState<LaboratorySection>("guide");
+
+    // Which project the Guide (and the sidebar's phase markers) are
+    // reading. Falls back to the first project so there's always
+    // something to follow; null only when there are no projects at all.
+    const [guideProjectId, setGuideProjectId] = useState<string | null>(null);
+    const focusProject = projects.find((p) => p.id === guideProjectId) ?? projects[0] ?? null;
+    const journey = deriveJourney(focusProject);
 
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
@@ -229,6 +241,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                     onSectionChange={setSection}
                     onCreateProject={handleCreateProject}
                     onOpenKiwi={() => setKiwiOpen(true)}
+                    journey={journey}
                 />
 
                 <main className="laboratory-main">
@@ -370,6 +383,17 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                             onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                             onAddTrendTopic={handleAddTrendTopic}
                             onRemoveTrendTopic={handleRemoveTrendTopic}
+                        />
+                    )}
+
+                    {section === "guide" && (
+                        <LaboratoryGuide
+                            projects={projects}
+                            focusProject={focusProject}
+                            onFocusProject={setGuideProjectId}
+                            onGoToSection={setSection}
+                            onOpenProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                            onCreateProject={handleCreateProject}
                         />
                     )}
 

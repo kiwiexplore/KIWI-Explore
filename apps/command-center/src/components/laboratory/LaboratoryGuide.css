@@ -1,0 +1,361 @@
+/*
+ * The Laboratory's guide page — the seven phases as one vertical
+ * track. Built so the eye lands on the active phase first: finished
+ * ones fade back to a single ticked line, later ones dim, and only the
+ * current one keeps full contrast and its description.
+ */
+
+.lab-guide-empty {
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+
+    padding: 24px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+
+}
+
+.lab-guide-empty p {
+
+    margin: 0;
+
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-muted);
+
+}
+
+.lab-guide-create {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 18px;
+    border: 1px solid var(--primary);
+    border-radius: 10px;
+    background: rgba(73, 199, 255, .12);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+
+}
+
+/* --- which project the journey is about -------------------------- */
+
+.lab-guide-focus {
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(16, 25, 46, .55);
+
+}
+
+.lab-guide-focus-picker {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.lab-guide-focus-picker select {
+
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .6);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text);
+
+}
+
+.lab-guide-open-project {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: none;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-muted);
+
+    transition: color var(--transition), border-color var(--transition);
+
+}
+
+.lab-guide-open-project:hover {
+
+    color: var(--text);
+    border-color: var(--primary);
+
+}
+
+/* --- the track ---------------------------------------------------- */
+
+.lab-guide-phases {
+
+    display: flex;
+    flex-direction: column;
+
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+}
+
+.lab-guide-phase {
+
+    position: relative;
+
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 16px;
+
+    padding-bottom: 22px;
+
+}
+
+/* The connecting line runs between the dots, so the last phase
+   doesn't trail one off the bottom of the list. */
+.lab-guide-phase:not(:last-child) .lab-guide-phase-marker::after {
+
+    content: "";
+    position: absolute;
+    top: 30px;
+    bottom: -4px;
+    left: 50%;
+
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--border);
+
+}
+
+.lab-guide-phase-marker {
+
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding-top: 2px;
+
+}
+
+.lab-guide-phase-dot {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 26px;
+    height: 26px;
+
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--space);
+
+    color: var(--text-muted);
+
+}
+
+.lab-guide-phase-done .lab-guide-phase-dot {
+
+    border-color: var(--secondary);
+    color: var(--secondary);
+
+}
+
+.lab-guide-phase-active .lab-guide-phase-dot {
+
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(73, 199, 255, .12);
+
+}
+
+.lab-guide-phase-body {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding: 14px 18px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+
+    transition: border-color var(--transition), background var(--transition);
+
+}
+
+/* Only the phase you're on gets a card of its own — giving every phase
+   one would flatten the list back into the wall of panels this page
+   exists to replace. */
+.lab-guide-phase-active .lab-guide-phase-body {
+
+    border-color: rgba(73, 199, 255, .35);
+    background: rgba(73, 199, 255, .06);
+
+}
+
+.lab-guide-phase-upcoming .lab-guide-phase-body {
+
+    opacity: .55;
+
+}
+
+.lab-guide-phase-head {
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+
+}
+
+.lab-guide-phase-step {
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.lab-guide-phase-head h3 {
+
+    margin: 0;
+
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.lab-guide-phase-done .lab-guide-phase-head h3 {
+
+    color: var(--text-muted);
+    font-weight: 600;
+
+}
+
+.lab-guide-phase-detail {
+
+    font-size: 12px;
+    color: var(--text-muted);
+
+}
+
+.lab-guide-phase-done .lab-guide-phase-detail {
+
+    color: var(--secondary);
+
+}
+
+.lab-guide-phase-here {
+
+    padding: 2px 9px;
+    border: 1px solid var(--primary);
+    border-radius: 999px;
+
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--primary);
+
+}
+
+.lab-guide-phase-blurb,
+.lab-guide-phase-reason {
+
+    margin: 0;
+
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-muted);
+
+}
+
+.lab-guide-phase-reason {
+
+    font-style: italic;
+    opacity: .85;
+
+}
+
+.lab-guide-phase-links {
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    margin-top: 2px;
+
+}
+
+.lab-guide-phase-link {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .45);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    color: var(--text);
+
+    transition: border-color var(--transition), color var(--transition);
+
+}
+
+.lab-guide-phase-link:hover {
+
+    border-color: var(--primary);
+    color: var(--primary);
+
+}
+
+/* Finished phases keep their links, but quietly — they're a way back,
+   not a call to action. */
+.lab-guide-phase-done .lab-guide-phase-link {
+
+    color: var(--text-muted);
+
+}
