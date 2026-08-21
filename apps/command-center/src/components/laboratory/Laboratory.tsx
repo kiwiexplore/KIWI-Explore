@@ -20,6 +20,8 @@ import AnalyticsPage from "./AnalyticsPage";
 import ImageGenerationBoard from "./ImageGenerationBoard";
 import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import TrendScannerBoard from "./TrendScannerBoard";
+import ContentHubBoard from "./ContentHubBoard";
+import VideoStudioBoard from "./VideoStudioBoard";
 import MindMapView from "./MindMapView";
 import WhiteboardCanvas from "./WhiteboardCanvas";
 import ProjectGrid from "./ProjectGrid";
@@ -32,6 +34,8 @@ import KiwiPanel from "./KiwiPanel";
 import { useKiwiChat } from "../../lib/useKiwiChat";
 import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { NotificationsState } from "../../state/notifications";
+import { useContentHubState } from "../../state/contentHub";
+import { useVideoStudioState } from "../../state/videoStudio";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
@@ -43,7 +47,7 @@ export type LaboratorySection =
     | "tasks" | "ideas" | "design" | "prototypes"
     | "resources" | "tests" | "documents"
     | "products" | "store" | "marketing" | "analytics"
-    | "image-generation" | "market-analysis" | "trend-scanner";
+    | "image-generation" | "market-analysis" | "trend-scanner" | "content-hub" | "video-studio";
 
 interface LaboratoryProps {
     onBack: () => void;
@@ -159,6 +163,12 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     const [mindMapOpen, setMindMapOpen] = useState(false);
     const [whiteboardOpen, setWhiteboardOpen] = useState(false);
 
+    // Both stay local rather than being lifted to App.tsx the way
+    // notifications/account/calendar were: every item is already
+    // persisted server-side (apps/server's content_items and
+    // video_projects), so a remount refetches instead of losing work.
+    const contentHub = useContentHubState();
+    const videoStudio = useVideoStudioState();
 
     // Search and Notifications both drop down from the same top-right
     // spot — opening one closes the other so they never stack.
@@ -362,6 +372,10 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                             onRemoveTrendTopic={handleRemoveTrendTopic}
                         />
                     )}
+
+                    {section === "content-hub" && <ContentHubBoard contentHub={contentHub} />}
+
+                    {section === "video-studio" && <VideoStudioBoard videoStudio={videoStudio} />}
 
                     {section === "projects" && (
                         selectedProject ? (

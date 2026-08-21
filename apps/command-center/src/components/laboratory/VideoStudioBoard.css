@@ -1,0 +1,665 @@
+/*
+ * Video Studio — a video's whole production in one place. Sits on top
+ * of GlobalBoard.css's page shell (header/eyebrow/empty state) and adds
+ * what's specific to this section: the project grid, the detail's
+ * stacked panels, and the gated-action pattern where a disabled button
+ * carries its reason in visible text beside it rather than in a
+ * tooltip.
+ */
+
+/* --- shared bits ------------------------------------------------- */
+
+.video-studio-badge {
+
+    flex-shrink: 0;
+
+    padding: 3px 10px;
+    border: 1px solid;
+    border-radius: 999px;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+
+}
+
+.video-studio-hint {
+
+    margin: 0;
+
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+
+}
+
+.video-studio-spin {
+
+    animation: video-studio-spin 1s linear infinite;
+
+}
+
+@keyframes video-studio-spin {
+
+    to { transform: rotate(360deg); }
+
+}
+
+/* --- banner ------------------------------------------------------ */
+
+.video-studio-banner {
+
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 79, 109, .4);
+    border-radius: 12px;
+    background: rgba(255, 79, 109, .08);
+
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+
+}
+
+/* Missing setup isn't a failure — it's a step nobody has done yet, and
+   it reads better in the calm colour than in the alarm one. */
+.video-studio-banner-setup {
+
+    border-color: rgba(73, 199, 255, .4);
+    background: rgba(73, 199, 255, .08);
+
+}
+
+.video-studio-banner svg {
+
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--danger);
+
+}
+
+.video-studio-banner-setup svg {
+
+    color: var(--primary);
+
+}
+
+.video-studio-banner button {
+
+    margin-left: auto;
+    padding: 0 4px;
+
+    border: none;
+    background: none;
+    cursor: pointer;
+
+    font-size: 16px;
+    line-height: 1;
+    color: var(--text-muted);
+
+}
+
+.video-studio-banner button:hover {
+
+    color: var(--text);
+
+}
+
+/* --- create form + grid ------------------------------------------ */
+
+.video-studio-create {
+
+    display: flex;
+    gap: 10px;
+
+}
+
+.video-studio-create-input,
+.video-studio-path-input,
+.video-studio-title-input,
+.video-studio-brief {
+
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .5);
+
+    font: inherit;
+    font-size: 13px;
+    color: var(--text);
+
+    transition: border-color var(--transition);
+
+}
+
+.video-studio-create-input:focus,
+.video-studio-path-input:focus,
+.video-studio-title-input:focus,
+.video-studio-brief:focus {
+
+    outline: none;
+    border-color: var(--primary);
+
+}
+
+.video-studio-brief {
+
+    resize: vertical;
+    line-height: 1.6;
+
+}
+
+.video-studio-grid {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+
+}
+
+.video-studio-card {
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(16, 25, 46, .6);
+
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    transition: border-color var(--transition), transform var(--transition);
+
+}
+
+.video-studio-card:hover {
+
+    border-color: var(--primary);
+    transform: translateY(-2px);
+
+}
+
+.video-studio-card-top {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    color: var(--text-muted);
+
+}
+
+.video-studio-card-title {
+
+    font-size: 14.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text);
+
+}
+
+.video-studio-card-meta {
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 11px;
+    color: var(--text-muted);
+
+}
+
+.video-studio-card-failed,
+.video-studio-card-processing {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    font-weight: 600;
+
+}
+
+.video-studio-card-failed {
+
+    color: var(--danger);
+
+}
+
+.video-studio-card-processing {
+
+    color: var(--primary);
+
+}
+
+/* --- detail ------------------------------------------------------ */
+
+.video-studio-detail {
+
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+}
+
+.video-studio-back {
+
+    align-self: flex-start;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: none;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-muted);
+
+    transition: color var(--transition), border-color var(--transition);
+
+}
+
+.video-studio-back:hover {
+
+    color: var(--text);
+    border-color: var(--primary);
+
+}
+
+.video-studio-detail-head {
+
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+}
+
+.video-studio-title-input {
+
+    font-size: 20px;
+    font-weight: 700;
+
+}
+
+.video-studio-detail-head-right {
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+}
+
+.video-studio-stage-picker {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.video-studio-stage-picker select {
+
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .6);
+
+    font: inherit;
+    font-size: 12px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+
+    cursor: pointer;
+
+}
+
+.video-studio-delete {
+
+    display: inline-flex;
+    padding: 8px;
+
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+
+    color: var(--text-muted);
+    transition: color var(--transition), border-color var(--transition);
+
+}
+
+.video-studio-delete:hover {
+
+    color: var(--danger);
+    border-color: var(--danger);
+
+}
+
+.video-studio-panel {
+
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(16, 25, 46, .5);
+
+}
+
+.video-studio-panel h2 {
+
+    margin: 0;
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.video-studio-path-row {
+
+    display: flex;
+    gap: 10px;
+
+}
+
+/* --- gated actions ------------------------------------------------ */
+
+.video-studio-actions {
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 14px;
+
+}
+
+.video-studio-action {
+
+    display: flex;
+    flex-direction: column;
+    /* The button hugs its own label rather than stretching to the
+       column width, so its text starts at the same left edge as the
+       reason underneath it. */
+    align-items: flex-start;
+    gap: 6px;
+
+    /* Wide enough that a blocked reason wraps to a readable column
+       instead of a single long line pushing the row sideways. */
+    max-width: 260px;
+
+}
+
+.video-studio-action-btn {
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    flex-shrink: 0;
+    padding: 9px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .5);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+
+    transition: border-color var(--transition), background var(--transition), opacity var(--transition);
+
+}
+
+.video-studio-action-btn:hover:not(:disabled) {
+
+    border-color: var(--primary);
+
+}
+
+.video-studio-action-btn-primary {
+
+    border-color: var(--primary);
+    background: rgba(73, 199, 255, .12);
+    color: var(--primary);
+
+}
+
+/* Clearly out of reach, but still legible — a blocked step you can't
+   read is as unhelpful as one that doesn't say why. */
+.video-studio-action-btn:disabled {
+
+    opacity: .45;
+    cursor: not-allowed;
+
+}
+
+.video-studio-action-reason {
+
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+
+}
+
+/* --- transcript --------------------------------------------------- */
+
+.video-studio-transcript-status {
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+
+}
+
+.video-studio-transcript-path {
+
+    font-size: 11px;
+    color: var(--text-muted);
+    word-break: break-all;
+
+}
+
+.video-studio-error-box {
+
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 79, 109, .45);
+    border-radius: 10px;
+    background: rgba(255, 79, 109, .1);
+
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+
+}
+
+.video-studio-error-box svg {
+
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--danger);
+
+}
+
+/* --- clips -------------------------------------------------------- */
+
+.video-studio-clips {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+}
+
+.video-studio-clip {
+
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .4);
+
+}
+
+.video-studio-clip-time {
+
+    flex-shrink: 0;
+
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--primary);
+
+}
+
+.video-studio-clip-body {
+
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+}
+
+.video-studio-clip-label {
+
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+
+}
+
+.video-studio-clip-why {
+
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-muted);
+
+}
+
+/* --- attached content items --------------------------------------- */
+
+.video-studio-content-list {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+}
+
+.video-studio-content-item {
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .4);
+    overflow: hidden;
+
+}
+
+.video-studio-content-item-head {
+
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 10px 12px;
+    border: none;
+    background: none;
+    cursor: pointer;
+
+    font: inherit;
+    text-align: left;
+
+}
+
+.video-studio-content-item-type {
+
+    flex-shrink: 0;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--primary);
+
+}
+
+.video-studio-content-item-topic {
+
+    flex: 1;
+
+    font-size: 12.5px;
+    color: var(--text);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.video-studio-content-item-status {
+
+    flex-shrink: 0;
+
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--text-muted);
+
+}
+
+.video-studio-content-item-body {
+
+    margin: 0;
+    padding: 0 12px 12px;
+
+    font: inherit;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text-muted);
+
+    white-space: pre-wrap;
+    word-break: break-word;
+
+}
