@@ -17,10 +17,15 @@ import TopBar from "./TopBar";
 import VoiceBar from "./VoiceBar";
 import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import InfoPanel from "../ui/InfoPanel";
-import { findBrainRegion, regionAtLocalDirection } from "../../state/brainRegions";
+import { findBrainRegion, regionAtLocalDirection, type BrainRegionDefinition } from "../../state/brainRegions";
 import { regionSites } from "./regionSites";
 import { regionPins } from "./regionPins";
-import type { RegionFact } from "./regionContent/regionFacts";
+import TopicParticles from "./TopicParticles";
+import TodayStrip from "./TodayStrip";
+import CalendarPanel from "../laboratory/CalendarPanel";
+import NotificationsPanel from "../laboratory/NotificationsPanel";
+import type { NotificationsState } from "../../state/notifications";
+import { topicTree, type TopicNode } from "./topicTree";
 import { useRegionFacts } from "./regionContent/regionFacts";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
@@ -78,6 +83,12 @@ const VERTICAL_ANCHOR = 0.25;
 // position, so the brain's own local space (which every region anchor is
 // expressed in) stays untouched.
 const CAMERA_Y_BASE = 0.12;
+// How much higher the camera looks when nothing is open, which drops
+// the brain down the screen and leaves the top of the frame to the bar
+// and the day's tiles. Scaled by how far out the camera is (see the
+// rig), so it fades to nothing on the way into a region and the view
+// from inside one is exactly what it was.
+const IDLE_LOOK_LIFT = 0.5;
 const CAMERA_EASE = 2.4;
 // Field of view, eased alongside the move. Inside a region a wider lens
 // is what actually buys room: the camera can only back off so far before
@@ -392,7 +403,11 @@ function CameraRig({ station, lookRef, departing, arriving }: {
         // centre (see focusAim) — and the aim slides from one to the
         // other over the fly-in, so the approach still watches the whole
         // brain until it's actually arrived.
-        aimPoint.set(CAMERA_X_IDLE, CAMERA_Y_BASE * 0.4, 0);
+        // Full at the resting radius, gone by the time the camera is
+        // inside the brain — one expression rather than a branch, so
+        // there's no step to jolt through on the way in or out.
+        const lift = IDLE_LOOK_LIFT * Math.min(1, look.orbitRadius / CAMERA_Z);
+        aimPoint.set(CAMERA_X_IDLE, CAMERA_Y_BASE * 0.4 + lift, 0);
         if (focused) {
             const travel = CAMERA_Z - station.radius;
             const arrived = travel > 0.001
@@ -504,6 +519,8 @@ interface BrainScene3DProps {
     onOpenLaboratory?: () => void;
     /** True when the dashboard was reached by coming back from there. */
     arriving?: boolean;
+    /** Shared with the Laboratory — see App.tsx. */
+    notifications: NotificationsState;
     // Read-only here — the region panel's Calendar/Projects/Notes
     // modules show the very same events, projects and notes Laboratory
     // edits (both owned by App.tsx), so adding one there shows up on the
@@ -516,7 +533,9 @@ interface BrainScene3DProps {
     spotify: SpotifyState;
 }
 
-export default function BrainScene3D({ onOpenLaboratory, arriving = false, calendar, laboratoryData, spotify }: BrainScene3DProps) {
+export default function BrainScene3D({
+    onOpenLaboratory, arriving = false, calendar, laboratoryData, spotify, notifications,
+}: BrainScene3DProps) {
     const ambientLight = useMemo(() => new AmbientLight(0xffffff, 0.5), []);
     const [pulseLines, setPulseLines] = useState<Line[]>([]);
     // Lifted from VoiceBar (see its own onListeningChange doc) so the
@@ -540,6 +559,11 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
     // hands over — the camera is on its way to the Moon and everything
     // over the top of it is fading out.
     const [departing, setDeparting] = useState(false);
+    // The same calendar and the same notifications the Laboratory has,
+    // opened from the same kind of button — so a thing added in one
+    // place is there in the other.
+    const [calendarOpen, setCalendarOpen] = useState(false);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
     // Which single story is open inside that module — see
     // regionContent/types.ts for why it lives up here and not in the
     // module that renders it.
@@ -564,6 +588,11 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
         [calendar, laboratoryData, openStoryId, openStory],
     );
     const regionFacts = useRegionFacts(activeRegion, regionContext);
+    // Everything the open region holds, as one particle each — the area,
+    // its topics, and every story under them (see topicTree). Shared by
+    // the particles in the brain and the labels on top of them, so both
+    // are talking about the same things in the same places.
+    const regionTopics = useMemo(() => topicTree(activeRegion, regionFacts), [activeRegion, regionFacts]);
 
     // Entering or leaving a region starts the camera's angles over: they
     // mean different things in the two modes (orbit vs. look-around), so
@@ -624,9 +653,12 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
     // within it. Called whenever anything is opened from anywhere: the
     // panel, the dial, or a pin out on the wall. Nothing you open is
     // ever something you then have to go and find.
-    const aimAtSite = (site: [number, number, number] | null | undefined) => {
+    const aimAtSite = (
+        site: [number, number, number] | null | undefined,
+        region: BrainRegionDefinition | null = activeRegion,
+    ) => {
         const look = lookRef.current;
-        if (!site || !activeRegion) {
+        if (!site || !region) {
             look.target = null;
             return;
         }
@@ -637,7 +669,7 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
         // from the direction the camera faces by default there (looking
         // back at the brain) — which is what look.yaw and look.pitch
         // mean inside a region.
-        const station = focusStation(activeRegion.anchor);
+        const station = focusStation(region.anchor);
         const cameraPosition = new Vector3(
             Math.sin(station.yaw) * Math.cos(station.pitch) * station.radius + CAMERA_X_IDLE,
             Math.sin(station.pitch) * station.radius + CAMERA_Y_BASE,
@@ -673,6 +705,22 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
         if (pin) aimAtSite(pin.position);
     };
 
+    // A tile in the overview opens the region, the module it came from,
+    // and — where the tile IS a story — that story, in one go. The
+    // camera has to be aimed against the region being opened rather
+    // than the one in state, which is still the old one this tick.
+    const openFromOverview = (regionId: string, moduleId: string, storyId?: string) => {
+        const region = findBrainRegion(regionId);
+        if (!region) return;
+
+        resetLook();
+        setActiveRegionId(regionId);
+        setOpenModuleId(moduleId);
+        setOpenStoryId(storyId ?? null);
+        setDetail(null);
+        aimAtSite(regionSites(region).get(moduleId), region);
+    };
+
     const openModule = (moduleId: string | null) => {
         setOpenModuleId(moduleId);
         setOpenStoryId(null);
@@ -692,12 +740,12 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
     // rather than during one.
     useEffect(() => { openStoryRef.current = openStoryImpl; });
 
-    // A pin on the wall opens what it stands for: its module, and the
-    // one story it names if it names one.
-    const openFact = (fact: RegionFact) => {
-        setOpenModuleId(fact.moduleId);
-        setOpenStoryId(fact.storyId ?? null);
-        aimAtSite(regionPins(activeRegion, regionFacts).find((entry) => entry.fact === fact)?.position);
+    // A pin on the wall opens what it stands for — a topic, or one
+    // story inside it — and the camera turns to that very particle.
+    const openNode = (node: TopicNode) => {
+        setOpenModuleId(node.moduleId);
+        setOpenStoryId(node.level === "story" ? node.storyId ?? null : null);
+        aimAtSite(node.position);
     };
 
     // Dragging is caught on the scene's own root element rather than on
@@ -706,17 +754,29 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
     // old behaviour — and once a region is open, the brain fills the
     // screen anyway, so "drag the brain" and "drag anywhere" were
     // already the same gesture there.
-    const dragRef = useRef({ active: false, dragged: false, x: 0, y: 0 });
+    const dragRef = useRef({ active: false, dragged: false, x: 0, y: 0, pointerId: -1 });
 
     // Anything with its own controls keeps them: a drag that starts on a
     // panel, the rail, the dial or the top bar is that control's, not a
     // camera move.
-    const UI_SELECTOR = ".brain-nav, .region-panel, .brain-dial, .top-bar, .brain-voice-bar-row, .detail-drawer, .region-label, .region-pin";
+    //
+    // Pins and labels are deliberately NOT in this list. They used to
+    // be, and that was the reason turning the view kept sticking: they
+    // cover most of the wall once a region is open, a press that landed
+    // on one never started a drag at all, and the release then read as
+    // a plain click — which opened whatever was under the finger, often
+    // a different region entirely. They aren't controls you drag; their
+    // click is already guarded by wasDragged().
+    const UI_SELECTOR = ".brain-nav, .region-panel, .brain-dial, .top-bar, .today-strip, .brain-voice-bar-row, .detail-drawer";
 
     const handleScenePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
         if ((event.target as HTMLElement).closest(UI_SELECTOR)) return;
-        dragRef.current = { active: true, dragged: false, x: event.clientX, y: event.clientY };
+        dragRef.current = {
+            active: true, dragged: false, x: event.clientX, y: event.clientY,
+            pointerId: event.pointerId,
+        };
         lookRef.current.dragging = true;
+        // The pointer is NOT captured yet — see handleScenePointerMove.
     };
 
     const handleScenePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -727,17 +787,47 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
         const deltaY = event.clientY - drag.y;
         drag.x = event.clientX;
         drag.y = event.clientY;
-        if (Math.abs(deltaX) + Math.abs(deltaY) > 2) drag.dragged = true;
+
+        if (Math.abs(deltaX) + Math.abs(deltaY) > 2) {
+            // A turn has actually begun, so take the pointer: from here
+            // every move and the release come to this element whatever
+            // the cursor passes over. Without that the turn kept
+            // freezing partway — a region's wall is covered in pins,
+            // and they are hidden and shown from the frame loop as they
+            // swing behind the camera, so something was forever taking
+            // the pointer mid-drag and cutting off the moves.
+            //
+            // Captured HERE rather than on the press, though, and that
+            // distinction is the whole trick: a captured pointer also
+            // redirects the click that follows it, so capturing on
+            // pointerdown made every pin unclickable. A press that
+            // never moves never captures, and its click reaches the pin
+            // exactly as before.
+            if (!drag.dragged) {
+                drag.dragged = true;
+                event.currentTarget.setPointerCapture(event.pointerId);
+            }
+        }
 
         handleLook(deltaX, deltaY);
     };
 
-    const handleScenePointerUp = () => {
-        dragRef.current.active = false;
+    const handleScenePointerUp = (event?: ReactPointerEvent<HTMLDivElement>) => {
+        const drag = dragRef.current;
+        if (event && drag.pointerId >= 0 && event.currentTarget.hasPointerCapture(drag.pointerId)) {
+            event.currentTarget.releasePointerCapture(drag.pointerId);
+        }
+        drag.active = false;
+        drag.pointerId = -1;
         lookRef.current.dragging = false;
-        // Cleared on the next tick, so the click that follows this
-        // release can still see that it was the end of a drag.
-        window.setTimeout(() => { dragRef.current.dragged = false; }, 0);
+        // NOT cleared here, and not on a timer either. It used to be
+        // reset from a setTimeout(0), which is a race the drag lost
+        // often enough to notice: the browser dispatches click as its
+        // own task after pointerup, and if the timer ran first the
+        // click saw a flag already back to false and treated the end of
+        // a turn as a pick. The next press clears it (see
+        // handleScenePointerDown), which is both later than every click
+        // this one can produce and earlier than the next one.
     };
 
     const handleLook = (deltaX: number, deltaY: number) => {
@@ -809,7 +899,7 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
             onPointerDown={handleScenePointerDown}
             onPointerMove={handleScenePointerMove}
             onPointerUp={handleScenePointerUp}
-            onPointerLeave={handleScenePointerUp}
+            onPointerCancel={handleScenePointerUp}
         >
             <div className="brain-scene-canvas">
                 <Canvas camera={{
@@ -845,13 +935,22 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
                                 hoverRegionId={hoverRegionId}
                                 onSelect={selectRegion}
                                 onHover={setHoverRegionId}
+                                wasDragged={() => dragRef.current.dragged}
                             />
                             {/* Always mounted, drawing nothing without an
                                 open region — see its own doc comment. */}
                             <RegionDataPins
                                 region={activeRegion}
-                                facts={regionFacts}
-                                onOpenFact={openFact}
+                                nodes={regionTopics}
+                                openModuleId={openModuleId}
+                                onOpenNode={openNode}
+                                wasDragged={() => dragRef.current.dragged}
+                            />
+                            <TopicParticles
+                                region={activeRegion}
+                                nodes={regionTopics}
+                                openModuleId={openModuleId}
+                                openStoryId={openStoryId}
                             />
                         </BrainSystem3D>
                     </group>
@@ -859,7 +958,21 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
                 </Canvas>
             </div>
 
-            <TopBar onInfoClick={handleInfoClick} onLaboratoryClick={leaveForLaboratory} spotify={spotify} />
+            <TopBar
+                onInfoClick={handleInfoClick}
+                onLaboratoryClick={leaveForLaboratory}
+                onCalendarClick={() => setCalendarOpen(true)}
+                onNotificationsClick={() => setNotificationsOpen(true)}
+                onOpenMail={() => openFromOverview("temporal-left", "communication")}
+                unreadNotificationCount={notifications.unreadCount}
+                spotify={spotify}
+            />
+
+            {/* Only at rest: once a region is open, its panel is the
+                thing to read and this would be talking over it. */}
+            {!activeRegion && !departing && (
+                <TodayStrip calendar={calendar} onOpen={openFromOverview} />
+            )}
 
             <BrainNavPanel
                 activeRegionId={activeRegionId}
@@ -903,6 +1016,25 @@ export default function BrainScene3D({ onOpenLaboratory, arriving = false, calen
                 camera closes on the Moon. It's what hides the seam: the
                 Laboratory takes over behind a white screen rather than
                 cutting in over a starfield. */}
+            {calendarOpen && (
+                <CalendarPanel
+                    onClose={() => setCalendarOpen(false)}
+                    events={calendar.events}
+                    onAddEvent={calendar.addEvent}
+                    onRemoveEvent={calendar.removeEvent}
+                />
+            )}
+
+            {notificationsOpen && (
+                <NotificationsPanel
+                    onClose={() => setNotificationsOpen(false)}
+                    notifications={notifications.notifications}
+                    onMarkRead={notifications.markRead}
+                    onMarkAllRead={notifications.markAllRead}
+                    onRemove={notifications.removeNotification}
+                />
+            )}
+
             {departing && <div className="brain-departure-glare" aria-hidden="true" />}
 
             {/* The same glare on the way in, clearing as the camera

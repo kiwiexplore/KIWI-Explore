@@ -5,5 +5,9 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
+    "imapflow": "^1.7.1"
   }
 }

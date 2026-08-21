@@ -26,20 +26,11 @@
 // two sources are simply missing and the other two still fill the
 // module: nothing here waits on it.
 
-export interface LiberecStory {
-    id: string;
-    title: string;
-    url: string;
-    /** The feed's own perex — a real paragraph, not a truncated title. */
-    summary: string;
-    /** Lead photo, where the source publishes one. */
-    image: string | null;
-    /** Who ran it, so a merged list still says where each item is from. */
-    source: string;
-    /** The source's own section for the story, where it has one. */
-    category: string;
-    publishedAt: string;
-}
+export type LiberecStory = FeedStory;
+
+import {
+    dedupeByTitle, fetchRssFeed, newestFirst, settleFeeds, type FeedStory,
+} from "./rssFeed";
 
 const IDNES_FEED = "https://servis.idnes.cz/rss.aspx?c=liberec";
 const CRO_FEED = "https://liberec.rozhlas.cz/rss.xml";
@@ -47,6 +38,7 @@ const CRO_FEED = "https://liberec.rozhlas.cz/rss.xml";
 // vite.config.ts); set VITE_FEED_SERVICE to point at it once it's
 // deployed somewhere of its own.
 const SERVICE_URL = `${import.meta.env.VITE_FEED_SERVICE ?? ""}/api/liberec`;
+const BRIEF_URL = `${SERVICE_URL}/brief`;
 
 /**
  * Football, out (per explicit request).
@@ -63,50 +55,6 @@ function isFootball(story: { title: string; summary: string; category: string })
     return FOOTBALL.test(`${story.title} ${story.summary} ${story.category}`);
 }
 
-// Headlines in these feeds carry hard line breaks where the front page
-// would break the line — that's layout, not text.
-function tidy(text: string | null | undefined): string {
-    return (text ?? "").replace(/\s+/g, " ").trim();
-}
-
-// iDNES links end in a tracking fragment. It does nothing for a reader
-// and follows them to the article, so it comes off.
-function cleanLink(url: string): string {
-    const hash = url.indexOf("#utm_source");
-    return hash === -1 ? url : url.slice(0, hash);
-}
-
-function parseFeed(xml: string, source: string): LiberecStory[] {
-    const doc = new DOMParser().parseFromString(xml, "text/xml");
-    // A parse failure shows up as a <parsererror> node rather than as a
-    // thrown error — an unchecked one would quietly render an empty list.
-    if (doc.querySelector("parsererror")) throw new Error(`${source} feed could not be parsed`);
-
-    return [...doc.querySelectorAll("item")].map((item, index) => {
-        // media:content is namespaced, and querySelector can't match a
-        // prefixed name — the local name is what's available here.
-        const media = [...item.children].find((child) => child.localName === "content");
-        const enclosure = item.querySelector("enclosure");
-
-        return {
-            id: tidy(item.querySelector("guid")?.textContent) || `${source}-${index}`,
-            title: tidy(item.querySelector("title")?.textContent),
-            url: cleanLink(tidy(item.querySelector("link")?.textContent)),
-            summary: tidy(item.querySelector("description")?.textContent),
-            image: media?.getAttribute("url") ?? enclosure?.getAttribute("url") ?? null,
-            source,
-            category: tidy(item.querySelector("category")?.textContent),
-            publishedAt: tidy(item.querySelector("pubDate")?.textContent),
-        };
-    });
-}
-
-async function fetchFeed(url: string, source: string): Promise<LiberecStory[]> {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${source} feed request failed: ${res.status}`);
-    return parseFeed(await res.text(), source);
-}
-
 /** Whatever KIWI's own service can reach that this page can't. */
 async function fetchFromService(): Promise<LiberecStory[]> {
     const res = await fetch(SERVICE_URL);
@@ -115,11 +63,29 @@ async function fetchFromService(): Promise<LiberecStory[]> {
     return data.stories ?? [];
 }
 
-// The same event covered by both sources should appear once. Compared
-// on the headline with punctuation and case thrown away, which is as
-// far as this can go without the feeds sharing any id.
-function titleKey(title: string): string {
-    return title.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim();
+export interface LiberecBrief {
+    /** False when the service has no Anthropic API key set. */
+    configured: boolean;
+    /** The digest itself — a short paragraph, or "" when there is none. */
+    brief: string;
+    sources: string[];
+    generatedAt: string | null;
+}
+
+/**
+ * The day in a paragraph, written by Claude from every source at once —
+ * including the two this page reads for itself, since a digest that saw
+ * half the news would be a worse one.
+ *
+ * Only the service can do this: the key belongs on a server, and a key
+ * shipped to a browser is a key given away. Without one it answers
+ * `configured: false` and the module simply shows the list, which is
+ * what it did before the digest existed.
+ */
+export async function fetchLiberecBrief(): Promise<LiberecBrief> {
+    const res = await fetch(BRIEF_URL);
+    if (!res.ok) throw new Error(`brief request failed: ${res.status}`);
+    return await res.json() as LiberecBrief;
 }
 
 /**
@@ -130,22 +96,13 @@ function titleKey(title: string): string {
  * page.
  */
 export async function fetchLiberecNews(limit = 10): Promise<LiberecStory[]> {
-    const settle = (promise: Promise<LiberecStory[]>) => promise.catch((): LiberecStory[] => []);
     const [idnes, cro, service] = await Promise.all([
-        settle(fetchFeed(IDNES_FEED, "iDNES.cz")),
-        settle(fetchFeed(CRO_FEED, "ČRo Liberec")),
-        settle(fetchFromService()),
+        settleFeeds(fetchRssFeed(IDNES_FEED, "iDNES.cz")),
+        settleFeeds(fetchRssFeed(CRO_FEED, "ČRo Liberec")),
+        settleFeeds(fetchFromService()),
     ]);
 
-    const seen = new Set<string>();
-    return [...idnes, ...cro, ...service]
-        .filter((story) => story.title && !isFootball(story))
-        .filter((story) => {
-            const key = titleKey(story.title);
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        })
-        .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    return newestFirst(dedupeByTitle([...idnes, ...cro, ...service]
+        .filter((story) => story.title && !isFootball(story))))
         .slice(0, limit);
 }

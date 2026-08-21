@@ -5,6 +5,10 @@
    narrow middle column. */
 .brain-scene {
 
+    /* The scene handles its own dragging; without this a touch drag is
+       taken by the browser as a scroll before it ever reaches us. */
+    touch-action: none;
+
     position: relative;
 
     width: 100vw;

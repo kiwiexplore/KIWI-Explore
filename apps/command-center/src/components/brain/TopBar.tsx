@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
-import { Info, Orbit, Satellite } from "lucide-react";
-import ActivitySummary from "./ActivitySummary";
+import { Bell, CalendarDays, Info, Orbit, Satellite } from "lucide-react";
+import MarketTicker from "./MarketTicker";
+import MailButton from "../ui/MailButton";
 import SpotifyPlayerWidget from "../ui/SpotifyPlayerWidget";
 import type { SpotifyState } from "../../state/spotify";
 import "./TopBar.css";
@@ -8,14 +9,21 @@ import "./TopBar.css";
 interface TopBarProps {
     onInfoClick?: (event: MouseEvent<HTMLElement>) => void;
     onLaboratoryClick?: () => void;
+    onCalendarClick?: () => void;
+    onNotificationsClick?: () => void;
+    /** Opens the Communication module in the brain. */
+    onOpenMail?: () => void;
+    unreadNotificationCount?: number;
     spotify: SpotifyState;
 }
 
 /**
- * Header row above the brain scene — brand mark (left), the "while you
- * were away" activity summary (center, moved here from above the brain
- * per explicit request), and a small tools pill on the right (music,
- * Laboratory, Info). The "System Online" status dot/label that used to
+ * Header row above the brain scene — brand mark (left), the markets
+ * ticker (center, running from the brand across to the tools and
+ * opening downward when clicked — see MarketTicker), and a small tools
+ * pill on the right (music, Laboratory, Info). The ticker replaced a
+ * hardcoded "no new activity while you were away" line that had
+ * nothing behind it. The "System Online" status dot/label that used to
  * lead that pill is gone, also per explicit request. The "Hey Kiwi"
  * voice bar used to live centered here too; it's now along the bottom
  * of the scene instead (see BrainScene3D).
@@ -38,7 +46,10 @@ interface TopBarProps {
  * scene (About/Terms/Privacy/Updates — see InfoPanel), anchored at its
  * own position.
  */
-export default function TopBar({ onInfoClick, onLaboratoryClick, spotify }: TopBarProps) {
+export default function TopBar({
+    onInfoClick, onLaboratoryClick, onCalendarClick, onNotificationsClick, onOpenMail,
+    unreadNotificationCount = 0, spotify,
+}: TopBarProps) {
     return (
         <header className="top-bar">
             <div className="top-bar-brand">
@@ -48,12 +59,34 @@ export default function TopBar({ onInfoClick, onLaboratoryClick, spotify }: TopB
                 </span>
             </div>
 
+            {/* Markets, filling the gap between the brand and the
+                tools — the slot the hardcoded activity line used to
+                sit in, now carrying something that changes. */}
             <div className="top-bar-center">
-                <ActivitySummary />
+                <MarketTicker />
             </div>
 
             <div className="top-bar-status">
                 <SpotifyPlayerWidget spotify={spotify} />
+                {/* The same two the Laboratory's bar carries, over the
+                    same state (see App.tsx) — the dashboard shouldn't
+                    be the place where you can't see what's coming up. */}
+                <MailButton
+                    className="top-bar-icon-btn"
+                    badgeClassName="top-bar-badge"
+                    onOpenFull={onOpenMail}
+                />
+                <button type="button" className="top-bar-icon-btn" aria-label="Calendar" onClick={onCalendarClick}>
+                    <CalendarDays size={18} strokeWidth={1.75} />
+                    <span className="top-bar-tooltip">Calendar</span>
+                </button>
+                <button type="button" className="top-bar-icon-btn" aria-label="Notifications" onClick={onNotificationsClick}>
+                    <Bell size={18} strokeWidth={1.75} />
+                    {unreadNotificationCount > 0 && (
+                        <span className="top-bar-badge">{unreadNotificationCount}</span>
+                    )}
+                    <span className="top-bar-tooltip">Notifications</span>
+                </button>
                 <button type="button" className="top-bar-icon-btn" aria-label="Laboratory" onClick={onLaboratoryClick}>
                     <Satellite size={18} strokeWidth={1.75} />
                     <span className="top-bar-tooltip">Laboratory</span>

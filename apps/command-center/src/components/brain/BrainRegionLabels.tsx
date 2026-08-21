@@ -31,9 +31,10 @@ interface RegionLabelProps {
     hovered: boolean;
     onSelect: (regionId: string) => void;
     onHover: (regionId: string | null) => void;
+    wasDragged: () => boolean;
 }
 
-function RegionLabel({ region, hovered, onSelect, onHover }: RegionLabelProps) {
+function RegionLabel({ region, hovered, onSelect, onHover, wasDragged }: RegionLabelProps) {
     const groupRef = useRef<Group>(null);
     const front = useRef(true);
     // Mirrored into state only to mount/unmount the DOM label — a drei
@@ -85,13 +86,12 @@ function RegionLabel({ region, hovered, onSelect, onHover }: RegionLabelProps) {
                     <button
                         type="button"
                         className={`region-label${hovered ? " region-label-hovered" : ""}`}
-                        // Stops here rather than falling through to the
-                        // brain's hit sphere behind it, which would
-                        // resolve the click by direction and could well
-                        // land somewhere else.
-                        onPointerDown={(event) => event.stopPropagation()}
+                        // The press passes through so a drag that starts
+                        // on a label still turns the view; only the click
+                        // stops here, and only when it WAS a click.
                         onClick={(event) => {
                             event.stopPropagation();
+                            if (wasDragged()) return;
                             onSelect(region.id);
                         }}
                         onMouseEnter={() => onHover(region.id)}
@@ -111,6 +111,7 @@ interface BrainRegionLabelsProps {
     hoverRegionId: string | null;
     onSelect: (regionId: string) => void;
     onHover: (regionId: string | null) => void;
+    wasDragged: () => boolean;
 }
 
 /**
@@ -135,7 +136,7 @@ interface BrainRegionLabelsProps {
  * children by BrainScene3D), which keeps each label glued to its own
  * anatomical spot through every rotation.
  */
-export default function BrainRegionLabels({ activeRegionId, hoverRegionId, onSelect, onHover }: BrainRegionLabelsProps) {
+export default function BrainRegionLabels({ activeRegionId, hoverRegionId, onSelect, onHover, wasDragged }: BrainRegionLabelsProps) {
     return (
         <group>
             {brainRegions.map((region) => (
@@ -152,6 +153,7 @@ export default function BrainRegionLabels({ activeRegionId, hoverRegionId, onSel
                         hovered={region.id === hoverRegionId}
                         onSelect={onSelect}
                         onHover={onHover}
+                        wasDragged={wasDragged}
                     />
                 )
             ))}

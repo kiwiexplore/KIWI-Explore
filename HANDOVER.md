@@ -30,14 +30,17 @@ Continue developing KIWI Explore without breaking the architecture.
 
 Current sprint:
 
-Sprint 003
+Sprint 084
 
 Current priorities:
 
-- UI Framework
-- Widget System
-- Command System
-- Global State
+- The brain as the whole interface (regions, modules, one story in full)
+- Live data behind every region that can have it
+- feed-service: the small server for what a browser may not fetch
+
+Note: the widget system and the command bar described in older entries
+are gone — the brain replaced them. See ARCHITECTURE.md for what the
+code actually looks like now.
 
 Future priorities:
 

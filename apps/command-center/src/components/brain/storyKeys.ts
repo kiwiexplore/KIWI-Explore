@@ -12,6 +12,7 @@
  * alone: those are only unique within one API, and two of them meeting
  * on the same number would send the camera to the wrong wall.
  */
+export const financeStoryKey = (id: string) => `finance:${id}`;
 export const liberecStoryKey = (id: string) => `news:liberec:${id}`;
 export const worldStoryKey = (id: string) => `news:world:${id}`;
 export const techStoryKey = (id: number) => `news:tech:${id}`;

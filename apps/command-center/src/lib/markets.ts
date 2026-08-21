@@ -59,7 +59,16 @@ export interface ExchangeRates {
 }
 
 /** ECB reference rates, published once a working day. */
-export async function fetchRates(base = "EUR", symbols = ["USD", "CZK", "GBP", "JPY"]): Promise<ExchangeRates> {
+export async function fetchRates(
+    // Against the dollar, per explicit request: it's what most of the
+    // prices on this panel are quoted in, so the rates sit in the same
+    // frame of reference as everything beside them.
+    base = "USD",
+    // Four, per explicit request. The converter beside this list still
+    // reaches every currency the ECB publishes (see lib/currencies) —
+    // this is the short list worth having on screen, not the limit.
+    symbols = ["CZK", "EUR", "AUD", "GBP"],
+): Promise<ExchangeRates> {
     const res = await fetch(`https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${symbols.join(",")}`);
     if (!res.ok) throw new Error(`Frankfurter request failed: ${res.status}`);
 

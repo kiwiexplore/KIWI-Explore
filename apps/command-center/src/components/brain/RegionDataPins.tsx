@@ -2,8 +2,7 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { Vector3, type Group } from "three";
-import { regionPins } from "./regionPins";
-import type { RegionFact } from "./regionContent/regionFacts";
+import { namedNodes, type TopicNode } from "./topicTree";
 import type { BrainRegionDefinition } from "../../state/brainRegions";
 import "./RegionDataPins.css";
 
@@ -20,23 +19,31 @@ const toPin = new Vector3();
 interface RegionDataPinsProps {
     /** The open region, or null for the whole-brain view (no pins). */
     region: BrainRegionDefinition | null;
-    facts: RegionFact[];
+    /** Everything the region holds, at every level — see topicTree. */
+    nodes: TopicNode[];
+    /** Null at the region's own level; a module id once one is open. */
+    openModuleId: string | null;
+    /** Opens what the pin stands for: a topic, or one story inside it. */
+    onOpenNode: (node: TopicNode) => void;
     /**
-     * Opens what the pin is about: its module in the region panel, and
-     * — for a pin that stands for one story rather than for a module as
-     * a whole — that story's own page inside it.
+     * Whether the pointer moved between press and release. A drag that
+     * happens to finish over a pin was someone turning the view, not
+     * choosing a story — see the click handler.
      */
-    onOpenFact: (fact: RegionFact) => void;
+    wasDragged: () => boolean;
 }
 
 /**
  * The open region's own information, pinned onto its own neurons.
  *
- * Each pin is a real fact from that area's live data (see regionFacts)
- * sitting on a real neuron of that region, and each one is a button:
- * clicking it opens the module that fact came from in the region panel,
- * so a headline on the wall takes you straight to the news list rather
- * than being scenery.
+ * Each pin sits on the particle it names (see topicTree) and each one
+ * is a button: clicking a topic opens it, clicking a headline opens
+ * that story — so what's written on the wall takes you straight there
+ * rather than being scenery.
+ *
+ * Only ONE level is named at a time. The particles for everything else
+ * are still there (TopicParticles draws them); they simply aren't
+ * shouting.
  *
  * An earlier version had these labels flying along the connections. They
  * were replaced with fixed pins per explicit request — moving text is
@@ -49,12 +56,13 @@ interface RegionDataPinsProps {
  * unmounted around it: its useFrame is what hides pins that end up
  * behind the camera, and that has to be subscribed from the start.
  */
-export default function RegionDataPins({ region, facts, onOpenFact }: RegionDataPinsProps) {
-    // Each fact is pinned at ITS OWN module's spot in the region, which
-    // is the same spot the camera turns to when it's opened — see
-    // regionPins, which is shared with the camera for exactly that
-    // reason.
-    const pins = useMemo(() => regionPins(region, facts), [region, facts]);
+export default function RegionDataPins({ region, nodes, openModuleId, onOpenNode, wasDragged }: RegionDataPinsProps) {
+    // ONE level at a time: the region's topics until you open one, then
+    // that topic's stories (see namedNodes). Every particle stays in
+    // place either way — TopicParticles draws all of them — but naming
+    // them all at once put thirty labels over one wall, which is the
+    // thing this now doesn't do.
+    const pins = useMemo(() => namedNodes(nodes, openModuleId), [nodes, openModuleId]);
     const groupRefs = useRef<(Group | null)[]>([]);
     const pinRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -79,28 +87,33 @@ export default function RegionDataPins({ region, facts, onOpenFact }: RegionData
 
     return (
         <group>
-            {pins.map(({ fact, position }, index) => {
+            {pins.map((node, index) => {
+                const { position } = node;
                 return (
-                    <group key={index} position={position} ref={(node) => { groupRefs.current[index] = node; }}>
+                    <group key={node.id} position={position} ref={(group) => { groupRefs.current[index] = group; }}>
                         <Html center zIndexRange={[2, 0]}>
                             <button
                                 type="button"
                                 ref={(node) => { pinRefs.current[index] = node; }}
                                 className="region-pin"
                                 style={{ borderColor: region.color, color: region.color }}
-                                // Both handlers stop here: without this the
-                                // press also reaches the brain's own hit
-                                // sphere behind the label, which resolves it
-                                // to whatever region lies that way and throws
-                                // you out of the one you're reading.
-                                onPointerDown={(event) => event.stopPropagation()}
+                                // The press deliberately does NOT stop here.
+                                // It used to, and that quietly broke turning
+                                // the view: a drag beginning over a pin never
+                                // reached the scene's own handler, so the
+                                // scene sat still and then opened whatever
+                                // the finger happened to come up on. With
+                                // twenty pins on a wall that's most of the
+                                // screen. The press goes through; the CLICK
+                                // is what's guarded.
                                 onClick={(event) => {
                                     event.stopPropagation();
-                                    onOpenFact(fact);
+                                    if (wasDragged()) return;
+                                    onOpenNode(node);
                                 }}
                             >
                                 <span className="region-pin-dot" style={{ background: region.color }} />
-                                <span className="region-pin-text">{fact.text}</span>
+                                <span className="region-pin-text">{node.label}</span>
                             </button>
                         </Html>
                     </group>

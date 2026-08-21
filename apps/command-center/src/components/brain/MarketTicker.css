@@ -1,0 +1,703 @@
+/* Holds the ticker and the panel that drops out of it, so the panel can
+   be positioned against the TICKER rather than against the window — it
+   used to be pinned to the viewport and slid sideways relative to the
+   line it belongs to. */
+.market-ticker-shell {
+
+    position: relative;
+
+    display: flex;
+    flex: 1;
+    min-width: 0;
+
+}
+
+/* The markets line, filling the bar between the brand and the tools.
+   Styled to match the tools pill beside it so the two read as one strip
+   running to the edge of the screen. */
+.market-ticker {
+
+    display: flex;
+    flex: 1;
+    align-items: center;
+    /* Packed to the LEFT. It used to be pushed right, which meant the
+       row started somewhere different depending on how many
+       instruments had loaded — a gap that opened and closed on its own
+       as the data arrived. */
+    justify-content: flex-start;
+    gap: 0;
+    min-width: 0;
+
+    padding: 7px 14px;
+
+    background: rgba(5, 8, 22, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text);
+    font-family: inherit;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.market-ticker:hover,
+.market-ticker-open {
+
+    background: rgba(10, 16, 36, 0.8);
+    border-color: rgba(255, 255, 255, 0.24);
+
+}
+
+/* Each quote leads to that instrument's own page. */
+.ticker-quote {
+
+    /* Never shrinks. Showing one quote fewer is always better than
+       showing them all with their names squeezed away. */
+    flex: 0 0 auto;
+
+    color: inherit;
+    text-decoration: none;
+
+    border-radius: 8px;
+
+}
+
+.ticker-quote:hover {
+
+    background: rgba(255, 255, 255, .07);
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, .07);
+
+}
+
+/* The one control left on the row, held at its right end. */
+.ticker-toggle {
+
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+
+    margin-left: auto;
+    padding: 4px;
+
+    background: none;
+    border: 0;
+
+    cursor: pointer;
+
+}
+
+.market-ticker-quiet {
+
+    justify-content: center;
+
+    color: var(--text-muted);
+    font-size: 11.5px;
+
+    cursor: default;
+
+}
+
+/* One instrument: name, number, its line, its move. */
+.ticker-quote {
+
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+
+    padding: 0 14px;
+
+    /* Each set slides in rather than blinking — the row is rotating,
+       and a cut reads as a glitch. */
+    animation: ticker-in .45s ease;
+
+}
+
+/* A rule between instruments, so a row of numbers reads as separate
+   readings rather than as one run-on line. */
+.ticker-quote + .ticker-quote {
+
+    border-left: 1px solid var(--border);
+
+}
+
+@keyframes ticker-in {
+
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+
+}
+
+.ticker-label {
+
+    max-width: 116px;
+
+    /* Brighter than the muted ink it used to wear: it names the chart
+       beside it, so it's the one thing on the row that must survive. */
+    color: #cdd8e8;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.ticker-value {
+
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    white-space: nowrap;
+
+}
+
+.ticker-line {
+
+    display: block;
+    width: 42px;
+
+}
+
+.ticker-change {
+
+    font-size: 10.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    white-space: nowrap;
+
+}
+
+.ticker-chevron {
+
+    flex: 0 0 auto;
+
+    color: var(--text-muted);
+    transition: var(--transition);
+
+}
+
+.market-ticker-open .ticker-toggle .ticker-chevron {
+
+    transform: rotate(180deg);
+
+}
+
+/* Everything at once, dropped down from the bar. */
+.market-scrim {
+
+    position: fixed;
+    inset: 0;
+    z-index: 18;
+
+}
+
+.market-panel {
+
+    /* Exactly under the ticker, edge to edge with it. */
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    left: 0;
+    z-index: 19;
+
+    /* A grid of two reading columns, with the full-width pieces below
+       it. Column flow was tried first and packs worse here, not
+       better: the heatmap and the currencies span every column, and a
+       spanning element makes the flow balance above it — which left a
+       hole under the shorter group rather than filling it. Stacking
+       the short groups by hand (see .market-stack) is what actually
+       closes that gap. */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px;
+    align-content: start;
+
+    max-height: calc(100vh - 120px);
+    padding: 18px 20px;
+
+    background: rgba(6, 10, 24, 0.93);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .55);
+
+    overflow-y: auto;
+
+    animation: market-panel-in .22s ease;
+
+}
+
+@keyframes market-panel-in {
+
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: none; }
+
+}
+
+.market-group-title {
+
+    margin: 0 0 8px;
+
+    color: #49C7FF;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+}
+
+.market-note {
+
+    margin: 0 0 8px;
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    line-height: 1.45;
+
+}
+
+.market-rows {
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+
+}
+
+.market-row {
+
+    color: inherit;
+    text-decoration: none;
+
+    transition: var(--transition);
+
+    display: grid;
+    grid-template-columns: minmax(52px, auto) minmax(58px, auto) 1fr auto;
+    align-items: center;
+    gap: 10px;
+
+    padding: 7px 10px;
+
+    background: rgba(255, 255, 255, .03);
+    border-radius: 10px;
+
+    font-size: 12px;
+
+}
+
+.market-row:hover {
+
+    background: rgba(255, 255, 255, .07);
+
+}
+
+.market-row-label {
+
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+
+    white-space: nowrap;
+
+}
+
+.market-row-value {
+
+    font-variant-numeric: tabular-nums;
+
+}
+
+.market-row-line {
+
+    display: block;
+    min-width: 0;
+
+}
+
+.market-row-change {
+
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    text-align: right;
+
+}
+
+/* Below this the bar has no room for a ticker and the brand is what
+   matters — it drops out rather than squeezing the title. */
+@media (max-width: 900px) {
+
+    .market-ticker {
+        display: none;
+    }
+
+}
+
+/* How far each market moved — see MarketChange. Two columns of bars
+   across the full width: one column left half the row empty. */
+.market-change-list {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 4px 16px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+
+}
+
+.market-change-row {
+
+    display: grid;
+    grid-template-columns: minmax(74px, auto) 1fr auto;
+    align-items: center;
+    gap: 10px;
+
+    padding: 6px 10px;
+
+    border-radius: 9px;
+
+    color: inherit;
+    font-size: 11.5px;
+    text-decoration: none;
+
+    transition: var(--transition);
+
+}
+
+.market-change-row:hover {
+
+    background: rgba(255, 255, 255, .07);
+
+}
+
+.market-change-label {
+
+    color: var(--text-muted);
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.market-change-track {
+
+    position: relative;
+
+    display: block;
+    height: 10px;
+    min-width: 60px;
+
+}
+
+/* Zero, drawn once down the middle, so every bar is measured from the
+   same place. */
+.market-change-axis {
+
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+
+    width: 1px;
+
+    background: rgba(255, 255, 255, .18);
+
+}
+
+.market-change-bar {
+
+    position: absolute;
+    top: 2px;
+
+    height: 6px;
+
+    border-radius: 3px;
+
+}
+
+.market-change-figure {
+
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+
+    text-align: right;
+
+}
+
+/* The board at a glance — see MarketHeatmap. */
+
+.market-heat-grid {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 4px;
+
+}
+
+.market-heat-cell {
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    justify-content: center;
+
+    min-height: 46px;
+    padding: 7px 8px;
+
+    border-radius: 8px;
+
+    /* White throughout: every step of the scale is dark enough to carry
+       it, which is what lets the figure sit on the colour. */
+    color: #fff;
+    text-decoration: none;
+
+    transition: var(--transition);
+
+}
+
+.market-heat-cell:hover {
+
+    outline: 1px solid rgba(255, 255, 255, .45);
+
+}
+
+.market-heat-label {
+
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .3px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    opacity: .85;
+
+}
+
+.market-heat-figure {
+
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+
+}
+
+/* The ones that run the full width instead of sitting in a column. */
+.market-spans,
+.market-heatmap,
+.market-change,
+.market-currencies {
+
+    grid-column: 1 / -1;
+
+}
+
+/* The span switch, across the top of the panel. */
+.market-spans {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+}
+
+.market-span {
+
+    padding: 5px 12px;
+
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.market-span:hover {
+
+    color: var(--text);
+    border-color: rgba(255, 255, 255, .3);
+
+}
+
+.market-span-on {
+
+    background: rgba(73, 199, 255, .16);
+    border-color: rgba(73, 199, 255, .5);
+
+    color: var(--text);
+
+}
+
+.market-span-note {
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+
+}
+
+/* Rates and the converter, side by side across the bottom. */
+.market-currencies {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    align-items: start;
+
+}
+
+/* ---- The converter -------------------------------------------------
+   It had no styles at all: its markup shipped with the panel and every
+   class in it was undefined, so it rendered as bare controls with no
+   frame — which is exactly what it looked like. The global
+   `appearance: none` on selects (added so their text isn't black on a
+   dark interface) also strips their arrow, so that gets drawn here. */
+.currency-converter {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding: 12px 13px;
+
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+
+}
+
+.converter-row {
+
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 6px;
+
+}
+
+.converter-amount,
+.converter-pick {
+
+    padding: 7px 9px;
+
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+
+}
+
+.converter-amount:focus,
+.converter-pick:focus {
+
+    border-color: #49C7FF;
+    outline: none;
+
+}
+
+.converter-pick {
+
+    /* The arrow the platform would have drawn, drawn back on. */
+    padding-right: 22px;
+
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+        linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position:
+        calc(100% - 12px) calc(50% + 1px),
+        calc(100% - 8px) calc(50% + 1px);
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+
+    font-weight: 600;
+
+}
+
+.converter-swap {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 7px;
+
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    color: var(--text-muted);
+
+    cursor: pointer;
+    transition: var(--transition);
+
+}
+
+.converter-swap:hover {
+
+    border-color: #49C7FF;
+    color: var(--text);
+
+}
+
+.converter-result {
+
+    margin: 0;
+
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+
+}
+
+.converter-detail {
+
+    margin: 0;
+
+    color: var(--text-muted);
+    font-size: 11px;
+
+}
+
+.converter-note {
+
+    margin: 0;
+
+    color: var(--text-muted);
+    font-size: 10.5px;
+    line-height: 1.45;
+
+}

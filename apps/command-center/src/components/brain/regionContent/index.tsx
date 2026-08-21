@@ -5,6 +5,9 @@ import {
 } from "./LiveModules";
 import { CalendarModule, ProjectsModule, DocumentsModule, ResearchModule } from "./WorkspaceModules";
 import { SocialModule } from "./SocialModule";
+import { SystemsModule } from "./SystemsModule";
+import { HealthModule, LearningModule } from "./PersonalModules";
+import { CommunicationModule } from "./MailModule";
 import type { ModuleViewMode, RegionContentContext } from "./types";
 
 export type { ModuleViewProps, ModuleViewMode, RegionContentContext } from "./types";
@@ -25,8 +28,8 @@ interface ModuleContentProps {
  * in moduleCatalog.ts — same list, kept in a separate file for fast
  * refresh's sake (see its own comment).
  *
- * A module missing from this switch has no data behind it yet (Learning,
- * Communication, Travel, Health, Systems): the
+ * A module missing from this switch has no data behind it yet (Travel,
+ * which needs a paid API): the
  * panel says so plainly rather than inventing a number. That's why this
  * is a switch with holes in it instead of a field on every module — the
  * honest empty state is the default, and a module joins the list the day
@@ -56,6 +59,10 @@ export function ModuleContent({ moduleId, mode, context }: ModuleContentProps): 
         case "documents": return <DocumentsModule mode={mode} context={context} />;
         case "research": return <ResearchModule mode={mode} context={context} />;
         case "social": return <SocialModule mode={mode} context={context} />;
+        case "systems": return <SystemsModule mode={mode} context={context} />;
+        case "learning": return <LearningModule mode={mode} context={context} />;
+        case "health": return <HealthModule mode={mode} context={context} />;
+        case "communication": return <CommunicationModule mode={mode} context={context} />;
         default: return null;
     }
 }
