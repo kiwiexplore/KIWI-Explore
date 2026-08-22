@@ -21,7 +21,7 @@ import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import ContentHubBoard from "./ContentHubBoard";
 import NotesBoard from "./NotesBoard";
 import StudioEditor from "./StudioEditor";
-import StudioStages, { type StudioStage } from "./StudioStages";
+import type { StudioStage } from "./StudioStages";
 import StudioProjects from "./StudioProjects";
 import StudioPublish from "./StudioPublish";
 import VideoStudioBoard from "./VideoStudioBoard";
@@ -260,9 +260,10 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 onOpenNotifications={openNotifications}
                 unreadNotificationCount={notifications.unreadCount}
                 videoCount={videoStudio.projects.length}
-                inProgressCount={videoStudio.projects.filter((p) => p.stage !== "published").length}
                 publishedCount={videoStudio.projects.filter((p) => p.stage === "published").length}
-                failedCount={videoStudio.projects.filter((p) => p.transcriptStatus === "failed").length}
+                stage={effectiveStage}
+                hasVideo={studioVideo !== null}
+                onGoToStage={goToStage}
                 spotify={spotify}
             />
 
@@ -408,8 +409,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
 
                         {section === "guide" && (
                             <>
-                                <StudioStages active={effectiveStage} project={studioVideo} onGo={goToStage} />
-                                {effectiveStage === "projects" && <StudioProjects videoStudio={videoStudio} onOpen={openVideo} />}
+                                {effectiveStage === "projects" && <StudioProjects videoStudio={videoStudio} labNotes={labNotes} onOpen={openVideo} />}
                                 {effectiveStage === "create" && studioVideo && (
                                     <VideoStudioBoard
                                         videoStudio={videoStudio}

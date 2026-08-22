@@ -81,6 +81,8 @@ videoRouter.get("/:id", (req, res) => {
 const createBodySchema = z.object({
     title: z.string().trim().min(1).max(200),
     sourceContentId: z.number().int().nullable().optional(),
+    /** The idea or trend this video came out of, set at birth. */
+    sourceNoteId: z.number().int().nullable().optional(),
 });
 
 videoRouter.post("/", (req, res) => {
@@ -97,7 +99,19 @@ videoRouter.post("/", (req, res) => {
         res.status(400).json({ error: "No content item with that id to link as the source." });
         return;
     }
-    res.json({ project: withRelations(insertVideoProject(title, sourceContentId ?? null)) });
+    const { sourceNoteId } = parsed.data;
+    if (sourceNoteId != null && !getLabNote(sourceNoteId)) {
+        res.status(400).json({ error: "No note with that id to link as the source." });
+        return;
+    }
+    const created = insertVideoProject(title, sourceContentId ?? null);
+    // Set straight after insert rather than threading another argument
+    // through: the column is optional and this is the only caller that
+    // ever fills it at creation.
+    const project = sourceNoteId != null
+        ? updateVideoProject(created.id, { sourceNoteId })
+        : created;
+    res.json({ project: withRelations(project ?? created) });
 });
 
 const updateBodySchema = z.object({

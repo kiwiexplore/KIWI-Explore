@@ -33,8 +33,11 @@
     align-items: center;
     gap: 0;
 
-    flex: 1;
+    /* Shrinks before the stages do — the navigation is worth more bar
+       than the wordmark is. */
+    flex: 1 1 auto;
     min-width: 0;
+    overflow: hidden;
 
 }
 

@@ -1,7 +1,7 @@
 import { ArrowLeft, Bell, Calendar, Search } from "lucide-react";
 import MailButton from "../ui/MailButton";
 import KiwiCoreBadge from "./KiwiCoreBadge";
-import LaboratoryStats from "./LaboratoryStats";
+import StudioStages, { type StudioStage } from "./StudioStages";
 import SpotifyPlayerWidget from "../ui/SpotifyPlayerWidget";
 import type { SpotifyState } from "../../state/spotify";
 import "./LaboratoryTopBar.css";
@@ -14,9 +14,11 @@ interface LaboratoryTopBarProps {
     onOpenNotifications?: () => void;
     unreadNotificationCount?: number;
     videoCount: number;
-    inProgressCount: number;
     publishedCount: number;
-    failedCount: number;
+    /** The studio's own navigation, which lives in this bar. */
+    stage: StudioStage;
+    hasVideo: boolean;
+    onGoToStage: (stage: StudioStage) => void;
     spotify: SpotifyState;
 }
 
@@ -29,7 +31,7 @@ interface LaboratoryTopBarProps {
  * sit to its right. The center used to have Projects/Research/Notes
  * nav tabs, but those just duplicated the left sidebar's own items
  * with nothing extra to offer — per explicit feedback, replaced with
- * LaboratoryStats (an at-a-glance summary) instead. Search, Calendar,
+ * the studio's own stages instead — see StudioStages. Search, Calendar,
  * and Notifications sit next to the profile pill; Search opens a
  * quick cross-section lookup (LaboratorySearch), Calendar opens
  * CalendarPanel, Notifications opens NotificationsPanel — all owned by
@@ -48,7 +50,7 @@ interface LaboratoryTopBarProps {
  */
 export default function LaboratoryTopBar({
     onBack, listening, onOpenSearch, onOpenCalendar, onOpenNotifications, unreadNotificationCount = 0,
-    videoCount, inProgressCount, publishedCount, failedCount, spotify,
+    videoCount, publishedCount, stage, hasVideo, onGoToStage, spotify,
 }: LaboratoryTopBarProps) {
     return (
         <header className="lab-topbar">
@@ -67,11 +69,12 @@ export default function LaboratoryTopBar({
                 </span>
             </div>
 
-            <LaboratoryStats
+            <StudioStages
+                active={stage}
+                hasVideo={hasVideo}
                 videoCount={videoCount}
-                inProgressCount={inProgressCount}
                 publishedCount={publishedCount}
-                failedCount={failedCount}
+                onGo={onGoToStage}
             />
 
             <div className="lab-topbar-account">

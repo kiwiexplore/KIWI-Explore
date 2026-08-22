@@ -45,6 +45,8 @@ export interface VideoProject {
     title: string;
     stage: VideoStage;
     sourceContentId: number | null;
+    /** The idea or trend it came from, if it came from one. */
+    sourceNoteId: number | null;
     sourceVideoPath: string | null;
     transcriptPath: string | null;
     transcriptStatus: TranscriptStatus;
@@ -68,6 +70,7 @@ interface RawVideoProject {
     title: string;
     stage: VideoStage;
     source_content_id: number | null;
+    source_note_id: number | null;
     source_video_path: string | null;
     transcript_path: string | null;
     transcript_status: TranscriptStatus;
@@ -109,6 +112,7 @@ function toVideoProject(raw: RawVideoProject): VideoProject {
         title: raw.title,
         stage: raw.stage,
         sourceContentId: raw.source_content_id,
+        sourceNoteId: raw.source_note_id ?? null,
         sourceVideoPath: raw.source_video_path,
         transcriptPath: raw.transcript_path,
         transcriptStatus: raw.transcript_status,
@@ -161,9 +165,9 @@ export async function fetchVideoProjects(): Promise<VideoProject[]> {
     return ((data.projects ?? []) as RawVideoProject[]).map(toVideoProject);
 }
 
-export async function createVideoProject(title: string): Promise<VideoProject> {
+export async function createVideoProject(title: string, sourceNoteId?: number): Promise<VideoProject> {
     const res = await fetch(`${API_URL}/api/video`, {
-        method: "POST", headers: headers(), body: JSON.stringify({ title }),
+        method: "POST", headers: headers(), body: JSON.stringify({ title, sourceNoteId }),
     });
     if (!res.ok) await readError(res, "Could not create the project");
     return toVideoProject((await res.json()).project);

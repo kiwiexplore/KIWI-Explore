@@ -311,7 +311,10 @@
 
 /* --- the picture ----------------------------------------------------- */
 
-.studio-stage {
+/* The picture area. Named "viewer" rather than "stage": the top bar's
+   navigation owns .studio-stage, both stylesheets are global, and the
+   collision quietly rebuilt those buttons as columns. */
+.studio-viewer {
 
     flex: 1;
     min-width: 0;

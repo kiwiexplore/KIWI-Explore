@@ -300,7 +300,7 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                 </aside>
 
                 {/* CENTER · the picture */}
-                <section className="studio-stage">
+                <section className="studio-viewer">
                     <div className="studio-preview">
                         {current ? (
                             <video

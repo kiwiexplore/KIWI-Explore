@@ -27,7 +27,7 @@ export interface VideoStudioState {
     setupNeeded: boolean;
     busy: Record<number, VideoBusyAction | undefined>;
     dismissError: () => void;
-    create: (title: string) => Promise<VideoProject | null>;
+    create: (title: string, sourceNoteId?: number) => Promise<VideoProject | null>;
     update: (id: number, changes: VideoProjectUpdate) => void;
     remove: (id: number) => void;
     draftScript: (id: number, brief: string) => void;
@@ -122,10 +122,10 @@ export function useVideoStudioState(): VideoStudioState {
         }
     }, [replaceProject, reportError, load]);
 
-    const create = async (title: string): Promise<VideoProject | null> => {
+    const create = async (title: string, sourceNoteId?: number): Promise<VideoProject | null> => {
         setError(null);
         try {
-            const project = await createVideoProject(title);
+            const project = await createVideoProject(title, sourceNoteId);
             setProjects((prev) => [project, ...prev]);
             return project;
         } catch (e) {
