@@ -47,6 +47,14 @@ export interface VideoProject {
     sourceContentId: number | null;
     /** The idea or trend it came from, if it came from one. */
     sourceNoteId: number | null;
+    /**
+     * The studio project it belongs to, or null.
+     *
+     * Null is a real state, not a gap: deleting a project deliberately
+     * keeps its videos with this cleared rather than taking a finished
+     * film down with the folder it was in.
+     */
+    projectId: number | null;
     sourceVideoPath: string | null;
     transcriptPath: string | null;
     transcriptStatus: TranscriptStatus;
@@ -73,6 +81,7 @@ interface RawVideoProject {
     stage: VideoStage;
     source_content_id: number | null;
     source_note_id: number | null;
+    project_id: number | null;
     source_video_path: string | null;
     transcript_path: string | null;
     transcript_status: TranscriptStatus;
@@ -121,6 +130,7 @@ function toVideoProject(raw: RawVideoProject): VideoProject {
         stage: raw.stage,
         sourceContentId: raw.source_content_id,
         sourceNoteId: raw.source_note_id ?? null,
+        projectId: raw.project_id ?? null,
         sourceVideoPath: raw.source_video_path,
         transcriptPath: raw.transcript_path,
         transcriptStatus: raw.transcript_status,
@@ -188,6 +198,8 @@ export interface VideoProjectUpdate {
     // null clears it; omitted means "don't touch".
     sourceVideoPath?: string | null;
     language?: string;
+    /** Which project it belongs to. null takes it out of one. */
+    projectId?: number | null;
 }
 
 export async function updateVideoProject(id: number, update: VideoProjectUpdate): Promise<VideoProject> {

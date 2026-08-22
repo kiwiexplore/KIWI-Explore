@@ -220,6 +220,17 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // state/laboratoryData.ts) with local navigation — selecting the
     // new item and switching section is UI behavior specific to this
     // component, not something the shared data hook should own.
+    /**
+     * Moves a loose video into a project.
+     *
+     * Both lists have to be re-read: the video's own row changed, and
+     * the project it moved into now has one more. Refreshing only the
+     * one you touched leaves the other saying what it said a moment ago.
+     */
+    const handleAssignVideo = (videoId: number, projectId: number) => {
+        void videoStudio.update(videoId, { projectId }).then(() => studioProjects.refresh());
+    };
+
     const handleCreateProject = () => {
         const project = createProject();
         setSelectedProjectId(project.id);
@@ -436,7 +447,12 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                                     onPublish={(id) => setPublishingVideoId(id)}
                                 />
                             ) : (
-                                <ProjectsHome projects={studioProjects} onOpen={setOpenProjectId} />
+                                <ProjectsHome
+                                    projects={studioProjects}
+                                    videos={videoStudio.projects}
+                                    onOpen={setOpenProjectId}
+                                    onAssignVideo={handleAssignVideo}
+                                />
                             )
                         )}
 

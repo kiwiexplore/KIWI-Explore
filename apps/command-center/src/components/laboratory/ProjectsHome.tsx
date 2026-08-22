@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { AlertTriangle, Check, Clapperboard, FolderKanban, Plus } from "lucide-react";
+import { AlertTriangle, Check, Clapperboard, FolderKanban, FolderInput, Plus } from "lucide-react";
 import type { StudioProjectsState } from "../../state/studioProjects";
 import type { StudioProject } from "../../lib/projectsApi";
+import type { VideoProject } from "../../lib/videoApi";
 import "./GlobalBoard.css";
 import StudioOverviewCharts from "./StudioOverviewCharts";
 import "./ProjectsHome.css";
@@ -54,9 +55,71 @@ function ProjectCard({ project, onOpen }: { project: StudioProject; onOpen: () =
     );
 }
 
+/**
+ * Videos with no project — the difference the two counts used to
+ * disagree about.
+ *
+ * They are not a bug to be counted away. A video made before projects
+ * existed is loose, and deleting a project deliberately leaves its
+ * videos behind rather than taking a finished film down with the folder
+ * it was in. What was missing was anywhere to SEE them: the rail that
+ * used to list every video is gone, so a video outside a project had no
+ * way back in and no screen it appeared on.
+ */
+function LooseVideos({ videos, projects, onAssign }: {
+    videos: VideoProject[];
+    projects: StudioProject[];
+    onAssign: (videoId: number, projectId: number) => void;
+}) {
+    return (
+        <section className="ph-loose">
+            <div className="ph-loose-head">
+                <FolderInput size={14} strokeWidth={2} />
+                <h2>Not in a project</h2>
+                <span className="ph-loose-count">{videos.length}</span>
+            </div>
+            <p className="ph-muted">
+                Made before projects existed, or left behind when one was deleted. Put each somewhere and it
+                gets a folder, a cut and a publish like everything else.
+            </p>
+            <div className="ph-loose-list">
+                {videos.map((video) => (
+                    <div key={video.id} className="ph-loose-row">
+                        <Clapperboard size={14} strokeWidth={1.75} />
+                        <span className="ph-loose-title">{video.title}</span>
+                        <span className="ph-loose-stage">{video.stage}</span>
+                        {projects.length === 0 ? (
+                            <span className="ph-muted">Make a project first.</span>
+                        ) : (
+                            <select
+                                className="ph-loose-select"
+                                value=""
+                                aria-label={`Move ${video.title} into a project`}
+                                onChange={(e) => e.target.value && onAssign(video.id, Number(e.target.value))}
+                            >
+                                <option value="">Move into…</option>
+                                {projects.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.title}</option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
 interface ProjectsHomeProps {
     projects: StudioProjectsState;
+    /**
+     * Every video in the studio, not only the ones inside a project.
+     * The tiles counted the second and the top bar counted the first,
+     * which is exactly how far apart they drifted.
+     */
+    videos: VideoProject[];
     onOpen: (id: number) => void;
+    onAssignVideo: (videoId: number, projectId: number) => void;
 }
 
 /**
@@ -66,8 +129,9 @@ interface ProjectsHomeProps {
  * the publish — lives inside it rather than in a parallel set of
  * screens reached from a rail. There is one way in, and it is here.
  */
-export default function ProjectsHome({ projects, onOpen }: ProjectsHomeProps) {
+export default function ProjectsHome({ projects, videos, onOpen, onAssignVideo }: ProjectsHomeProps) {
     const [title, setTitle] = useState("");
+    const loose = videos.filter((v) => v.projectId === null);
 
     const handleCreate = async (event: FormEvent) => {
         event.preventDefault();
@@ -108,7 +172,7 @@ export default function ProjectsHome({ projects, onOpen }: ProjectsHomeProps) {
             {/* The overview belongs on the home page rather than behind
                 a tab: it is the answer to "how is this going", which is
                 the question you open the studio with. */}
-            {!projects.loading && <StudioOverviewCharts projects={projects.projects} />}
+            {!projects.loading && <StudioOverviewCharts projects={projects.projects} videos={videos} />}
 
             {projects.loading ? (
                 <p className="ph-muted">Loading…</p>
@@ -123,6 +187,10 @@ export default function ProjectsHome({ projects, onOpen }: ProjectsHomeProps) {
                         <ProjectCard key={p.id} project={p} onOpen={() => onOpen(p.id)} />
                     ))}
                 </div>
+            )}
+
+            {!projects.loading && loose.length > 0 && (
+                <LooseVideos videos={loose} projects={projects.projects} onAssign={onAssignVideo} />
             )}
 
             {projects.projects.length > 0 && (

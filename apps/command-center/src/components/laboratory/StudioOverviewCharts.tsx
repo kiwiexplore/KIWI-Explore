@@ -1,4 +1,5 @@
 import type { StudioProject } from "../../lib/projectsApi";
+import type { VideoProject } from "../../lib/videoApi";
 import { PIPELINE } from "../../state/videoPipeline";
 import "./StudioOverviewCharts.css";
 
@@ -26,6 +27,16 @@ const STAGE_COLOR: Record<string, string> = {
 
 interface OverviewChartsProps {
     projects: StudioProject[];
+    /**
+     * Every video in the studio. This used to be read off the projects
+     * — `projects.flatMap(p => p.videos)` — which quietly excluded every
+     * video that isn't in one, and left the tiles disagreeing with the
+     * count in the top bar by exactly that many.
+     *
+     * The per-project chart below still walks the projects, because
+     * that one really is about projects; the tiles are about the studio.
+     */
+    videos: VideoProject[];
 }
 
 function Tile({ value, label, tone }: { value: number | string; label: string; tone?: "good" | "alert" }) {
@@ -37,8 +48,7 @@ function Tile({ value, label, tone }: { value: number | string; label: string; t
     );
 }
 
-export default function StudioOverviewCharts({ projects }: OverviewChartsProps) {
-    const videos = projects.flatMap((p) => p.videos);
+export default function StudioOverviewCharts({ projects, videos }: OverviewChartsProps) {
     if (projects.length === 0) return null;
 
     const byStage = PIPELINE.map((step) => ({
@@ -56,6 +66,8 @@ export default function StudioOverviewCharts({ projects }: OverviewChartsProps) 
     // Only projects that have videos can have a share published; one
     // with none would draw an empty bar that says nothing.
     const withVideos = projects.filter((p) => p.counts.videos > 0);
+    const inAProject = projects.reduce((n, p) => n + p.counts.videos, 0);
+    const loose = videos.length - inAProject;
 
     return (
         <div className="soc">
@@ -112,6 +124,15 @@ export default function StudioOverviewCharts({ projects }: OverviewChartsProps) 
                                 );
                             })}
                         </div>
+                    )}
+                    {/* The chart is per project and the tile above it is
+                        per studio, so they differ by whatever is in
+                        neither. Said here rather than left for someone
+                        to notice by subtracting. */}
+                    {loose > 0 && (
+                        <p className="soc-note">
+                            {loose} {loose === 1 ? "video isn't" : "videos aren't"} in a project — listed below.
+                        </p>
                     )}
                 </figure>
             </div>

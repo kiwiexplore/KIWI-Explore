@@ -65,6 +65,7 @@ function toVideo(raw: Record<string, unknown>): VideoProject {
         stage: raw.stage as VideoProject["stage"],
         sourceContentId: (raw.source_content_id as number | null) ?? null,
         sourceNoteId: (raw.source_note_id as number | null) ?? null,
+        projectId: (raw.project_id as number | null) ?? null,
         sourceVideoPath: (raw.source_video_path as string | null) ?? null,
         transcriptPath: (raw.transcript_path as string | null) ?? null,
         transcriptStatus: raw.transcript_status as VideoProject["transcriptStatus"],

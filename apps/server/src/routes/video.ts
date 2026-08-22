@@ -161,6 +161,12 @@ videoRouter.patch("/:id", (req, res) => {
         res.status(400).json({ error: "No note with that id to link as the source." });
         return;
     }
+    // Same reasoning, and this one is reachable from the UI: moving a
+    // loose video into a project is a picked id arriving over the wire.
+    if (parsed.data.projectId != null && !getStudioProject(parsed.data.projectId)) {
+        res.status(400).json({ error: "No project with that id to move this video into." });
+        return;
+    }
     const updated = updateVideoProject(id, {
         ...parsed.data,
         stage: parsed.data.stage as StoredVideoProject["stage"] | undefined,

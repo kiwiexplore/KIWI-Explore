@@ -182,3 +182,117 @@
     transition: width var(--transition);
 
 }
+
+/* --- videos with no project ------------------------------------------
+
+   Deliberately a list rather than cards. A loose video is not a
+   project, and dressing it as one would make the shelf above look
+   fuller than the work is — the same reasoning the home page's captured
+   ideas are held to. */
+
+.ph-loose {
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    padding: 18px 20px;
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+    background: rgba(16, 25, 46, .55);
+
+}
+
+.ph-loose-head {
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    color: var(--text-muted);
+
+}
+
+.ph-loose-head h2 {
+
+    margin: 0;
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.ph-loose-count {
+
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: rgba(5, 8, 22, .7);
+
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+
+}
+
+.ph-loose-list { display: flex; flex-direction: column; gap: 6px; }
+
+.ph-loose-row {
+
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: rgba(5, 8, 22, .55);
+
+}
+
+.ph-loose-row > svg { flex-shrink: 0; color: var(--text-muted); }
+
+.ph-loose-title {
+
+    flex: 1;
+    min-width: 0;
+
+    font-size: 13px;
+    color: var(--text);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.ph-loose-stage {
+
+    flex-shrink: 0;
+
+    font-size: 11px;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.ph-loose-select {
+
+    flex-shrink: 0;
+
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(16, 25, 46, .92);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    color: var(--text);
+
+}
+
+.ph-loose-select:focus { outline: none; border-color: var(--primary); }

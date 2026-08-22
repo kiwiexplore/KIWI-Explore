@@ -30,7 +30,12 @@ export interface VideoStudioState {
     /** Re-reads the studio-wide list — after something else made a video. */
     refresh: () => void;
     create: (title: string, sourceNoteId?: number) => Promise<VideoProject | null>;
-    update: (id: number, changes: VideoProjectUpdate) => void;
+    /**
+     * Resolves when the server has it — moving a video between the
+     * studio's two lists means re-reading the other one, and that has
+     * to happen after the write rather than alongside it.
+     */
+    update: (id: number, changes: VideoProjectUpdate) => Promise<void>;
     remove: (id: number) => void;
     draftScript: (id: number, brief: string) => void;
     transcribe: (id: number) => void;
@@ -136,14 +141,14 @@ export function useVideoStudioState(): VideoStudioState {
         }
     };
 
-    const update = (id: number, changes: VideoProjectUpdate) => {
+    const update = (id: number, changes: VideoProjectUpdate): Promise<void> => {
         setError(null);
         // Optimistic — the stage picker and the path field should feel
         // immediate. The response replaces this with the server's own
         // version, and a failure refetches rather than leaving the
         // optimistic value standing.
         setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...changes } as VideoProject : p)));
-        updateVideoProject(id, changes)
+        return updateVideoProject(id, changes)
             .then(replaceProject)
             .catch((e) => {
                 reportError(e, "Could not save that change.");

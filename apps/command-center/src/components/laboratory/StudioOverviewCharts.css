@@ -162,3 +162,19 @@
     color: var(--text);
 
 }
+
+/* Sits under a chart to name what the chart leaves out, rather than
+   letting the reader find it by subtracting from the tile above. A
+   sentence, not a second heading — the caption above it is already
+   uppercase, and two of those read as two charts. */
+.soc-chart .soc-note {
+
+    margin: 4px 0 0;
+
+    font-size: 11.5px;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--text-muted);
+
+}
