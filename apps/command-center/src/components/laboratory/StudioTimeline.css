@@ -308,3 +308,28 @@
     pointer-events: none;
 
 }
+
+/* Text clips read as a different material from footage: no picture to
+   show, so the words themselves are the block. */
+.studio-clip-text {
+
+    border-color: rgba(117, 102, 255, .45);
+    background: linear-gradient(100deg, #2a2352, #16122e);
+
+}
+
+.studio-clip-text .studio-clip-label {
+
+    background: none;
+    color: #b3a9ff;
+
+}
+
+.studio-clip-text.studio-clip-selected {
+
+    border-color: var(--accent);
+    box-shadow: 0 0 16px rgba(117, 102, 255, .35);
+
+}
+
+.studio-clip-text .studio-clip-handle { background: var(--accent); }

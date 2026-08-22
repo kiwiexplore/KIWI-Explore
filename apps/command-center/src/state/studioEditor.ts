@@ -51,7 +51,15 @@ export interface Track {
 export interface Clip {
     id: string;
     trackId: string;
+    /**
+     * Empty for a text clip. Text and media are one type rather than
+     * two lists because everything the timeline does to a clip — move,
+     * trim, split, delete, snap, undo — is identical for both, and a
+     * parallel list would mean writing all of it twice.
+     */
     assetId: string;
+    /** Set on a text clip; what gets drawn over the picture. */
+    text?: string;
     /** Where the clip sits on the timeline. */
     start: number;
     /** How long it plays for. */
@@ -102,6 +110,12 @@ export interface StudioEditorState {
     snapPoints: (exceptClipId?: string) => number[];
     trimClip: (id: string, edge: "start" | "end", delta: number) => void;
     splitAt: (time: number) => void;
+    addText: (text: string, start: number, duration: number, trackId?: string) => void;
+    /** Replaces every text clip on the subtitle track. */
+    setSubtitles: (segments: { start: number; end: number; text: string }[]) => void;
+    updateText: (id: string, text: string) => void;
+    /** Text clips covering this moment, topmost track last. */
+    textAt: (time: number) => Clip[];
     deleteSelected: () => void;
     setPlayhead: (time: number) => void;
     setPlaying: (playing: boolean) => void;
@@ -326,6 +340,49 @@ export function useStudioEditorState(): StudioEditorState {
     };
 
     /** Cuts every clip the playhead is standing on, on every track. */
+    /** V3 is the titles track in every layout this thing has had. */
+    const TEXT_TRACK = "V3";
+
+    const addText = (text: string, start: number, duration: number, trackId = TEXT_TRACK) => {
+        commit((prev) => [...prev, {
+            id: makeId("text"),
+            trackId,
+            assetId: "",
+            text,
+            start: Math.max(0, start),
+            duration: Math.max(MIN_CLIP, duration),
+            offset: 0,
+        }]);
+    };
+
+    /**
+     * Replaces rather than appends: importing subtitles twice should
+     * leave one set, not two stacked on top of each other.
+     */
+    const setSubtitles = (segments: { start: number; end: number; text: string }[]) => {
+        commit((prev) => [
+            ...prev.filter((c) => !(c.trackId === TEXT_TRACK && c.text !== undefined)),
+            ...segments
+                .filter((s) => s.text.trim() && s.end > s.start)
+                .map((s, i) => ({
+                    id: `sub-${i + 1}-${Date.now()}`,
+                    trackId: TEXT_TRACK,
+                    assetId: "",
+                    text: s.text.trim(),
+                    start: s.start,
+                    duration: Math.max(MIN_CLIP, s.end - s.start),
+                    offset: 0,
+                })),
+        ]);
+    };
+
+    const updateText = (id: string, text: string) => {
+        commit((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
+    };
+
+    const textAt = (time: number): Clip[] =>
+        clips.filter((c) => c.text !== undefined && time >= c.start && time < c.start + c.duration);
+
     const splitAt = (time: number) => {
         commit((prev) => {
             const out: Clip[] = [];
@@ -362,7 +419,8 @@ export function useStudioEditorState(): StudioEditorState {
      */
     const clipAt = (time: number) => {
         for (const track of DEFAULT_TRACKS.filter((t) => t.kind === "video").slice().reverse()) {
-            const clip = clips.find((c) => c.trackId === track.id && time >= c.start && time < c.start + c.duration);
+            const clip = clips.find((c) => c.trackId === track.id && c.text === undefined
+                && time >= c.start && time < c.start + c.duration);
             if (clip) {
                 const asset = assets.find((a) => a.id === clip.assetId);
                 if (asset) return { clip, asset };
@@ -379,6 +437,7 @@ export function useStudioEditorState(): StudioEditorState {
         importFiles, removeAsset, addClip,
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,
+        addText, setSubtitles, updateText, textAt,
         setPlayhead, setPlaying,
         snapPoints,
         clipAt,

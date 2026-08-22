@@ -36,6 +36,8 @@ function snapTo(value: number, points: number[], pxPerSecond: number): number {
  * frames rather than squashing one picture.
  */
 function ClipBody({ clip, asset, trackKind }: { clip: Clip; asset: MediaAsset | undefined; trackKind: TrackKind }) {
+    // A text clip has no source to draw from; the words are the body.
+    if (clip.text !== undefined) return null;
     if (!asset) return null;
 
     // What a clip draws is decided by the TRACK it sits on, not by the
@@ -218,7 +220,7 @@ export default function StudioTimeline({ editor, pxPerSecond }: TimelineProps) {
                                 return (
                                     <div
                                         key={clip.id}
-                                        className={`studio-clip studio-clip-${track.kind}${selected ? " studio-clip-selected" : ""}`}
+                                        className={`studio-clip studio-clip-${clip.text !== undefined ? "text" : track.kind}${selected ? " studio-clip-selected" : ""}`}
                                         style={{ left: clip.start * pxPerSecond, width: Math.max(6, clip.duration * pxPerSecond) }}
                                         onPointerDown={(e) => beginDrag(e, "move", clip)}
                                     >
@@ -229,7 +231,7 @@ export default function StudioTimeline({ editor, pxPerSecond }: TimelineProps) {
                                         {selected && (
                                             <span className="studio-clip-handle studio-clip-handle-start" onPointerDown={(e) => beginDrag(e, "start", clip)} />
                                         )}
-                                        <span className="studio-clip-label">{asset?.name ?? "clip"}</span>
+                                        <span className="studio-clip-label">{clip.text ?? asset?.name ?? "clip"}</span>
                                         {selected && (
                                             <span className="studio-clip-handle studio-clip-handle-end" onPointerDown={(e) => beginDrag(e, "end", clip)} />
                                         )}

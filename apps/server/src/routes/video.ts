@@ -159,6 +159,38 @@ videoRouter.delete("/:id", (req, res) => {
     res.status(204).end();
 });
 
+/**
+ * The transcript, with its timestamps, for the editor to turn into
+ * subtitles.
+ *
+ * The whisper JSON has been sitting next to every finished transcript
+ * since transcription landed — it was written for the clip finder and
+ * never had a way out. Subtitles are the same data read differently.
+ */
+videoRouter.get("/:id/transcript", (req, res) => {
+    const id = parseId(req.params.id);
+    if (id === null) {
+        res.status(400).json({ error: "Invalid id." });
+        return;
+    }
+    const project = getVideoProject(id);
+    if (!project) {
+        res.status(404).json({ error: "No video project with that id." });
+        return;
+    }
+    if (project.transcript_status !== "done" || !project.transcript_path) {
+        res.status(409).json({
+            error: `No finished transcript to read — this project's transcript is "${project.transcript_status}".`,
+        });
+        return;
+    }
+    res.json({
+        text: readTranscriptText(project.transcript_path),
+        segments: readTranscriptSegments(id),
+        language: project.language,
+    });
+});
+
 const scriptBodySchema = z.object({ brief: z.string().trim().max(2000).optional() });
 
 videoRouter.post("/:id/script", async (req, res) => {

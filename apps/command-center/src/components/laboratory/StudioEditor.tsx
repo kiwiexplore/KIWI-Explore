@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
-    ChevronLeft, Clapperboard, Film, Music2, Redo2, Scissors, SkipBack, SkipForward,
+    Captions, ChevronLeft, Clapperboard, Film, Music2, Redo2, Scissors, SkipBack, SkipForward,
     Sparkles, Trash2, Type, Undo2, Upload, Volume2, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { useStudioEditorState } from "../../state/studioEditor";
-import type { VideoProject } from "../../lib/videoApi";
+import { fetchTranscript, type VideoProject } from "../../lib/videoApi";
 import StudioTimeline from "./StudioTimeline";
 import { formatClock } from "../../lib/timecode";
 import "./StudioEditor.css";
@@ -37,6 +37,8 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     const [dragOver, setDragOver] = useState(false);
     const [volume, setVolume] = useState(1);
     const rootRef = useRef<HTMLDivElement>(null);
+    const [subtitleError, setSubtitleError] = useState<string | null>(null);
+    const [loadingSubs, setLoadingSubs] = useState(false);
 
     // Focus the editor on open so the shortcuts work without demanding
     // a click somewhere first.
@@ -44,6 +46,7 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
 
     const pxPerSecond = ZOOM_STEPS[zoom];
     const current = editor.clipAt(editor.playhead);
+    const selectedText = editor.clips.find((c) => c.id === editor.selectedClipId && c.text !== undefined) ?? null;
 
     // The playhead is the clock. While playing, it advances from the
     // mounted clip's own currentTime rather than from a timer, so the
@@ -111,6 +114,28 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     };
 
     const step = (seconds: number) => editor.setPlayhead(editor.playhead + seconds);
+
+    /**
+     * Subtitles from the video's own transcript — the timestamps whisper
+     * wrote have been on disk since it ran, and this is the first thing
+     * that reads them back as something you can see.
+     */
+    const importSubtitles = () => {
+        setSubtitleError(null);
+        setLoadingSubs(true);
+        fetchTranscript(project.id)
+            .then((t) => {
+                if (t.segments.length === 0) {
+                    setSubtitleError("The transcript has no timings — subtitles need whisper's segment data.");
+                    return;
+                }
+                editor.setSubtitles(t.segments);
+            })
+            .catch((e) => setSubtitleError(e instanceof Error ? e.message : "Could not read the transcript."))
+            .finally(() => setLoadingSubs(false));
+    };
+
+    const addTitle = () => editor.addText("Title", editor.playhead, 3);
 
     return (
         <div className="studio-editor" tabIndex={-1} onKeyDown={onKeyDown} ref={rootRef}>
@@ -225,6 +250,14 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                                 <span>{editor.clips.length === 0 ? "Import something and add it to the timeline." : "Nothing under the playhead."}</span>
                             </div>
                         )}
+
+                        {/* Drawn over the picture rather than beside it —
+                            a subtitle you have to look somewhere else to
+                            read tells you nothing about how it sits on
+                            the frame. */}
+                        {editor.textAt(editor.playhead).map((clip) => (
+                            <div key={clip.id} className="studio-caption">{clip.text}</div>
+                        ))}
                     </div>
 
                     <div className="studio-transport">
@@ -290,8 +323,10 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                     <button type="button" className="studio-tool" onClick={() => editor.splitAt(editor.playhead)}><Scissors size={13} strokeWidth={2} />Split</button>
                     <button type="button" className="studio-tool" onClick={editor.deleteSelected} disabled={!editor.selectedClipId}><Trash2 size={13} strokeWidth={2} />Delete</button>
                     <span className="studio-bar-divider" />
-                    <button type="button" className="studio-tool" disabled><Type size={13} strokeWidth={2} />Text</button>
-                    <button type="button" className="studio-tool" disabled><Music2 size={13} strokeWidth={2} />Audio</button>
+                    <button type="button" className="studio-tool" onClick={addTitle}><Type size={13} strokeWidth={2} />Text</button>
+                    <button type="button" className="studio-tool" onClick={importSubtitles} disabled={loadingSubs}>
+                        <Captions size={13} strokeWidth={2} />{loadingSubs ? "Reading…" : "Subtitles"}
+                    </button>
                 </div>
                 <div className="studio-zoom">
                     <button type="button" onClick={() => setZoom((z) => Math.max(0, z - 1))} aria-label="Zoom out"><ZoomOut size={14} strokeWidth={2} /></button>
@@ -299,6 +334,23 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                     <button type="button" onClick={() => setZoom((z) => Math.min(ZOOM_STEPS.length - 1, z + 1))} aria-label="Zoom in"><ZoomIn size={14} strokeWidth={2} /></button>
                 </div>
             </div>
+
+            {selectedText && (
+                <div className="studio-text-edit">
+                    <Type size={14} strokeWidth={2} />
+                    <input
+                        value={selectedText.text ?? ""}
+                        onChange={(e) => editor.updateText(selectedText.id, e.target.value)}
+                        placeholder="What it says…"
+                        aria-label="Text"
+                    />
+                    <span className="studio-text-edit-time">
+                        {formatClock(selectedText.start)} – {formatClock(selectedText.start + selectedText.duration)}
+                    </span>
+                </div>
+            )}
+
+            {subtitleError && <p className="studio-subtitle-error">{subtitleError}</p>}
 
             <StudioTimeline editor={editor} pxPerSecond={pxPerSecond} />
         </div>

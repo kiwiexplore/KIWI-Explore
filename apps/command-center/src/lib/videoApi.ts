@@ -210,6 +210,19 @@ export async function findVideoClips(id: number): Promise<VideoProject> {
     return toVideoProject((await res.json()).project);
 }
 
+export interface TranscriptSegment {
+    start: number;
+    end: number;
+    text: string;
+}
+
+/** The finished transcript, with the timestamps subtitles are made of. */
+export async function fetchTranscript(id: number): Promise<{ text: string; segments: TranscriptSegment[]; language: string }> {
+    const res = await fetch(`${API_URL}/api/video/${id}/transcript`, { headers: headers() });
+    if (!res.ok) await readError(res, "Could not read the transcript");
+    return res.json();
+}
+
 export async function cutVideoClip(id: number, index: number): Promise<VideoProject> {
     const res = await fetch(`${API_URL}/api/video/${id}/clips/${index}/cut`, { method: "POST", headers: headers() });
     if (!res.ok) await readError(res, "Could not cut that clip");
