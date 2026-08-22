@@ -12,6 +12,7 @@ import { contentRouter } from "./routes/content.js";
 import { analysisRouter } from "./routes/analysis.js";
 import { videoRouter } from "./routes/video.js";
 import { notesRouter } from "./routes/notes.js";
+import { projectsRouter } from "./routes/projects.js";
 import { failInterruptedTranscripts } from "./db.js";
 
 const PORT = Number(process.env.PORT) || 8787;
@@ -66,6 +67,7 @@ app.use("/api/content", contentRouter);
 app.use("/api/analysis", analysisRouter);
 app.use("/api/video", videoRouter);
 app.use("/api/notes", notesRouter);
+app.use("/api/projects", projectsRouter);
 
 // A crash or a restart mid-transcription leaves rows claiming to be
 // 'processing' with nothing behind them, and Video Studio would spin on

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import LaboratoryTopBar from "./LaboratoryTopBar";
-import LaboratorySidebar from "./LaboratorySidebar";
 import LaboratoryQuickBar from "./LaboratoryQuickBar";
 import LaboratorySearch from "./LaboratorySearch";
 import CalendarPanel from "./CalendarPanel";
@@ -21,8 +20,9 @@ import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import ContentHubBoard from "./ContentHubBoard";
 import NotesBoard from "./NotesBoard";
 import StudioEditor from "./StudioEditor";
-import type { StudioStage } from "./StudioStages";
-import StudioProjects from "./StudioProjects";
+import ProjectsHome from "./ProjectsHome";
+import ProjectDetail from "./ProjectDetail";
+import { useStudioProjectsState } from "../../state/studioProjects";
 import StudioPublish from "./StudioPublish";
 import VideoStudioBoard from "./VideoStudioBoard";
 import ProjectGrid from "./ProjectGrid";
@@ -181,36 +181,19 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // Which of the four stages the studio is showing, and which video
     // the last three are about. PROJECTS is the only one that means
     // anything without a video picked.
-    const [stage, setStage] = useState<StudioStage>("projects");
-    const studioVideo = videoStudio.projects.find((p) => p.id === selectedVideoId) ?? null;
+    // Projects own everything now: a project holds its ideas and its
+    // videos, and the cut and the publish are reached from a video
+    // inside one. There is one way in.
+    const studioProjects = useStudioProjectsState();
+    const [openProjectId, setOpenProjectId] = useState<number | null>(null);
+    // Publish is a page about one video, reached from inside a project.
+    const [publishingVideoId, setPublishingVideoId] = useState<number | null>(null);
+    const openProject = studioProjects.projects.find((p) => p.id === openProjectId) ?? null;
+    const publishingVideo = videoStudio.projects.find((p) => p.id === publishingVideoId) ?? null;
 
-    // The last three stages are about one video, so without one they
-    // have nothing to draw — and drawing nothing is what a deleted
-    // video used to leave behind: a stage strip over an empty page.
-    // Derived rather than corrected in an effect, so there is no frame
-    // where the blank state exists at all.
-    const effectiveStage: StudioStage = studioVideo ? stage : "projects";
 
-    const goToStage = (next: StudioStage) => {
-        setStage(next);
-        setSection("guide");
-        // EDIT is the full-screen room; the other three are pages inside
-        // the Laboratory's own frame.
-        setEditingVideoId(next === "edit" ? selectedVideoId : null);
-    };
 
-    /** Starts a video from the rail and drops you straight into it. */
-    const handleNewVideo = () => {
-        void videoStudio.create("Untitled video").then((created) => {
-            if (created) openVideo(created.id);
-        });
-    };
 
-    const openVideo = (id: number) => {
-        setSelectedVideoId(id);
-        setStage("create");
-        setSection("guide");
-    };
     // Ideas / trends / research / notes, server-backed since Sprint 091
     // — same reasoning as the two above: persisted, so a remount
     // refetches rather than losing what you wrote.
@@ -259,26 +242,25 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 onOpenCalendar={() => setCalendarOpen(true)}
                 onOpenNotifications={openNotifications}
                 unreadNotificationCount={notifications.unreadCount}
+                projectCount={studioProjects.projects.length}
                 videoCount={videoStudio.projects.length}
+                inProgressCount={videoStudio.projects.filter((p) => p.stage !== "published").length}
                 publishedCount={videoStudio.projects.filter((p) => p.stage === "published").length}
-                stage={effectiveStage}
-                hasVideo={studioVideo !== null}
-                onGoToStage={goToStage}
+                failedCount={videoStudio.projects.filter((p) => p.transcriptStatus === "failed").length}
+                atProjects={openProjectId === null && editingVideoId === null}
+                onGoToProjects={() => { setOpenProjectId(null); setEditingVideoId(null); setSection("guide"); }}
                 spotify={spotify}
             />
 
             {editingVideo ? (
-                <StudioEditor project={editingVideo} onBack={() => goToStage("publish")} />
+                <StudioEditor project={editingVideo} onBack={() => setEditingVideoId(null)} />
             ) : (
                 <>
                 <div className="laboratory-body">
-                    <LaboratorySidebar
-                        section={section}
-                        onSectionChange={setSection}
-                        onNewVideo={handleNewVideo}
-                        onOpenKiwi={() => setKiwiOpen(true)}
-                    />
-
+                    {/* No rail. Everything that was on it — ideas,
+                        research, posts — belongs to a project, and a
+                        second way to reach half of it was most of what
+                        made this hard to hold in your head. */}
                     <main className="laboratory-main">
                         {section === "overview" && (
                             <Overview
@@ -408,20 +390,19 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                         {section === "trend-scanner" && <NotesBoard kind="trend" notes={labNotes} />}
 
                         {section === "guide" && (
-                            <>
-                                {effectiveStage === "projects" && <StudioProjects videoStudio={videoStudio} labNotes={labNotes} onOpen={openVideo} />}
-                                {effectiveStage === "create" && studioVideo && (
-                                    <VideoStudioBoard
-                                        videoStudio={videoStudio}
-                                        selectedId={studioVideo.id}
-                                        onSelect={(id) => { if (id === null) setStage("projects"); }}
-                                        onOpenEditor={(id) => { setSelectedVideoId(id); goToStage("edit"); }}
-                                    />
-                                )}
-                                {effectiveStage === "publish" && studioVideo && (
-                                    <StudioPublish project={studioVideo} videoStudio={videoStudio} />
-                                )}
-                            </>
+                            publishingVideo ? (
+                                <StudioPublish project={publishingVideo} videoStudio={videoStudio} />
+                            ) : openProject ? (
+                                <ProjectDetail
+                                    project={openProject}
+                                    projects={studioProjects}
+                                    onBack={() => setOpenProjectId(null)}
+                                    onEdit={(id) => { setSelectedVideoId(id); setEditingVideoId(id); }}
+                                    onPublish={(id) => setPublishingVideoId(id)}
+                                />
+                            ) : (
+                                <ProjectsHome projects={studioProjects} onOpen={setOpenProjectId} />
+                            )
                         )}
 
                         {section === "content-hub" && <ContentHubBoard contentHub={contentHub} />}

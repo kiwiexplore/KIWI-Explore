@@ -165,9 +165,9 @@ export async function fetchVideoProjects(): Promise<VideoProject[]> {
     return ((data.projects ?? []) as RawVideoProject[]).map(toVideoProject);
 }
 
-export async function createVideoProject(title: string, sourceNoteId?: number): Promise<VideoProject> {
+export async function createVideoProject(title: string, sourceNoteId?: number, projectId?: number): Promise<VideoProject> {
     const res = await fetch(`${API_URL}/api/video`, {
-        method: "POST", headers: headers(), body: JSON.stringify({ title, sourceNoteId }),
+        method: "POST", headers: headers(), body: JSON.stringify({ title, sourceNoteId, projectId }),
     });
     if (!res.ok) await readError(res, "Could not create the project");
     return toVideoProject((await res.json()).project);

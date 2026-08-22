@@ -104,11 +104,33 @@ db.exec(`
     -- project, which meant a reload emptied them. They also sat under a
     -- project, which stopped making sense once the Laboratory became a
     -- video studio: a trend you're watching isn't part of one project.
+    -- A project is the thing you actually work on: a series, a channel
+    -- run, a single film. Everything else hangs off it — the ideas you
+    -- had for it, the videos you made from them.
+    --
+    -- video_projects came first and was, despite the name, one VIDEO.
+    -- Renaming it now would break every route and every id in a running
+    -- database; this table is the container those videos were always
+    -- missing, and video_projects.project_id is the join.
+    CREATE TABLE IF NOT EXISTS studio_projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    );
+
     CREATE TABLE IF NOT EXISTS lab_notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         kind TEXT NOT NULL CHECK (kind IN ('idea', 'trend', 'research', 'note')),
         title TEXT NOT NULL,
         body TEXT NOT NULL DEFAULT '',
+        -- Which project this belongs to, or null for something you
+        -- jotted down before it belonged anywhere.
+        project_id INTEGER REFERENCES studio_projects(id) ON DELETE SET NULL,
+        -- Ticked off. The one bit of state that makes a list of ideas
+        -- into something you can work through.
+        done INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
         updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
@@ -126,6 +148,7 @@ db.exec(`
         -- link the whole thing was specified around; it needed the notes
         -- to exist server-side before it could point anywhere real.
         source_note_id INTEGER REFERENCES lab_notes(id) ON DELETE SET NULL,
+        project_id INTEGER REFERENCES studio_projects(id) ON DELETE SET NULL,
         -- An absolute path to a file on the machine running this server
         -- — personal mode, and a raw recording is far too large to be
         -- worth pushing through a browser upload to a local backend.
@@ -186,6 +209,17 @@ if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "language"))
 }
 if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "source_note_id")) {
     db.exec("ALTER TABLE video_projects ADD COLUMN source_note_id INTEGER REFERENCES lab_notes(id) ON DELETE SET NULL");
+}
+if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "project_id")) {
+    db.exec("ALTER TABLE video_projects ADD COLUMN project_id INTEGER REFERENCES studio_projects(id) ON DELETE SET NULL");
+}
+
+const noteColumns = db.prepare("PRAGMA table_info(lab_notes)").all() as { name: string }[];
+if (noteColumns.length > 0 && !noteColumns.some((c) => c.name === "project_id")) {
+    db.exec("ALTER TABLE lab_notes ADD COLUMN project_id INTEGER REFERENCES studio_projects(id) ON DELETE SET NULL");
+}
+if (noteColumns.length > 0 && !noteColumns.some((c) => c.name === "done")) {
+    db.exec("ALTER TABLE lab_notes ADD COLUMN done INTEGER NOT NULL DEFAULT 0");
 }
 
 const contentItemsDDL = (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'content_items'").get() as { sql?: string } | undefined)?.sql ?? "";
@@ -385,6 +419,7 @@ export interface StoredVideoProject {
     stage: VideoStage;
     source_content_id: number | null;
     source_note_id: number | null;
+    project_id: number | null;
     source_video_path: string | null;
     transcript_path: string | null;
     transcript_status: TranscriptStatus;
@@ -396,7 +431,7 @@ export interface StoredVideoProject {
 }
 
 const VIDEO_PROJECT_COLUMNS = `
-    id, title, stage, source_content_id, source_note_id, source_video_path,
+    id, title, stage, source_content_id, source_note_id, project_id, source_video_path,
     transcript_path, transcript_status, transcript_error, clips_json, language,
     created_at, updated_at
 `;
@@ -423,6 +458,7 @@ export interface VideoProjectUpdate {
     stage?: VideoStage;
     sourceContentId?: number | null;
     sourceNoteId?: number | null;
+    projectId?: number | null;
     sourceVideoPath?: string | null;
     language?: string;
 }
@@ -445,6 +481,9 @@ export function updateVideoProject(id: number, update: VideoProjectUpdate): Stor
     }
     if (update.sourceNoteId !== undefined) {
         db.prepare(`UPDATE video_projects SET source_note_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.sourceNoteId, id);
+    }
+    if (update.projectId !== undefined) {
+        db.prepare(`UPDATE video_projects SET project_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.projectId, id);
     }
     if (update.sourceVideoPath !== undefined) {
         db.prepare(`UPDATE video_projects SET source_video_path = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.sourceVideoPath, id);
@@ -543,11 +582,13 @@ export interface StoredLabNote {
     kind: LabNoteKind;
     title: string;
     body: string;
+    project_id: number | null;
+    done: number;
     created_at: string;
     updated_at: string;
 }
 
-const LAB_NOTE_COLUMNS = "id, kind, title, body, created_at, updated_at";
+const LAB_NOTE_COLUMNS = "id, kind, title, body, project_id, done, created_at, updated_at";
 
 export function listLabNotes(kind?: LabNoteKind): StoredLabNote[] {
     const stmt = kind
@@ -561,14 +602,21 @@ export function getLabNote(id: number): StoredLabNote | null {
     return (stmt.get(id) as unknown as StoredLabNote) ?? null;
 }
 
-export function insertLabNote(kind: LabNoteKind, title: string, body = ""): StoredLabNote {
-    const stmt = db.prepare(`INSERT INTO lab_notes (kind, title, body) VALUES (?, ?, ?) RETURNING ${LAB_NOTE_COLUMNS}`);
-    return stmt.get(kind, title, body) as unknown as StoredLabNote;
+export function insertLabNote(kind: LabNoteKind, title: string, body = "", projectId: number | null = null): StoredLabNote {
+    const stmt = db.prepare(`INSERT INTO lab_notes (kind, title, body, project_id) VALUES (?, ?, ?, ?) RETURNING ${LAB_NOTE_COLUMNS}`);
+    return stmt.get(kind, title, body, projectId) as unknown as StoredLabNote;
+}
+
+export function listLabNotesForProject(projectId: number): StoredLabNote[] {
+    const stmt = db.prepare(`SELECT ${LAB_NOTE_COLUMNS} FROM lab_notes WHERE project_id = ? ORDER BY done ASC, id DESC`);
+    return stmt.all(projectId) as unknown as StoredLabNote[];
 }
 
 export interface LabNoteUpdate {
     title?: string;
     body?: string;
+    projectId?: number | null;
+    done?: boolean;
 }
 
 export function updateLabNote(id: number, update: LabNoteUpdate): StoredLabNote | null {
@@ -578,9 +626,64 @@ export function updateLabNote(id: number, update: LabNoteUpdate): StoredLabNote 
     if (update.body !== undefined) {
         db.prepare(`UPDATE lab_notes SET body = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.body, id);
     }
+    if (update.projectId !== undefined) {
+        db.prepare(`UPDATE lab_notes SET project_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.projectId, id);
+    }
+    if (update.done !== undefined) {
+        db.prepare(`UPDATE lab_notes SET done = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.done ? 1 : 0, id);
+    }
     return getLabNote(id);
 }
 
 export function deleteLabNote(id: number): void {
     db.prepare("DELETE FROM lab_notes WHERE id = ?").run(id);
+}
+
+export interface StoredStudioProject {
+    id: number;
+    title: string;
+    description: string;
+    created_at: string;
+    updated_at: string;
+}
+
+const STUDIO_PROJECT_COLUMNS = "id, title, description, created_at, updated_at";
+
+export function listStudioProjects(): StoredStudioProject[] {
+    const stmt = db.prepare(`SELECT ${STUDIO_PROJECT_COLUMNS} FROM studio_projects ORDER BY id DESC`);
+    return stmt.all() as unknown as StoredStudioProject[];
+}
+
+export function getStudioProject(id: number): StoredStudioProject | null {
+    const stmt = db.prepare(`SELECT ${STUDIO_PROJECT_COLUMNS} FROM studio_projects WHERE id = ?`);
+    return (stmt.get(id) as unknown as StoredStudioProject) ?? null;
+}
+
+export function insertStudioProject(title: string, description = ""): StoredStudioProject {
+    const stmt = db.prepare(`INSERT INTO studio_projects (title, description) VALUES (?, ?) RETURNING ${STUDIO_PROJECT_COLUMNS}`);
+    return stmt.get(title, description) as unknown as StoredStudioProject;
+}
+
+export function updateStudioProject(id: number, update: { title?: string; description?: string }): StoredStudioProject | null {
+    if (update.title !== undefined) {
+        db.prepare(`UPDATE studio_projects SET title = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.title, id);
+    }
+    if (update.description !== undefined) {
+        db.prepare(`UPDATE studio_projects SET description = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.description, id);
+    }
+    return getStudioProject(id);
+}
+
+/**
+ * Deleting a project keeps its videos and notes, with their project_id
+ * set to null. Losing a finished film because the folder it was in went
+ * away would be indefensible.
+ */
+export function deleteStudioProject(id: number): void {
+    db.prepare("DELETE FROM studio_projects WHERE id = ?").run(id);
+}
+
+export function listVideoProjectsForProject(projectId: number): StoredVideoProject[] {
+    const stmt = db.prepare(`SELECT ${VIDEO_PROJECT_COLUMNS} FROM video_projects WHERE project_id = ? ORDER BY id DESC`);
+    return stmt.all(projectId) as unknown as StoredVideoProject[];
 }

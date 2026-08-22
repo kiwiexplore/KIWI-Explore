@@ -12,6 +12,10 @@ export interface LabNote {
     kind: LabNoteKind;
     title: string;
     body: string;
+    /** Which project it belongs to, or null if it's loose. */
+    projectId: number | null;
+    /** Ticked off. */
+    done: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -21,6 +25,8 @@ interface RawLabNote {
     kind: LabNoteKind;
     title: string;
     body: string;
+    project_id: number | null;
+    done: number;
     created_at: string;
     updated_at: string;
 }
@@ -28,6 +34,7 @@ interface RawLabNote {
 function toNote(raw: RawLabNote): LabNote {
     return {
         id: raw.id, kind: raw.kind, title: raw.title, body: raw.body,
+        projectId: raw.project_id ?? null, done: raw.done === 1,
         createdAt: raw.created_at, updatedAt: raw.updated_at,
     };
 }
@@ -52,15 +59,15 @@ export async function fetchNotes(kind?: LabNoteKind): Promise<LabNote[]> {
     return ((data.notes ?? []) as RawLabNote[]).map(toNote);
 }
 
-export async function createNote(kind: LabNoteKind, title: string): Promise<LabNote> {
+export async function createNote(kind: LabNoteKind, title: string, projectId?: number): Promise<LabNote> {
     const res = await fetch(`${API_URL}/api/notes`, {
-        method: "POST", headers: headers(), body: JSON.stringify({ kind, title }),
+        method: "POST", headers: headers(), body: JSON.stringify({ kind, title, projectId }),
     });
     if (!res.ok) await readError(res, "Could not save that");
     return toNote((await res.json()).note);
 }
 
-export async function updateNote(id: number, changes: { title?: string; body?: string }): Promise<LabNote> {
+export async function updateNote(id: number, changes: { title?: string; body?: string; done?: boolean }): Promise<LabNote> {
     const res = await fetch(`${API_URL}/api/notes/${id}`, {
         method: "PATCH", headers: headers(), body: JSON.stringify(changes),
     });

@@ -1,82 +1,63 @@
-import { Clapperboard, FolderKanban, Send, Wand2 } from "lucide-react";
+import { FolderKanban } from "lucide-react";
 import "./StudioStages.css";
 
-export type StudioStage = "projects" | "create" | "edit" | "publish";
-
-const STAGES: { id: StudioStage; label: string; icon: typeof FolderKanban }[] = [
-    { id: "projects", label: "Projects", icon: FolderKanban },
-    { id: "create", label: "Create", icon: Wand2 },
-    { id: "edit", label: "Edit", icon: Clapperboard },
-    { id: "publish", label: "Publish", icon: Send },
-];
-
-interface StudioStagesProps {
-    active: StudioStage;
-    /** Whether a video is picked — the last three need one. */
-    hasVideo: boolean;
-    /** Folded into the stages they belong to, not listed separately. */
+interface StudioOverviewProps {
+    /** Whether Projects is the screen you're on. */
+    atProjects: boolean;
+    onGoToProjects: () => void;
+    projectCount: number;
     videoCount: number;
+    inProgressCount: number;
     publishedCount: number;
-    onGo: (stage: StudioStage) => void;
+    failedCount: number;
 }
 
 /**
- * The studio's spine, living in the top bar: Projects → Create → Edit →
- * Publish, always there and always clickable.
+ * The top bar's overview: one button and a read-out.
  *
- * It began as a strip under the top bar on three of the four screens,
- * which meant it vanished exactly where it was most useful — inside the
- * editor, the one place you can lose track of where you are. Up here it
- * is present on every screen, including the full-window cut.
+ * Projects is the only thing here you can press, because it is the only
+ * place there is to go — everything else lives inside a project. The
+ * four stages that used to sit here were navigation to screens that no
+ * longer exist on their own, and three of them were unreachable
+ * without a video picked anyway.
  *
- * The counts that used to sit in their own pill are folded into the
- * stages they describe rather than listed beside them: "how many
- * videos" is a fact about Projects, and "how many published" is a fact
- * about Publish. Two controls saying overlapping things is what this
- * replaces.
- *
- * Stages behind the one you're on go green because they are behind
- * you, not because anything was verified — this is a map, not a
- * scoreboard.
+ * The rest is what you currently have, at a glance and not clickable:
+ * numbers that answer "where am I" without pretending to be a menu.
  */
-export default function StudioStages({ active, hasVideo, videoCount, publishedCount, onGo }: StudioStagesProps) {
-    const index = STAGES.findIndex((s) => s.id === active);
-
+export default function StudioOverview({
+    atProjects, onGoToProjects, projectCount, videoCount, inProgressCount, publishedCount, failedCount,
+}: StudioOverviewProps) {
     return (
-        <nav className="studio-stages" aria-label="Studio stages">
-            {STAGES.map((stage, i) => {
-                const state = i === index ? "active" : i < index ? "done" : "ahead";
-                const reachable = stage.id === "projects" || hasVideo;
-                const count = stage.id === "projects" ? videoCount
-                    : stage.id === "publish" ? publishedCount
-                        : null;
-                return (
-                    <div key={stage.id} className="studio-stages-item">
-                        {i > 0 && (
-                            <svg className="studio-stages-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                                <path d="m9 18 6-6-6-6" />
-                            </svg>
-                        )}
-                        <button
-                            type="button"
-                            className={`studio-stage studio-stage-${state}`}
-                            onClick={() => onGo(stage.id)}
-                            disabled={!reachable}
-                            title={reachable ? undefined : "Pick a video first"}
-                            aria-current={i === index ? "step" : undefined}
-                        >
-                            <stage.icon size={13} strokeWidth={2} />
-                            {stage.label}
-                            {/* Zero is worth showing on Projects — it's
-                                the state you start in — but a zero next
-                                to Publish is just noise. */}
-                            {count !== null && (count > 0 || stage.id === "projects") && (
-                                <span className="studio-stage-count">{count}</span>
-                            )}
-                        </button>
-                    </div>
-                );
-            })}
-        </nav>
+        <div className="studio-overview">
+            <button
+                type="button"
+                className={`studio-overview-go${atProjects ? " studio-overview-go-active" : ""}`}
+                onClick={onGoToProjects}
+                aria-current={atProjects ? "page" : undefined}
+            >
+                <FolderKanban size={14} strokeWidth={2} />
+                Projects
+                <span className="studio-overview-badge">{projectCount}</span>
+            </button>
+
+            <span className="studio-overview-divider" />
+
+            <span className="studio-overview-stat"><strong>{videoCount}</strong> videos</span>
+            <span className="studio-overview-divider" />
+            <span className="studio-overview-stat"><strong>{inProgressCount}</strong> in progress</span>
+            <span className="studio-overview-divider" />
+            <span className="studio-overview-stat"><strong>{publishedCount}</strong> published</span>
+
+            {/* Only when there is one. A zero here would be a number
+                claiming your attention for nothing. */}
+            {failedCount > 0 && (
+                <>
+                    <span className="studio-overview-divider" />
+                    <span className="studio-overview-stat studio-overview-alert">
+                        <strong>{failedCount}</strong> needs you
+                    </span>
+                </>
+            )}
+        </div>
     );
 }

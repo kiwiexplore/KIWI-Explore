@@ -83,6 +83,8 @@ const createBodySchema = z.object({
     sourceContentId: z.number().int().nullable().optional(),
     /** The idea or trend this video came out of, set at birth. */
     sourceNoteId: z.number().int().nullable().optional(),
+    /** The project it belongs to. */
+    projectId: z.number().int().nullable().optional(),
 });
 
 videoRouter.post("/", (req, res) => {
@@ -108,8 +110,9 @@ videoRouter.post("/", (req, res) => {
     // Set straight after insert rather than threading another argument
     // through: the column is optional and this is the only caller that
     // ever fills it at creation.
-    const project = sourceNoteId != null
-        ? updateVideoProject(created.id, { sourceNoteId })
+    const { projectId } = parsed.data;
+    const project = (sourceNoteId != null || projectId != null)
+        ? updateVideoProject(created.id, { sourceNoteId, projectId })
         : created;
     res.json({ project: withRelations(project ?? created) });
 });
@@ -128,6 +131,7 @@ const updateBodySchema = z.object({
     language: z.string().trim().max(12).optional(),
     // The idea or trend this video grew out of.
     sourceNoteId: z.number().int().nullable().optional(),
+    projectId: z.number().int().nullable().optional(),
 });
 
 videoRouter.patch("/:id", (req, res) => {

@@ -36,6 +36,7 @@ const createSchema = z.object({
     kind: kindSchema,
     title: z.string().trim().min(1).max(300),
     body: z.string().max(20000).optional(),
+    projectId: z.number().int().nullable().optional(),
 });
 
 notesRouter.post("/", (req, res) => {
@@ -44,13 +45,15 @@ notesRouter.post("/", (req, res) => {
         res.status(400).json({ error: "kind and a title are required." });
         return;
     }
-    const { kind, title, body } = parsed.data;
-    res.json({ note: insertLabNote(kind as LabNoteKind, title, body ?? "") });
+    const { kind, title, body, projectId } = parsed.data;
+    res.json({ note: insertLabNote(kind as LabNoteKind, title, body ?? "", projectId ?? null) });
 });
 
 const updateSchema = z.object({
     title: z.string().trim().min(1).max(300).optional(),
     body: z.string().max(20000).optional(),
+    projectId: z.number().int().nullable().optional(),
+    done: z.boolean().optional(),
 });
 
 notesRouter.patch("/:id", (req, res) => {

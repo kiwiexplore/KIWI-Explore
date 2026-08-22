@@ -1,7 +1,7 @@
 import { ArrowLeft, Bell, Calendar, Search } from "lucide-react";
 import MailButton from "../ui/MailButton";
 import KiwiCoreBadge from "./KiwiCoreBadge";
-import StudioStages, { type StudioStage } from "./StudioStages";
+import StudioOverview from "./StudioStages";
 import SpotifyPlayerWidget from "../ui/SpotifyPlayerWidget";
 import type { SpotifyState } from "../../state/spotify";
 import "./LaboratoryTopBar.css";
@@ -13,12 +13,14 @@ interface LaboratoryTopBarProps {
     onOpenCalendar?: () => void;
     onOpenNotifications?: () => void;
     unreadNotificationCount?: number;
+    projectCount: number;
     videoCount: number;
+    inProgressCount: number;
     publishedCount: number;
-    /** The studio's own navigation, which lives in this bar. */
-    stage: StudioStage;
-    hasVideo: boolean;
-    onGoToStage: (stage: StudioStage) => void;
+    failedCount: number;
+    /** Projects is the one place to go, and it lives in this bar. */
+    atProjects: boolean;
+    onGoToProjects: () => void;
     spotify: SpotifyState;
 }
 
@@ -50,7 +52,8 @@ interface LaboratoryTopBarProps {
  */
 export default function LaboratoryTopBar({
     onBack, listening, onOpenSearch, onOpenCalendar, onOpenNotifications, unreadNotificationCount = 0,
-    videoCount, publishedCount, stage, hasVideo, onGoToStage, spotify,
+    projectCount, videoCount, inProgressCount, publishedCount, failedCount,
+    atProjects, onGoToProjects, spotify,
 }: LaboratoryTopBarProps) {
     return (
         <header className="lab-topbar">
@@ -63,18 +66,20 @@ export default function LaboratoryTopBar({
                 <span className="lab-topbar-brand-text">
                     KIWI
                     <span className="lab-topbar-brand-sub">
-                        LABORATORY
+                        STUDIO
                         <span className="lab-topbar-brand-tag">LAB</span>
                     </span>
                 </span>
             </div>
 
-            <StudioStages
-                active={stage}
-                hasVideo={hasVideo}
+            <StudioOverview
+                atProjects={atProjects}
+                onGoToProjects={onGoToProjects}
+                projectCount={projectCount}
                 videoCount={videoCount}
+                inProgressCount={inProgressCount}
                 publishedCount={publishedCount}
-                onGo={onGoToStage}
+                failedCount={failedCount}
             />
 
             <div className="lab-topbar-account">

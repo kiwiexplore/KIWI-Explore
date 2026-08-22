@@ -1,21 +1,17 @@
 /*
- * The four stages, living in the Laboratory's own top bar where the
- * stats pill used to be — same pill shape, same height, so the bar's
+ * The top bar's overview pill: one button, then the read-out. Same
+ * shape and height as the stats pill it grew out of, so the bar's
  * proportions are unchanged.
  */
 
-.studio-stages {
+.studio-overview {
 
     display: flex;
     align-items: center;
-    gap: 2px;
-
-    /* Never squashed: this is the bar's navigation, and a wrapped
-       "Projects / 2" reads as two things rather than one control. The
-       brand beside it gives way instead. */
+    gap: 12px;
     flex-shrink: 0;
 
-    padding: 5px 8px;
+    padding: 6px 16px 6px 6px;
 
     border: 1px solid var(--border);
     border-radius: 999px;
@@ -27,23 +23,13 @@
 
 }
 
-.studio-stages-item {
-
-    display: flex;
-    align-items: center;
-    gap: 2px;
-
-}
-
-.studio-stages-arrow { color: #2c3f66; flex-shrink: 0; }
-
-.studio-stage {
+.studio-overview-go {
 
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
 
-    padding: 6px 13px;
+    padding: 6px 14px;
     border: 1px solid transparent;
     border-radius: 999px;
     background: none;
@@ -51,7 +37,7 @@
 
     font: inherit;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 650;
     white-space: nowrap;
     color: var(--text-muted);
 
@@ -59,11 +45,9 @@
 
 }
 
-.studio-stage:hover:not(:disabled) { color: #eaf6ff; }
+.studio-overview-go:hover { color: #eaf6ff; }
 
-.studio-stage:disabled { opacity: .4; cursor: not-allowed; }
-
-.studio-stage-active {
+.studio-overview-go-active {
 
     border-color: rgba(73, 199, 255, .5);
     background: linear-gradient(rgba(73, 199, 255, .14), rgba(73, 199, 255, .14)), #0d1526;
@@ -71,12 +55,8 @@
 
 }
 
-/* Behind you, not graded. */
-.studio-stage-done { color: var(--secondary); }
+.studio-overview-badge {
 
-.studio-stage-count {
-
-    flex-shrink: 0;
     min-width: 17px;
     padding: 1px 5px;
 
@@ -91,5 +71,30 @@
 
 }
 
-.studio-stage-active .studio-stage-count { background: rgba(73, 199, 255, .2); color: var(--primary); }
-.studio-stage-done .studio-stage-count { color: var(--secondary); }
+.studio-overview-go-active .studio-overview-badge { background: rgba(73, 199, 255, .2); color: var(--primary); }
+
+.studio-overview-divider {
+
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+
+}
+
+.studio-overview-stat {
+
+    font-size: 12px;
+    color: var(--text-muted);
+
+}
+
+.studio-overview-stat strong {
+
+    color: #eaf6ff;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+
+}
+
+.studio-overview-alert,
+.studio-overview-alert strong { color: var(--danger); }
