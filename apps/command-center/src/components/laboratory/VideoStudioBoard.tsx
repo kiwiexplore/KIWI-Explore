@@ -1,7 +1,7 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
     AlertTriangle, ArrowLeft, Check, Clapperboard, FileText, Info, Instagram, Loader2, Megaphone,
-    Music2, Plus, RotateCcw, Scissors, Trash2, Wand2,
+    Film, Music2, Plus, RotateCcw, Scissors, Trash2, Wand2,
 } from "lucide-react";
 import type { VideoBusyAction, VideoStudioState } from "../../state/videoStudio";
 import type { DerivedContentType, TranscriptStatus, VideoProject, VideoStage } from "../../lib/videoApi";
@@ -414,15 +414,32 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
 
                 {project.clips.length > 0 && (
                     <div className="video-studio-clips">
-                        {project.clips.map((clip, i) => (
-                            <div key={`${clip.start}-${i}`} className="video-studio-clip">
-                                <span className="video-studio-clip-time">{formatClock(clip.start)}–{formatClock(clip.end)}</span>
-                                <div className="video-studio-clip-body">
-                                    <span className="video-studio-clip-label">{clip.label}</span>
-                                    {clip.why && <span className="video-studio-clip-why">{clip.why}</span>}
+                        {project.clips.map((clip, i) => {
+                            const cutting = busy === "cut" && videoStudio.cuttingIndex === i;
+                            return (
+                                <div key={`${clip.start}-${i}`} className="video-studio-clip">
+                                    <span className="video-studio-clip-time">{formatClock(clip.start)}–{formatClock(clip.end)}</span>
+                                    <div className="video-studio-clip-body">
+                                        <span className="video-studio-clip-label">{clip.label}</span>
+                                        {clip.why && <span className="video-studio-clip-why">{clip.why}</span>}
+                                        {/* Once cut, the path IS the
+                                            deliverable — the file sits on
+                                            the same machine you edit on. */}
+                                        {clip.file && <code className="video-studio-clip-file">{clip.file}</code>}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="video-studio-clip-cut"
+                                        onClick={() => videoStudio.cutClip(project.id, i)}
+                                        disabled={busy === "cut"}
+                                    >
+                                        {cutting
+                                            ? <><Loader2 size={12} strokeWidth={2} className="video-studio-spin" />Cutting…</>
+                                            : <><Film size={12} strokeWidth={2} />{clip.file ? "Cut again" : "Cut"}</>}
+                                    </button>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </Step>

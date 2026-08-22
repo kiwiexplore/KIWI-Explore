@@ -75,6 +75,8 @@ export interface VideoClip {
     end: number;
     label: string;
     why: string;
+    /** Where this clip was cut to, once it has been. */
+    file?: string | null;
 }
 
 /**
@@ -124,6 +126,7 @@ start and end are whole seconds from the beginning of the video. Write label and
             end: Math.max(0, Math.round(clip.end as number)),
             label: String(clip.label ?? "Untitled clip"),
             why: String(clip.why ?? ""),
+            file: null,
         }));
 }
 

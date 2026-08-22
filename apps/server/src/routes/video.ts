@@ -11,8 +11,9 @@ import {
 } from "../videoTranscriber.js";
 import {
     findVideoClips, generateDerivedContent, generateVideoScript, AnthropicNotConfiguredError,
-    DERIVED_CONTENT_TYPES, type DerivedContentType,
+    DERIVED_CONTENT_TYPES, type DerivedContentType, type VideoClip,
 } from "../videoGenerator.js";
+import { checkClippingAvailable, cutClip, ClippingUnavailableError } from "../videoClipper.js";
 
 /**
  * Video Studio's CRUD plus the three pipeline steps that do real work
@@ -252,6 +253,62 @@ videoRouter.post("/:id/clips", async (req, res) => {
         res.json({ clips, project: updated ? withRelations(updated) : null });
     } catch (e) {
         fail(e, res, "Could not find clips");
+    }
+});
+
+/**
+ * Cuts one suggested clip into a real file and records where it went.
+ *
+ * Deliberately one at a time: a clip re-encodes in a few seconds, which
+ * fits in a request, and cutting them individually means one bad clip
+ * doesn't take the rest of the batch with it.
+ */
+videoRouter.post("/:id/clips/:index/cut", async (req, res) => {
+    const id = parseId(req.params.id);
+    const index = parseId(req.params.index);
+    if (id === null || index === null || index < 0) {
+        res.status(400).json({ error: "Invalid id or clip index." });
+        return;
+    }
+    const project = getVideoProject(id);
+    if (!project) {
+        res.status(404).json({ error: "No video project with that id." });
+        return;
+    }
+    if (!project.source_video_path) {
+        res.status(409).json({ error: "This project has no video file to cut from." });
+        return;
+    }
+
+    let clips: VideoClip[] = [];
+    try {
+        clips = project.clips_json ? (JSON.parse(project.clips_json) as VideoClip[]) : [];
+    } catch {
+        clips = [];
+    }
+    if (!clips[index]) {
+        res.status(409).json({ error: "There's no clip at that position — find clips again." });
+        return;
+    }
+
+    try {
+        await checkClippingAvailable();
+    } catch (e) {
+        if (e instanceof ClippingUnavailableError) {
+            res.status(503).json({ error: e.message });
+            return;
+        }
+        fail(e, res, "Could not cut that clip");
+        return;
+    }
+
+    try {
+        const file = await cutClip(id, project.source_video_path, clips[index], index);
+        clips[index] = { ...clips[index], file };
+        const updated = saveVideoClips(id, JSON.stringify(clips));
+        res.json({ project: updated ? withRelations(updated) : null });
+    } catch (e) {
+        fail(e, res, "Could not cut that clip");
     }
 });
 

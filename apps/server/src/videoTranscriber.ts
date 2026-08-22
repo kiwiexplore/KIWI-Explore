@@ -22,7 +22,7 @@ const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "d
 const audioDir = path.join(dataDir, "audio");
 const transcriptDir = path.join(dataDir, "transcripts");
 
-const FFMPEG_BIN = process.env.FFMPEG_BIN || "ffmpeg";
+export const FFMPEG_BIN = process.env.FFMPEG_BIN || "ffmpeg";
 const WHISPER_BIN = process.env.WHISPER_BIN || "whisper-cli";
 const WHISPER_MODEL = process.env.WHISPER_MODEL || "";
 
@@ -39,7 +39,7 @@ export function isTranscribing(id: number): boolean {
 
 export class TranscriptionUnavailableError extends Error {}
 
-function runCommand(bin: string, args: string[]): Promise<{ code: number; stderr: string }> {
+export function runCommand(bin: string, args: string[]): Promise<{ code: number; stderr: string }> {
     return new Promise((resolve, reject) => {
         const child = spawn(bin, args);
         let stderr = "";
@@ -51,7 +51,7 @@ function runCommand(bin: string, args: string[]): Promise<{ code: number; stderr
     });
 }
 
-async function binaryExists(bin: string): Promise<boolean> {
+export async function binaryExists(bin: string): Promise<boolean> {
     try {
         // Both tools exit non-zero for a bare --help on some builds, so
         // the exit code is ignored on purpose: the only question here is
@@ -184,7 +184,7 @@ async function transcribe(id: number, sourceVideoPath: string, language: string)
 }
 
 /** Command output is long and the useful part is at the end. */
-function lastLines(stderr: string, count = 3): string {
+export function lastLines(stderr: string, count = 3): string {
     return stderr.trim().split("\n").slice(-count).join(" ").trim();
 }
 

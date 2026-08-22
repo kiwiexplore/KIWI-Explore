@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    createVideoProject, deleteVideoProject, fetchVideoProjects, findVideoClips,
+    createVideoProject, cutVideoClip, deleteVideoProject, fetchVideoProjects, findVideoClips,
     generateDerivedContent, generateVideoScript, startTranscription, updateVideoProject,
     VideoNotConfiguredError, VideoStepBlockedError,
     type DerivedContentType, type VideoProject, type VideoProjectUpdate,
@@ -17,7 +17,7 @@ import {
  */
 
 /** Which long-running action, if any, is in flight for a project. */
-export type VideoBusyAction = "script" | "transcribe" | "clips" | "content";
+export type VideoBusyAction = "script" | "transcribe" | "clips" | "content" | "cut";
 
 export interface VideoStudioState {
     projects: VideoProject[];
@@ -33,6 +33,9 @@ export interface VideoStudioState {
     draftScript: (id: number, brief: string) => void;
     transcribe: (id: number) => void;
     findClips: (id: number) => void;
+    cutClip: (id: number, index: number) => void;
+    /** Which clip is being cut right now, so only its own button spins. */
+    cuttingIndex: number | null;
     generateContent: (id: number, type: DerivedContentType) => void;
 }
 
@@ -49,6 +52,7 @@ export function useVideoStudioState(): VideoStudioState {
     const [error, setError] = useState<string | null>(null);
     const [setupNeeded, setSetupNeeded] = useState(false);
     const [busy, setBusy] = useState<Record<number, VideoBusyAction | undefined>>({});
+    const [cuttingIndex, setCuttingIndex] = useState<number | null>(null);
 
     const reportError = useCallback((e: unknown, fallback: string) => {
         setSetupNeeded(e instanceof VideoNotConfiguredError);
@@ -163,6 +167,12 @@ export function useVideoStudioState(): VideoStudioState {
         draftScript: (id, brief) => void run(id, "script", () => generateVideoScript(id, brief), "Could not draft a script."),
         transcribe: (id) => void run(id, "transcribe", () => startTranscription(id), "Could not start the transcription."),
         findClips: (id) => void run(id, "clips", () => findVideoClips(id), "Could not find clips."),
+        cuttingIndex,
+        cutClip: (id, index) => {
+            setCuttingIndex(index);
+            void run(id, "cut", () => cutVideoClip(id, index), "Could not cut that clip.")
+                .finally(() => setCuttingIndex(null));
+        },
         generateContent: (id, type) => void run(id, "content", () => generateDerivedContent(id, type), "Could not generate that piece."),
     };
 }

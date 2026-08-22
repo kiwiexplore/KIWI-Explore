@@ -36,6 +36,8 @@ export interface VideoClip {
     end: number;
     label: string;
     why: string;
+    /** Where this clip was cut to on the server, once it has been. */
+    file?: string | null;
 }
 
 export interface VideoProject {
@@ -205,6 +207,12 @@ export async function startTranscription(id: number): Promise<VideoProject> {
 export async function findVideoClips(id: number): Promise<VideoProject> {
     const res = await fetch(`${API_URL}/api/video/${id}/clips`, { method: "POST", headers: headers() });
     if (!res.ok) await readError(res, "Could not find clips");
+    return toVideoProject((await res.json()).project);
+}
+
+export async function cutVideoClip(id: number, index: number): Promise<VideoProject> {
+    const res = await fetch(`${API_URL}/api/video/${id}/clips/${index}/cut`, { method: "POST", headers: headers() });
+    if (!res.ok) await readError(res, "Could not cut that clip");
     return toVideoProject((await res.json()).project);
 }
 

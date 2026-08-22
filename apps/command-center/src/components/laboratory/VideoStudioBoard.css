@@ -533,6 +533,7 @@
 
     display: flex;
     align-items: flex-start;
+    justify-content: space-between;
     gap: 14px;
 
     padding: 10px 12px;
@@ -554,6 +555,9 @@
 }
 
 .video-studio-clip-body {
+
+    flex: 1;
+    min-width: 0;
 
     display: flex;
     flex-direction: column;
@@ -778,5 +782,52 @@
     letter-spacing: 0;
     text-transform: none;
     color: var(--text);
+
+}
+
+/* --- cutting a clip ------------------------------------------------ */
+
+.video-studio-clip-file {
+
+    font-size: 11px;
+    color: var(--secondary);
+    word-break: break-all;
+
+}
+
+.video-studio-clip-cut {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    align-self: flex-start;
+
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, 0.74);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text);
+
+    transition: border-color var(--transition), color var(--transition);
+
+}
+
+.video-studio-clip-cut:hover:not(:disabled) {
+
+    border-color: var(--primary);
+    color: var(--primary);
+
+}
+
+.video-studio-clip-cut:disabled {
+
+    opacity: .45;
+    cursor: not-allowed;
 
 }
