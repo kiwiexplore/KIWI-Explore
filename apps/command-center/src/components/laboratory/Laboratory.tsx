@@ -184,12 +184,26 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     const [stage, setStage] = useState<StudioStage>("projects");
     const studioVideo = videoStudio.projects.find((p) => p.id === selectedVideoId) ?? null;
 
+    // The last three stages are about one video, so without one they
+    // have nothing to draw — and drawing nothing is what a deleted
+    // video used to leave behind: a stage strip over an empty page.
+    // Derived rather than corrected in an effect, so there is no frame
+    // where the blank state exists at all.
+    const effectiveStage: StudioStage = studioVideo ? stage : "projects";
+
     const goToStage = (next: StudioStage) => {
         setStage(next);
         setSection("guide");
         // EDIT is the full-screen room; the other three are pages inside
         // the Laboratory's own frame.
         setEditingVideoId(next === "edit" ? selectedVideoId : null);
+    };
+
+    /** Starts a video from the rail and drops you straight into it. */
+    const handleNewVideo = () => {
+        void videoStudio.create("Untitled video").then((created) => {
+            if (created) openVideo(created.id);
+        });
     };
 
     const openVideo = (id: number) => {
@@ -260,7 +274,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                     <LaboratorySidebar
                         section={section}
                         onSectionChange={setSection}
-                        onCreateProject={handleCreateProject}
+                        onNewVideo={handleNewVideo}
                         onOpenKiwi={() => setKiwiOpen(true)}
                     />
 
@@ -394,9 +408,9 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
 
                         {section === "guide" && (
                             <>
-                                <StudioStages active={stage} project={studioVideo} onGo={goToStage} />
-                                {stage === "projects" && <StudioProjects videoStudio={videoStudio} onOpen={openVideo} />}
-                                {stage === "create" && studioVideo && (
+                                <StudioStages active={effectiveStage} project={studioVideo} onGo={goToStage} />
+                                {effectiveStage === "projects" && <StudioProjects videoStudio={videoStudio} onOpen={openVideo} />}
+                                {effectiveStage === "create" && studioVideo && (
                                     <VideoStudioBoard
                                         videoStudio={videoStudio}
                                         selectedId={studioVideo.id}
@@ -404,7 +418,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                                         onOpenEditor={(id) => { setSelectedVideoId(id); goToStage("edit"); }}
                                     />
                                 )}
-                                {stage === "publish" && studioVideo && (
+                                {effectiveStage === "publish" && studioVideo && (
                                     <StudioPublish project={studioVideo} videoStudio={videoStudio} />
                                 )}
                             </>

@@ -1,7 +1,4 @@
-import {
-    BarChart3, Clapperboard, FlaskConical, Image as ImageIcon, LayoutDashboard, Lightbulb, Plus, Radar, Sparkles, StickyNote, Video,
-    type LucideIcon,
-} from "lucide-react";
+import { FlaskConical, Lightbulb, Plus, Radar, Sparkles, StickyNote, Video, type LucideIcon } from "lucide-react";
 import type { LaboratorySection } from "./Laboratory";
 import "./LaboratorySidebar.css";
 
@@ -14,26 +11,27 @@ interface SidebarItem {
 }
 
 /**
- * Making a video, in order. These nine are what the work actually needs;
- * everything else the Laboratory can do is a click away under "More
- * tools" and out of the way until then.
+ * What feeds a video without belonging to any one of them.
+ *
+ * The rail used to lead with "Your videos" and "Video Studio", which
+ * the stage strip now owns — two ways to reach the same screen, with
+ * the sidebar's version silently disagreeing about which stage you were
+ * on. It also listed Thumbnails and Analytics, both of which still only
+ * log what you type at them.
+ *
+ * What's left is the material: things you collect between videos and
+ * draw on while making one. The pipeline is the strip along the top;
+ * this is the shelf beside it.
  */
-const MAKE_ITEMS: SidebarItem[] = [
-    { label: "Your videos", icon: LayoutDashboard, section: "guide" },
-    { label: "Video Studio", icon: Clapperboard, section: "video-studio" },
-];
-
-const BEFORE_ITEMS: SidebarItem[] = [
+const MATERIAL_ITEMS: SidebarItem[] = [
     { label: "Ideas", icon: Lightbulb, section: "ideas" },
     { label: "Trends", icon: Radar, section: "trend-scanner" },
     { label: "Research", icon: FlaskConical, section: "research" },
     { label: "Notes", icon: StickyNote, section: "notes" },
 ];
 
-const AFTER_ITEMS: SidebarItem[] = [
+const OUTPUT_ITEMS: SidebarItem[] = [
     { label: "Posts & ads", icon: Video, section: "content-hub" },
-    { label: "Thumbnails", icon: ImageIcon, section: "image-generation" },
-    { label: "Analytics", icon: BarChart3, section: "analytics" },
 ];
 
 interface ItemButtonProps {
@@ -63,43 +61,26 @@ function ItemButton({ item, activeSection, onSectionChange, onOpenKiwi }: ItemBu
 interface LaboratorySidebarProps {
     section: LaboratorySection;
     onSectionChange: (section: LaboratorySection) => void;
-    onCreateProject: () => void;
+    /** Starts a video and opens it — not a Laboratory project. */
+    onNewVideo: () => void;
     onOpenKiwi?: () => void;
 }
 
-/**
- * Laboratory's left nav, cut down to what making a video needs.
- *
- * It used to list twenty-one equally weighted sections in four buckets
- * with nothing saying which mattered — a prototype tracker and a store
- * channel list presented as equal in importance to the thing you came
- * here to do.
- *
- * The sections that aren't part of making a video are no longer listed.
- * None of them were deleted: they keep their entries in
- * LaboratorySection and their render branches in Laboratory.tsx, so
- * putting any one back is a single line in this file.
- */
-export default function LaboratorySidebar({ section, onSectionChange, onCreateProject, onOpenKiwi }: LaboratorySidebarProps) {
+export default function LaboratorySidebar({ section, onSectionChange, onNewVideo, onOpenKiwi }: LaboratorySidebarProps) {
     const shared = { activeSection: section, onSectionChange, onOpenKiwi };
 
     return (
         <aside className="lab-sidebar">
             <div className="lab-sidebar-scroll">
                 <div className="lab-sidebar-section">
-                    {MAKE_ITEMS.map((item) => <ItemButton key={item.label} item={item} {...shared} />)}
+                    <div className="lab-sidebar-section-title"><span>Material</span></div>
+                    {MATERIAL_ITEMS.map((item) => <ItemButton key={item.label} item={item} {...shared} />)}
                 </div>
 
                 <div className="lab-sidebar-section">
-                    <div className="lab-sidebar-section-title"><span>Before you record</span></div>
-                    {BEFORE_ITEMS.map((item) => <ItemButton key={item.label} item={item} {...shared} />)}
+                    <div className="lab-sidebar-section-title"><span>Goes out with it</span></div>
+                    {OUTPUT_ITEMS.map((item) => <ItemButton key={item.label} item={item} {...shared} />)}
                 </div>
-
-                <div className="lab-sidebar-section">
-                    <div className="lab-sidebar-section-title"><span>After it's cut</span></div>
-                    {AFTER_ITEMS.map((item) => <ItemButton key={item.label} item={item} {...shared} />)}
-                </div>
-
 
                 <div className="lab-sidebar-section">
                     <button type="button" className="lab-sidebar-item" onClick={() => onOpenKiwi?.()}>
@@ -109,9 +90,11 @@ export default function LaboratorySidebar({ section, onSectionChange, onCreatePr
                 </div>
             </div>
 
-            <button type="button" className="lab-sidebar-new-project" onClick={onCreateProject}>
+            {/* Was "New Project", which made a mock Laboratory project
+                nothing in the studio ever reads. */}
+            <button type="button" className="lab-sidebar-new-project" onClick={onNewVideo}>
                 <Plus size={16} strokeWidth={2} />
-                New Project
+                New video
             </button>
         </aside>
     );
