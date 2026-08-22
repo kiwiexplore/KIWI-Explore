@@ -697,3 +697,70 @@
     color: var(--text);
 
 }
+
+/* --- what KIWI noticed ------------------------------------------------- */
+
+.studio-findings {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    height: 100%;
+    overflow-y: auto;
+    padding-top: 4px;
+
+}
+
+/* Every finding is clickable and puts the playhead on it. A suggestion
+   you can be standing on two seconds later can be judged; one you have
+   to go looking for gets ignored. */
+.studio-finding {
+
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--text-muted);
+    border-radius: 10px;
+    background: rgba(16, 25, 46, .9);
+    cursor: pointer;
+
+    font: inherit;
+    text-align: left;
+
+}
+
+.studio-finding:hover { border-color: var(--primary); }
+
+.studio-finding-time {
+
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+
+}
+
+.studio-finding-text {
+
+    font-size: 12px;
+    line-height: 1.55;
+    color: #cfd8e6;
+
+}
+
+.studio-finding-pacing { border-left-color: var(--primary); }
+.studio-finding-pacing .studio-finding-time { color: var(--primary); }
+
+.studio-finding-silence { border-left-color: var(--text-muted); }
+
+.studio-finding-loud { border-left-color: var(--danger); }
+.studio-finding-loud .studio-finding-time { color: var(--danger); }
+
+.studio-finding-intro { border-left-color: #F5C451; }
+.studio-finding-intro .studio-finding-time { color: #F5C451; }
+
+.studio-finding-highlight { border-left-color: var(--secondary); }
+.studio-finding-highlight .studio-finding-time { color: var(--secondary); }

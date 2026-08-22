@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useStudioEditorState } from "../../state/studioEditor";
 import { fetchTranscript, type VideoProject } from "../../lib/videoApi";
+import { analyseEdit, type Finding } from "../../lib/editAnalysis";
 import StudioTimeline from "./StudioTimeline";
 import { formatClock } from "../../lib/timecode";
 import "./StudioEditor.css";
@@ -39,6 +40,7 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     const rootRef = useRef<HTMLDivElement>(null);
     const [subtitleError, setSubtitleError] = useState<string | null>(null);
     const [loadingSubs, setLoadingSubs] = useState(false);
+    const [findings, setFindings] = useState<Finding[] | null>(null);
 
     // Focus the editor on open so the shortcuts work without demanding
     // a click somewhere first.
@@ -136,6 +138,10 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     };
 
     const addTitle = () => editor.addText("Title", editor.playhead, 3);
+
+    // Measured, not asked of a model: clip lengths, the decoded peak
+    // envelope, and where the first picture starts are all already here.
+    const analyse = () => setFindings(analyseEdit(editor.clips, editor.assets));
 
     return (
         <div className="studio-editor" tabIndex={-1} onKeyDown={onKeyDown} ref={rootRef}>
@@ -296,7 +302,7 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                         <Sparkles size={14} strokeWidth={2} />
                         KIWI AI
                     </div>
-                    <button type="button" className="studio-ai-analyze" disabled={editor.clips.length === 0}>
+                    <button type="button" className="studio-ai-analyze" onClick={analyse} disabled={editor.clips.length === 0}>
                         ANALYZE VIDEO
                     </button>
                     {editor.clips.length === 0 && (
@@ -304,10 +310,32 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                     )}
 
                     <div className="studio-ai-body">
-                        <p className="studio-ai-placeholder">
-                            Pacing, long shots, silence, audio levels and clip-worthy moments land here once the
-                            analysis runs.
-                        </p>
+                        {findings === null ? (
+                            <p className="studio-ai-placeholder">
+                                Pacing, long shots, silence, audio levels and clip-worthy moments land here once the
+                                analysis runs.
+                            </p>
+                        ) : findings.length === 0 ? (
+                            <p className="studio-ai-placeholder">
+                                Nothing stood out — no long shots, no silences, nothing near clipping.
+                            </p>
+                        ) : (
+                            <div className="studio-findings">
+                                {findings.map((f) => (
+                                    <button
+                                        key={f.id}
+                                        type="button"
+                                        className={`studio-finding studio-finding-${f.kind}`}
+                                        onClick={() => editor.setPlayhead(f.start)}
+                                    >
+                                        <span className="studio-finding-time">
+                                            {formatClock(f.start)} – {formatClock(f.end)}
+                                        </span>
+                                        <span className="studio-finding-text">{f.text}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <p className="studio-ai-boundary">
