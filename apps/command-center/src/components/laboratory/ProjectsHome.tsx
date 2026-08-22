@@ -3,6 +3,7 @@ import { AlertTriangle, Check, Clapperboard, FolderKanban, Plus } from "lucide-r
 import type { StudioProjectsState } from "../../state/studioProjects";
 import type { StudioProject } from "../../lib/projectsApi";
 import "./GlobalBoard.css";
+import StudioOverviewCharts from "./StudioOverviewCharts";
 import "./ProjectsHome.css";
 
 /**
@@ -103,6 +104,11 @@ export default function ProjectsHome({ projects, onOpen }: ProjectsHomeProps) {
                     <span>{projects.error}</span>
                 </div>
             )}
+
+            {/* The overview belongs on the home page rather than behind
+                a tab: it is the answer to "how is this going", which is
+                the question you open the studio with. */}
+            {!projects.loading && <StudioOverviewCharts projects={projects.projects} />}
 
             {projects.loading ? (
                 <p className="ph-muted">Loading…</p>

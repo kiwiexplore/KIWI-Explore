@@ -1,0 +1,164 @@
+/*
+ * The overview at the top of Projects. Thin marks, recessive tracks,
+ * every bar directly labelled — the two darkest stage steps sit below
+ * 3:1 against this surface, so the numbers carry the reading, not the
+ * colour.
+ */
+
+.soc {
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+}
+
+/* --- headline numbers --------------------------------------------- */
+
+.soc-tiles {
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+}
+
+.soc-tile {
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    min-width: 108px;
+    padding: 14px 18px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(16, 25, 46, .9);
+
+}
+
+.soc-tile-value {
+
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.5px;
+    color: var(--text);
+
+}
+
+.soc-tile-label {
+
+    font-size: 11px;
+    letter-spacing: .3px;
+    color: var(--text-muted);
+
+}
+
+.soc-tile-good .soc-tile-value { color: var(--secondary); }
+
+.soc-tile-alert {
+
+    border-color: rgba(255, 79, 109, .45);
+
+}
+
+.soc-tile-alert .soc-tile-value { color: var(--danger); }
+
+/* --- the two charts ------------------------------------------------ */
+
+.soc-charts {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+
+}
+
+.soc-chart {
+
+    margin: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(16, 25, 46, .9);
+
+}
+
+.soc-chart figcaption {
+
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.soc-empty { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+
+.soc-bars {
+
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+
+}
+
+.soc-bar-row {
+
+    display: grid;
+    grid-template-columns: 92px 1fr 42px;
+    align-items: center;
+    gap: 12px;
+
+}
+
+/* Text wears text tokens — the mark beside it carries the identity. */
+.soc-bar-name {
+
+    font-size: 11.5px;
+    color: var(--text-muted);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.soc-bar-track {
+
+    height: 10px;
+    border-radius: 5px;
+    background: rgba(5, 8, 22, .55);
+    overflow: hidden;
+
+}
+
+.soc-bar {
+
+    display: block;
+    height: 100%;
+
+    /* Rounded only at the data end, anchored to the baseline. */
+    border-radius: 0 4px 4px 0;
+
+    transition: width var(--transition);
+
+}
+
+.soc-bar-value {
+
+    font-size: 12px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--text);
+
+}
