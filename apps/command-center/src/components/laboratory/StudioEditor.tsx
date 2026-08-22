@@ -12,6 +12,7 @@ import {
 import { assetsFromFolder } from "../../lib/projectMedia";
 import type { StudioProject } from "../../lib/projectsApi";
 import { analyseEdit, type Finding } from "../../lib/editAnalysis";
+import { renderCaption } from "../../lib/captionImage";
 import StudioTimeline from "./StudioTimeline";
 import { formatClock } from "../../lib/timecode";
 import "./StudioEditor.css";
@@ -372,8 +373,23 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                 if (asset) files.set(clip.assetId, asset.serverFile);
             }
 
-            setExporting("Rendering…");
             const first = editor.assets.find((a) => a.id === media[0].assetId);
+            const width = first?.width && first.width > 0 ? first.width : 1920;
+            const height = first?.height && first.height > 0 ? first.height : 1080;
+
+            // Drawn here, at the size they will really have in the file,
+            // by the same engine that draws them over the preview.
+            setExporting("Drawing captions…");
+            const texts = editor.clips
+                .filter((c) => c.text !== undefined)
+                .map((c) => {
+                    const drawn = renderCaption(c.text ?? "", c.start, c.duration, width, height);
+                    return drawn
+                        ? { text: c.text ?? "", ...drawn }
+                        : { text: c.text ?? "", start: c.start, duration: c.duration };
+                });
+
+            setExporting("Rendering…");
             const result = await exportTimeline(project.id, {
                 clips: media.map((c) => ({
                     file: files.get(c.assetId) ?? "",
@@ -382,10 +398,9 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     offset: c.offset,
                     kind: editor.tracks.find((t) => t.id === c.trackId)?.kind ?? "video",
                 })).filter((c) => c.file),
-                texts: editor.clips.filter((c) => c.text !== undefined)
-                    .map((c) => ({ text: c.text ?? "", start: c.start, duration: c.duration })),
-                width: first?.width && first.width > 0 ? first.width : 1920,
-                height: first?.height && first.height > 0 ? first.height : 1080,
+                texts,
+                width,
+                height,
                 crossfade: 0,
             });
             setExportDone({ bytes: result.bytes, warnings: result.warnings });

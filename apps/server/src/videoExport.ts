@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
+import os from "node:os";
 import { FFMPEG_BIN, binaryExists, lastLines, runCommand } from "./videoTranscriber.js";
 
 /**
@@ -24,38 +25,6 @@ export const exportsDir = path.join(dataDir, "exports");
 
 export class ExportUnavailableError extends Error {}
 
-/**
- * Whether this ffmpeg can burn text in.
- *
- * drawtext needs libfreetype at build time and plenty of builds ship
- * without it — Homebrew's among them. Discovering that by failing the
- * whole render would trade a finished picture for a missing caption,
- * which is the wrong trade; the export goes ahead and says what it
- * couldn't do.
- *
- * Probed once: the answer cannot change while the process runs.
- */
-let hasDrawText: boolean | null = null;
-
-export async function canBurnText(): Promise<boolean> {
-    if (hasDrawText !== null) return hasDrawText;
-    try {
-        // Actually USE the filter on a scrap of black and throw the
-        // result away. Asking `-filters` or `-h filter=…` answers on
-        // stdout, and reading the wrong stream is how the first version
-        // of this concluded the filter was present right up until the
-        // render failed on it.
-        const probe = await runCommand(FFMPEG_BIN, [
-            "-hide_banner", "-f", "lavfi", "-i", "color=c=black:s=16x16:d=0.1",
-            "-vf", "drawtext=text=x", "-frames:v", "1", "-f", "null", "-",
-        ]);
-        hasDrawText = probe.code === 0;
-    } catch {
-        hasDrawText = false;
-    }
-    return hasDrawText;
-}
-
 export async function checkExportAvailable(): Promise<void> {
     if (!(await binaryExists(FFMPEG_BIN))) {
         throw new ExportUnavailableError(
@@ -75,10 +44,28 @@ export interface ExportClip {
     kind: "video" | "audio";
 }
 
+/**
+ * A caption, already drawn.
+ *
+ * Text used to be burned in with drawtext, which needs libfreetype at
+ * build time — and Homebrew's plain ffmpeg bottle has neither that nor
+ * libass, so every export with subtitles went out without them and said
+ * so. The browser draws them now and sends the pictures, and they go on
+ * with `overlay`, which every build has.
+ *
+ * The gain is not only that it works: the caption in the file is drawn
+ * by the same engine, with the same font and wrapping, as the one over
+ * the preview.
+ */
 export interface ExportText {
     text: string;
     start: number;
     duration: number;
+    /** PNG bytes, base64. Without one there is nothing to draw. */
+    png?: string;
+    /** Where the picture goes, in frame pixels from the top left. */
+    x?: number;
+    y?: number;
 }
 
 export interface ExportRequest {
@@ -88,16 +75,6 @@ export interface ExportRequest {
     height: number;
     /** Seconds of crossfade at each join, or 0 for hard cuts. */
     crossfade: number;
-}
-
-/** Everything ffmpeg's drawtext treats as syntax rather than as text. */
-function escapeDrawText(value: string): string {
-    return value
-        .replace(/\\/g, "\\\\")
-        .replace(/:/g, "\\:")
-        .replace(/'/g, "’")
-        .replace(/%/g, "\\%")
-        .replace(/\n/g, " ");
 }
 
 /**
@@ -127,7 +104,7 @@ function safeFile(file: string, folder: string): string {
  * to its position, and laid over a black canvas in timeline order, so
  * gaps stay black instead of collapsing the way a concat would.
  */
-function buildGraph(request: ExportRequest, burnText: boolean, folder: string): { args: string[]; filter: string; map: string[] } {
+function buildGraph(request: ExportRequest, captionFiles: string[], folder: string): { args: string[]; filter: string; map: string[] } {
     const { width, height } = request;
     const video = request.clips.filter((c) => c.kind === "video");
     const audio = request.clips;
@@ -188,12 +165,20 @@ function buildGraph(request: ExportRequest, burnText: boolean, folder: string): 
         base = `[b${input}]`;
     });
 
-    // Text last, so it sits over the picture rather than under the next
-    // clip's overlay.
+    // Captions last, so they sit over the picture rather than under the
+    // next clip's overlay.
+    //
+    // Each is a one-frame PNG input. overlay's default eof_action is to
+    // repeat the last frame it has, so a single frame covers however
+    // long the caption is on screen without decoding it again — and
+    // `enable` is what decides when that is.
+    const captionInput = request.clips.length + 2;
     let withText = base;
-    (burnText ? request.texts : []).forEach((text, i) => {
+    captionFiles.forEach((file, i) => {
+        args.push("-i", file);
+        const text = request.texts[i];
         const out = `[t${i}]`;
-        parts.push(`${withText}drawtext=text='${escapeDrawText(text.text)}':fontcolor=white:fontsize=${Math.round(height / 18)}:borderw=3:bordercolor=black@0.85:x=(w-text_w)/2:y=h-(h*0.12):enable='between(t,${text.start},${text.start + text.duration})'${out}`);
+        parts.push(`${withText}[${captionInput + i}:v]overlay=x=${Math.round(text.x ?? 0)}:y=${Math.round(text.y ?? 0)}:enable='between(t,${text.start},${text.start + text.duration})'${out}`);
         withText = out;
     });
 
@@ -228,35 +213,56 @@ export async function renderExport(id: number, request: ExportRequest, folder?: 
     const mediaFolder = folder || uploadsDir;
     const outDir = folder ? path.join(folder, "Exports") : exportsDir;
 
-    const burnText = await canBurnText();
     const warnings: string[] = [];
-    if (!burnText && request.texts.length > 0) {
-        warnings.push(`This ffmpeg has no drawtext filter, so ${request.texts.length} text ${request.texts.length === 1 ? "overlay was" : "overlays were"} left out. The picture and sound are complete. A build with libfreetype (on macOS: brew install ffmpeg) would include them.`);
+    // A caption that arrived without a picture is the one thing this
+    // can't draw, and it is said rather than dropped in silence.
+    const undrawn = request.texts.filter((t) => !t.png).length;
+    if (undrawn > 0) {
+        warnings.push(`${undrawn} ${undrawn === 1 ? "caption" : "captions"} arrived without a rendered image and ${undrawn === 1 ? "was" : "were"} left out. The picture and sound are complete.`);
     }
 
     fs.mkdirSync(outDir, { recursive: true });
     const out = path.join(outDir, `${id}.mp4`);
-    const { args, filter, map } = buildGraph(request, burnText, mediaFolder);
 
-    const result = await runCommand(FFMPEG_BIN, [
-        "-y",
-        ...args,
-        "-filter_complex", filter,
-        "-map", map[0],
-        "-map", map[1],
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "192k",
-        "-movflags", "+faststart",
-        out,
-    ]);
+    // The PNGs live only as long as the render. They are the browser's
+    // output, not anything worth keeping — the timeline still holds the
+    // words, and drawing them again costs a millisecond.
+    const captionDir = fs.mkdtempSync(path.join(os.tmpdir(), `kiwi-captions-${id}-`));
+    try {
+        const captionFiles: string[] = [];
+        request.texts.forEach((text, i) => {
+            if (!text.png) return;
+            const file = path.join(captionDir, `${i}.png`);
+            fs.writeFileSync(file, Buffer.from(text.png, "base64"));
+            captionFiles.push(file);
+        });
+        // buildGraph pairs captionFiles[i] with texts[i], so a text
+        // without a picture must not leave a hole in the list.
+        const drawable = { ...request, texts: request.texts.filter((t) => t.png) };
+        const { args, filter, map } = buildGraph(drawable, captionFiles, mediaFolder);
 
-    if (result.code !== 0) {
-        fs.rmSync(out, { force: true });
-        throw new Error(`ffmpeg couldn't render the export (exit ${result.code}). ${lastLines(result.stderr, 4)}`);
+        const result = await runCommand(FFMPEG_BIN, [
+            "-y",
+            ...args,
+            "-filter_complex", filter,
+            "-map", map[0],
+            "-map", map[1],
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "192k",
+            "-movflags", "+faststart",
+            out,
+        ]);
+
+        if (result.code !== 0) {
+            fs.rmSync(out, { force: true });
+            throw new Error(`ffmpeg couldn't render the export (exit ${result.code}). ${lastLines(result.stderr, 4)}`);
+        }
+        if (!fs.existsSync(out) || fs.statSync(out).size === 0) {
+            fs.rmSync(out, { force: true });
+            throw new Error("ffmpeg reported success but wrote an empty file.");
+        }
+        return { file: out, warnings };
+    } finally {
+        fs.rmSync(captionDir, { recursive: true, force: true });
     }
-    if (!fs.existsSync(out) || fs.statSync(out).size === 0) {
-        fs.rmSync(out, { force: true });
-        throw new Error("ffmpeg reported success but wrote an empty file.");
-    }
-    return { file: out, warnings };
 }

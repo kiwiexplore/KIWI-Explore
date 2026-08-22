@@ -24,6 +24,12 @@ const PORT = Number(process.env.PORT) || 8787;
 const API_TOKEN = process.env.KIWI_API_TOKEN;
 
 const app = express();
+// Video Studio's routes carry more than a form's worth of JSON: a saved
+// timeline, and an export that ships its burned-in captions as images.
+// Mounted BEFORE the general parser, which skips a body somebody else
+// has already read — and whose 100kb default has quietly been the real
+// ceiling all along, underneath the timeline route's own 4MB check.
+app.use("/api/video", express.json({ limit: "48mb" }));
 app.use(express.json());
 
 // Vite's dev server picks a random port when the default is taken (see

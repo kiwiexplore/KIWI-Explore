@@ -640,7 +640,12 @@
     text-align: center;
     text-wrap: pretty;
 
-    font-size: clamp(13px, 2.6cqw, 30px);
+    /* No upper bound. It used to stop growing at 30px, which meant that
+       on a wide preview the caption sat smaller against the frame than
+       it does in the export — and the export takes its size from this
+       same 2.6%. A preview that disagrees with the file about how big
+       the words are is not showing you the file. */
+    font-size: max(13px, 2.6cqw);
     font-weight: 650;
     line-height: 1.35;
     color: #fff;

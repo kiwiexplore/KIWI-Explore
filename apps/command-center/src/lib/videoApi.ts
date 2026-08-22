@@ -291,7 +291,12 @@ export async function uploadMedia(projectId: number, file: File): Promise<string
 
 export interface ExportRequest {
     clips: { file: string; start: number; duration: number; offset: number; kind: "video" | "audio" }[];
-    texts: { text: string; start: number; duration: number }[];
+    /**
+     * Captions, each with the picture the browser drew for it. The
+     * render composites those rather than typesetting the words itself
+     * — see lib/captionImage.ts for why.
+     */
+    texts: { text: string; start: number; duration: number; png?: string; x?: number; y?: number }[];
     width: number;
     height: number;
     crossfade: number;

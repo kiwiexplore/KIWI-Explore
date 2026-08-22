@@ -481,6 +481,14 @@ const exportBodySchema = z.object({
         text: z.string().max(500),
         start: z.number().min(0),
         duration: z.number().positive(),
+        // The caption as the browser drew it. Base64 rather than a
+        // second upload round trip: a caption is a handful of kilobytes
+        // and there are as many of them as there are lines of speech.
+        // The cap is per caption and generous — a 4K one-liner is well
+        // under it, and the parser's own limit governs the total.
+        png: z.string().base64().max(2_000_000).optional(),
+        x: z.number().int().min(0).max(7680).optional(),
+        y: z.number().int().min(0).max(4320).optional(),
     })).default([]),
     width: z.number().int().min(16).max(7680).default(1920),
     height: z.number().int().min(16).max(4320).default(1080),
