@@ -1,0 +1,50 @@
+/* The channel's numbers, beside the studio's own. Read, never pressed —
+   except when there is nothing to read yet, which is the one state that
+   is a button. */
+
+.yt {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    flex-shrink: 0;
+
+    padding: 6px 13px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(5, 8, 22, .55);
+
+    font-size: 11.5px;
+    color: var(--text-muted);
+
+}
+
+.yt > svg { color: #ff4d4d; }
+
+.yt-stat { white-space: nowrap; }
+.yt-stat strong { font-weight: 700; font-variant-numeric: tabular-nums; color: #eaf6ff; }
+
+.yt-dot {
+
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--border);
+
+}
+
+.yt-connect {
+
+    text-decoration: none;
+    font-weight: 620;
+    cursor: pointer;
+
+}
+
+.yt-connect:hover { border-color: #ff4d4d; color: var(--text); }
+
+/* Off is quieter than connected: it is a state to know about, not one
+   to act on right now. The reason is in the tooltip rather than the
+   bar, which has no room to explain itself. */
+.yt-off { opacity: .6; }
+.yt-off-text { white-space: nowrap; }

@@ -2,6 +2,7 @@ import { ArrowLeft, Bell, Calendar, Search } from "lucide-react";
 import MailButton from "../ui/MailButton";
 import KiwiCoreBadge from "./KiwiCoreBadge";
 import StudioOverview from "./StudioStages";
+import YouTubeStats from "./YouTubeStats";
 import SpotifyPlayerWidget from "../ui/SpotifyPlayerWidget";
 import type { SpotifyState } from "../../state/spotify";
 import "./LaboratoryTopBar.css";
@@ -65,13 +66,23 @@ export default function LaboratoryTopBar({
                         <span className="lab-topbar-brand-tag">LAB</span>
                     </span>
                 </span>
-            </div>
 
-            <StudioOverview
-                atProjects={atProjects}
-                onGoToProjects={onGoToProjects}
-                projectCount={projectCount}
-            />
+                {/* Projects sits with the name rather than alone in the
+                    middle of the bar. It is the way back into the
+                    studio, so it belongs beside the studio's wordmark —
+                    a lone button floating in the centre read as a whole
+                    section of the bar rather than as one control. */}
+                <StudioOverview
+                    atProjects={atProjects}
+                    onGoToProjects={onGoToProjects}
+                    projectCount={projectCount}
+                />
+
+                {/* The channel's own numbers, beside the studio's. The
+                    rail counts what you have made; this counts what it
+                    did once it was out. */}
+                <YouTubeStats />
+            </div>
 
             <div className="lab-topbar-account">
                 <SpotifyPlayerWidget spotify={spotify} />

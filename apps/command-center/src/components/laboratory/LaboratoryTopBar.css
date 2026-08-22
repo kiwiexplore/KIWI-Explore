@@ -33,13 +33,20 @@
     align-items: center;
     gap: 0;
 
-    /* Shrinks before the stages do — the navigation is worth more bar
-       than the wordmark is. */
+    /* Holds the wordmark, the Projects button and the channel's
+       numbers, which used to be three separate zones of the bar. They
+       belong together: one names the studio, one is the way back into
+       it, and one says how what came out of it is doing. */
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
 
 }
+
+/* Only the two controls get room around them; the wordmark keeps its
+   own tight spacing so KIWI / STUDIO still reads as one lockup. */
+.lab-topbar-brand > .studio-overview { margin-left: 18px; }
+.lab-topbar-brand > .yt { margin-left: 12px; }
 
 .lab-topbar-back {
 

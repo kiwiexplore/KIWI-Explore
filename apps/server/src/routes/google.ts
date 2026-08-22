@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { buildGoogleAuthorizeUrl, disconnectGoogle, exchangeGoogleCode, isGoogleConnected, GoogleNotConfiguredError } from "../google.js";
+import {
+    buildGoogleAuthorizeUrl, disconnectGoogle, exchangeGoogleCode, isGoogleConnected,
+    isGoogleConfigured, GoogleNotConfiguredError,
+} from "../google.js";
 
 // Shared connect/status/disconnect for Google (covers both Calendar and
 // YouTube — see google.ts's own comment). Unlike Spotify's PKCE flow,
@@ -10,7 +13,9 @@ import { buildGoogleAuthorizeUrl, disconnectGoogle, exchangeGoogleCode, isGoogle
 export const googleRouter = Router();
 
 googleRouter.get("/status", (_req, res) => {
-    res.json({ connected: isGoogleConnected() });
+    // Both, because they are different problems: `configured` is the
+    // one only the account owner can fix, `connected` is one button.
+    res.json({ connected: isGoogleConnected(), configured: isGoogleConfigured() });
 });
 
 // `returnTo` is this session's frontend origin — carried through

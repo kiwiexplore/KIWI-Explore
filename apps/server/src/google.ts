@@ -34,6 +34,17 @@ export function getGoogleConfig(): GoogleClientConfig {
     return { clientId, clientSecret, redirectUri };
 }
 
+/**
+ * Whether the credentials exist at all, without throwing.
+ *
+ * "Nobody has set this up" and "nobody has signed in" need different
+ * sentences and different actions, and a screen that can only say
+ * "unavailable" sends you looking in the wrong place.
+ */
+export function isGoogleConfigured(): boolean {
+    return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_REDIRECT_URI);
+}
+
 export function buildGoogleAuthorizeUrl(state: string): string {
     const config = getGoogleConfig();
     const params = new URLSearchParams({
