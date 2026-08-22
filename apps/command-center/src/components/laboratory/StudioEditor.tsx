@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
     Captions, ChevronLeft, Clapperboard, Film, Music2, Redo2, Scissors, SkipBack, SkipForward,
     Sparkles, Trash2, Type, Undo2, Upload, Volume2, ZoomIn, ZoomOut,
 } from "lucide-react";
-import { useStudioEditorState } from "../../state/studioEditor";
-import { exportFileUrl, exportTimeline, fetchTranscript, saveTimeline, type VideoProject } from "../../lib/videoApi";
+import { useStudioEditorState, type Clip } from "../../state/studioEditor";
+import {
+    exportFileUrl, exportTimeline, fetchTranscript, saveTimeline, saveTimelineOnUnload,
+    type VideoProject,
+} from "../../lib/videoApi";
 import { assetsFromFolder } from "../../lib/projectMedia";
 import type { StudioProject } from "../../lib/projectsApi";
 import { analyseEdit, type Finding } from "../../lib/editAnalysis";
@@ -13,6 +16,29 @@ import { formatClock } from "../../lib/timecode";
 import "./StudioEditor.css";
 
 const ZOOM_STEPS = [2, 4, 8, 16, 32, 64];
+
+/**
+ * How long the edit has to sit still before it is written.
+ *
+ * Long enough that dragging a clip is one save rather than a hundred,
+ * short enough that it is over before you have finished thinking about
+ * the next cut.
+ */
+const SAVE_AFTER = 900;
+
+/**
+ * Only what cannot be worked out from the edit itself. Whether there
+ * are unsaved changes is a comparison, not a flag — a flag would be a
+ * second copy of that fact, free to disagree with the first.
+ */
+type SaveState = "idle" | "saving" | "failed";
+
+/** The saved cut, or an empty one. A stored shape that isn't a list of
+ *  clips is treated as nothing saved rather than trusted. */
+function storedClips(timeline: unknown): Clip[] {
+    const stored = timeline as { clips?: unknown } | null;
+    return stored && Array.isArray(stored.clips) ? (stored.clips as Clip[]) : [];
+}
 
 interface StudioEditorProps {
     project: VideoProject;
@@ -36,7 +62,10 @@ interface StudioEditorProps {
  * it can't quietly erode.
  */
 export default function StudioEditor({ project, owner, onBack }: StudioEditorProps) {
-    const editor = useStudioEditorState();
+    // The saved cut is where the editor STARTS. Keyed on the video in
+    // Laboratory, so opening another one is a new editor with that
+    // video's cut already in it.
+    const editor = useStudioEditorState(storedClips(project.timeline));
     const videoRef = useRef<HTMLVideoElement>(null);
     const [zoom, setZoom] = useState(2);
     const [volume, setVolume] = useState(1);
@@ -47,7 +76,8 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const [exporting, setExporting] = useState<string | null>(null);
     const [exportDone, setExportDone] = useState<{ bytes: number; warnings: string[] } | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
-    const [saved, setSaved] = useState<boolean | null>(null);
+    const [saveState, setSaveState] = useState<SaveState>("idle");
+    const [retry, setRetry] = useState(0);
 
     // Focus the editor on open so the shortcuts work without demanding
     // a click somewhere first.
@@ -55,7 +85,7 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
 
     // The bin IS the project's folder. Nothing is imported into the app
     // — the files are already where they belong, and this reads them.
-    const { setAssets, load } = editor;
+    const { setAssets } = editor;
     useEffect(() => {
         if (!owner) return;
         let cancelled = false;
@@ -65,16 +95,70 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
         return () => { cancelled = true; };
     }, [owner, setAssets]);
 
-    // A saved cut, restored once when the video opens.
-    const restored = useRef(false);
+    /**
+     * Every change to the edit is written, not just the ones somebody
+     * remembered to press Save after.
+     *
+     * Undo is what made this necessary: a cut you took back was still
+     * on the server, and one you took back and then improved was not.
+     * The button was a promise the editor could not keep.
+     *
+     * What counts as a change is a comparison against what the server
+     * is known to hold, not against the previous render. Undo hands
+     * back an OLD array, so anything watching identity would either
+     * save on every render or decide an undone edit wasn't a change.
+     */
+    /**
+     * What the server is known to hold, as JSON. State rather than a
+     * ref because "is there anything unsaved" is read while rendering
+     * the bar — a ref would let the read-out go on saying Unsaved after
+     * the save landed.
+     */
+    const [savedJson, setSavedJson] = useState(() => JSON.stringify(storedClips(project.timeline)));
+    /** What it does not hold yet — read by the flush on the way out. */
+    const unsaved = useRef<string | null>(null);
+
+    const clipsJson = useMemo(() => JSON.stringify(editor.clips), [editor.clips]);
+    const dirty = clipsJson !== savedJson;
+
     useEffect(() => {
-        if (restored.current) return;
-        const saved = project.timeline as { clips?: unknown } | null;
-        if (saved && Array.isArray(saved.clips)) {
-            load(saved.clips as Parameters<typeof load>[0]);
-        }
-        restored.current = true;
-    }, [project.timeline, load]);
+        if (!dirty) return;
+        unsaved.current = clipsJson;
+        const clips = editor.clips;
+        // Nothing is written until the edit has sat still: dragging a
+        // clip changes it on every frame, and a save per frame would be
+        // a hundred writes describing one gesture.
+        const timer = setTimeout(() => {
+            setSaveState("saving");
+            void saveTimeline(project.id, { clips })
+                .then(() => {
+                    setSavedJson(clipsJson);
+                    // An edit made while this was in flight has already
+                    // claimed `unsaved`; clearing it would lose that
+                    // newer one on the way out.
+                    if (unsaved.current === clipsJson) unsaved.current = null;
+                    setSaveState("idle");
+                })
+                .catch(() => setSaveState("failed"));
+        }, SAVE_AFTER);
+        return () => clearTimeout(timer);
+    }, [dirty, clipsJson, editor.clips, project.id, retry]);
+
+    /**
+     * Leaving — the button, or the window — must not throw away a cut
+     * that was still inside the debounce window. Declared after the
+     * effect above so its cleanup runs second: the pending timer is
+     * cancelled first, and then what it was going to save is sent.
+     */
+    useEffect(() => {
+        const flush = () => {
+            if (!unsaved.current) return;
+            saveTimelineOnUnload(project.id, { clips: JSON.parse(unsaved.current) as Clip[] });
+            unsaved.current = null;
+        };
+        window.addEventListener("pagehide", flush);
+        return () => { window.removeEventListener("pagehide", flush); flush(); };
+    }, [project.id]);
 
     const pxPerSecond = ZOOM_STEPS[zoom];
     const current = editor.clipAt(editor.playhead);
@@ -137,11 +221,6 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
             event.preventDefault();
             editor.setPlaying(!editor.playing);
         }
-    };
-
-    const saveCut = () => {
-        setSaved(false);
-        void saveTimeline(project.id, { clips: editor.clips }).then(() => setSaved(true));
     };
 
     const step = (seconds: number) => editor.setPlayhead(editor.playhead + seconds);
@@ -245,9 +324,18 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                         <Redo2 size={13} strokeWidth={2} />Redo
                     </button>
                     <span className="studio-bar-divider" />
-                    <button type="button" className="studio-bar-btn" onClick={saveCut}>
-                        {saved === false ? "Saving…" : "Save"}
-                    </button>
+                    {/* The cut saves itself, so this is a read-out
+                        rather than a button — until it fails, which is
+                        the one state you can do something about. */}
+                    {saveState === "failed" ? (
+                        <button type="button" className="studio-bar-btn studio-save-retry" onClick={() => setRetry((n) => n + 1)}>
+                            Not saved — retry
+                        </button>
+                    ) : (
+                        <span className={`studio-save studio-save-${saveState === "saving" ? "saving" : dirty ? "dirty" : "clean"}`}>
+                            {saveState === "saving" ? "Saving…" : dirty ? "Unsaved" : "Saved"}
+                        </span>
+                    )}
                     <button
                         type="button"
                         className="studio-bar-btn studio-bar-btn-export"

@@ -130,6 +130,25 @@
 
 }
 
+.studio-save {
+
+    padding: 7px 4px;
+
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    color: var(--text-muted);
+
+}
+
+/* Saved is the resting state and should not ask for attention; the
+   two that mean "not yet" are the ones worth seeing. */
+.studio-save-clean { opacity: .5; }
+.studio-save-dirty,
+.studio-save-saving { color: var(--secondary); }
+
+.studio-save-retry { border-color: #e0645f; color: #f0938f; }
+
 .studio-bar-divider {
 
     width: 1px;

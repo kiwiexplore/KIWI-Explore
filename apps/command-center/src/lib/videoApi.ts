@@ -280,10 +280,35 @@ export async function exportTimeline(projectId: number, request: ExportRequest):
     return res.json();
 }
 
-/** Saves the cut. Fire-and-forget: the editor keeps working either way. */
+/**
+ * Saves the cut.
+ *
+ * It throws. This used to swallow whatever came back, which was
+ * defensible while a person pressed Save and could press it again —
+ * with the editor saving on its own, a failure nobody is told about is
+ * the worst of the three outcomes, because the screen goes on looking
+ * like the work is safe.
+ */
 export async function saveTimeline(id: number, timeline: unknown): Promise<void> {
-    await fetch(`${API_URL}/api/video/${id}/timeline`, {
+    const res = await fetch(`${API_URL}/api/video/${id}/timeline`, {
         method: "PUT", headers: headers(), body: JSON.stringify(timeline),
+    });
+    if (!res.ok) await readError(res, "Could not save the cut");
+}
+
+/**
+ * The same save, sent while the page is going away.
+ *
+ * `keepalive` is what lets a request outlive the document — an ordinary
+ * fetch started in a pagehide handler is cancelled with everything
+ * else. sendBeacon would be the usual answer and can't be used here:
+ * it only ever sends POST, and this endpoint is a PUT.
+ */
+export function saveTimelineOnUnload(id: number, timeline: unknown): void {
+    void fetch(`${API_URL}/api/video/${id}/timeline`, {
+        method: "PUT", headers: headers(), body: JSON.stringify(timeline), keepalive: true,
+    }).catch(() => {
+        // Nothing can be shown: the page is already leaving.
     });
 }
 

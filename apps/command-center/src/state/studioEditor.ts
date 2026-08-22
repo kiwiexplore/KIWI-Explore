@@ -109,8 +109,6 @@ export interface StudioEditorState {
 
     /** Replaces the media bin with what's in the project's folder. */
     setAssets: (assets: MediaAsset[]) => void;
-    /** Restores a saved cut. */
-    load: (clips: Clip[]) => void;
     removeAsset: (id: string) => void;
     addClip: (assetId: string, trackId?: string, start?: number) => void;
     selectClip: (id: string | null) => void;
@@ -169,7 +167,32 @@ export function readMetadata(url: string, kind: MediaKind): Promise<{ duration: 
     });
 }
 
-export function useStudioEditorState(): StudioEditorState {
+/**
+ * The saved cut's clips already carry ids of the form `clip-7`, and the
+ * counter that hands out new ones starts at 1 — so the first clip added
+ * to a restored edit was called `clip-1` a second time. Two clips with
+ * one id is not a cosmetic problem: selecting, moving, trimming and
+ * deleting all find a clip BY id, and would have found both.
+ */
+function nextIdAfter(clips: Clip[]): number {
+    let highest = 0;
+    for (const clip of clips) {
+        const n = Number(clip.id.split("-").pop());
+        if (Number.isInteger(n) && n > highest) highest = n;
+    }
+    return highest + 1;
+}
+
+/**
+ * `initialClips` is the saved cut, and it is the state's INITIAL value
+ * rather than something loaded afterwards.
+ *
+ * That is the difference between the editor being right on its first
+ * render and being briefly empty. Briefly empty matters now that the
+ * cut saves itself: an autosave watching an edit that starts empty and
+ * fills in a moment later would write the empty one first.
+ */
+export function useStudioEditorState(initialClips: Clip[] = []): StudioEditorState {
     const [assets, setAssetsState] = useState<MediaAsset[]>([]);
     // Clips and their history are ONE piece of state, changed in one
     // atomic update.
@@ -184,14 +207,14 @@ export function useStudioEditorState(): StudioEditorState {
     // clips are small and few, and storing what the edit WAS is exact
     // by construction, where replaying inverses has to be kept correct
     // as every new operation is added.
-    const [edit, setEdit] = useState<{ clips: Clip[]; history: Clip[][]; future: Clip[][] }>({
-        clips: [], history: [], future: [],
-    });
+    const [edit, setEdit] = useState<{ clips: Clip[]; history: Clip[][]; future: Clip[][] }>(() => ({
+        clips: initialClips, history: [], future: [],
+    }));
     const clips = edit.clips;
     const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
     const [playhead, setPlayheadState] = useState(0);
     const [playing, setPlaying] = useState(false);
-    const nextId = useRef(1);
+    const nextId = useRef(nextIdAfter(initialClips));
 
     const makeId = (prefix: string) => `${prefix}-${nextId.current++}`;
 
@@ -261,11 +284,6 @@ export function useStudioEditorState(): StudioEditorState {
                 });
             }
         }
-    }, []);
-
-    /** Restores a saved cut, and clears the history with it. */
-    const load = useCallback((clips: Clip[]) => {
-        setEdit({ clips, history: [], future: [] });
     }, []);
 
     const removeAsset = (id: string) => {
@@ -432,7 +450,7 @@ export function useStudioEditorState(): StudioEditorState {
         canUndo: edit.history.length > 0,
         canRedo: edit.future.length > 0,
         undo, redo, beginGesture,
-        setAssets, load, removeAsset, addClip,
+        setAssets, removeAsset, addClip,
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,
         addText, setSubtitles, updateText, textAt,

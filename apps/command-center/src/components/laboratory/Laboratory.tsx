@@ -275,6 +275,11 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
 
             {editingVideo ? (
                 <StudioEditor
+                    // Keyed so opening a different video is a fresh
+                    // editor rather than the old one handed a new
+                    // project — the cut it is holding belongs to the
+                    // video it was opened on, and it saves it.
+                    key={editingVideo.id}
                     project={editingVideo}
                     owner={studioProjects.projects.find((p) => p.videos.some((v) => v.id === editingVideo.id)) ?? null}
                     onBack={() => setEditingVideoId(null)}
