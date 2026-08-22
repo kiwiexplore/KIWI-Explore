@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
-import { markTranscriptDone, markTranscriptFailed, markTranscriptProcessing } from "./db.js";
+import { markTranscriptDone, markTranscriptFailed, markTranscriptProcessing, saveDetectedLanguage } from "./db.js";
 
 /**
  * Video Studio's transcription job: ffmpeg pulls the audio out, whisper
@@ -94,10 +94,10 @@ export async function checkTranscriptionAvailable(): Promise<void> {
  * Deliberately not awaited by the caller: transcribing an hour of video
  * takes minutes, far past any sensible request timeout.
  */
-export function startTranscription(id: number, sourceVideoPath: string): void {
+export function startTranscription(id: number, sourceVideoPath: string, language: string): void {
     running.add(id);
     markTranscriptProcessing(id);
-    void transcribe(id, sourceVideoPath)
+    void transcribe(id, sourceVideoPath, language)
         .catch((e) => {
             // The catch inside transcribe() covers the expected failures;
             // this is the backstop for anything unforeseen, so that even
@@ -108,7 +108,7 @@ export function startTranscription(id: number, sourceVideoPath: string): void {
         .finally(() => { running.delete(id); });
 }
 
-async function transcribe(id: number, sourceVideoPath: string): Promise<void> {
+async function transcribe(id: number, sourceVideoPath: string, language: string): Promise<void> {
     fs.mkdirSync(audioDir, { recursive: true });
     fs.mkdirSync(transcriptDir, { recursive: true });
 
@@ -138,9 +138,16 @@ async function transcribe(id: number, sourceVideoPath: string): Promise<void> {
 
         // -oj writes the timestamped segments the clip finder needs; -otxt
         // writes the plain transcript a person actually reads.
+        // -l is not optional in practice: whisper.cpp's CLI defaults to
+        // English, so a Czech recording without this is transcribed AS
+        // English and comes back as plausible-looking nonsense — a
+        // failure that reports success, which is exactly what the
+        // transcript_status design exists to prevent. "auto" asks it to
+        // detect instead of assuming.
         const whisper = await runCommand(WHISPER_BIN, [
             "-m", WHISPER_MODEL,
             "-f", wavPath,
+            "-l", language || "auto",
             "-otxt", "-oj",
             "-of", outputStem,
         ]);
@@ -162,6 +169,12 @@ async function transcribe(id: number, sourceVideoPath: string): Promise<void> {
             return;
         }
 
+        // Whatever whisper detected is worth keeping: the generators
+        // need to know which language to write the script and posts in,
+        // and asking again later would mean re-running the whole job.
+        const detected = readDetectedLanguage(id);
+        if (detected) saveDetectedLanguage(id, detected);
+
         markTranscriptDone(id, textPath);
     } finally {
         // The WAV is a large intermediate and nothing reads it again.
@@ -173,6 +186,19 @@ async function transcribe(id: number, sourceVideoPath: string): Promise<void> {
 /** Command output is long and the useful part is at the end. */
 function lastLines(stderr: string, count = 3): string {
     return stderr.trim().split("\n").slice(-count).join(" ").trim();
+}
+
+/** The language whisper reports in its JSON, or null if it didn't say. */
+function readDetectedLanguage(id: number): string | null {
+    const jsonPath = path.join(transcriptDir, `${id}.json`);
+    if (!fs.existsSync(jsonPath)) return null;
+    try {
+        const parsed = JSON.parse(fs.readFileSync(jsonPath, "utf8")) as { result?: { language?: string } };
+        const language = parsed.result?.language?.trim();
+        return language ? language : null;
+    } catch {
+        return null;
+    }
 }
 
 /**

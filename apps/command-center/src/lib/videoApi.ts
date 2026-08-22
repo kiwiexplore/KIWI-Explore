@@ -13,6 +13,21 @@ export const VIDEO_STAGES: VideoStage[] = ["idea", "script", "recorded", "transc
 
 export type TranscriptStatus = "pending" | "processing" | "done" | "failed";
 
+/**
+ * What the video is spoken in. "auto" lets whisper detect it and then
+ * records what it heard — which matters more than it sounds: whisper's
+ * CLI assumes English when nothing is set, so an unset Czech recording
+ * gets transcribed as English and comes back as confident nonsense.
+ */
+export const VIDEO_LANGUAGES: { value: string; label: string }[] = [
+    { value: "auto", label: "Detect automatically" },
+    { value: "cs", label: "Czech" },
+    { value: "sk", label: "Slovak" },
+    { value: "en", label: "English" },
+    { value: "de", label: "German" },
+    { value: "pl", label: "Polish" },
+];
+
 /** Follow-up pieces a finished video can spawn (its own script aside). */
 export type DerivedContentType = "ad" | "instagram-post" | "tiktok-post";
 
@@ -35,6 +50,8 @@ export interface VideoProject {
     // verbatim rather than a generic "something went wrong".
     transcriptError: string | null;
     clips: VideoClip[];
+    /** "auto", or an ISO 639-1 code. */
+    language: string;
     // True only while a job is genuinely running in the server process.
     // Distinct from transcriptStatus === "processing", which can outlive
     // the process that set it if the server dies mid-job.
@@ -54,6 +71,7 @@ interface RawVideoProject {
     transcript_status: TranscriptStatus;
     transcript_error: string | null;
     clips_json: string | null;
+    language: string;
     transcribing: boolean;
     contentItems: RawContentItem[];
     created_at: string;
@@ -94,6 +112,7 @@ function toVideoProject(raw: RawVideoProject): VideoProject {
         transcriptStatus: raw.transcript_status,
         transcriptError: raw.transcript_error,
         clips,
+        language: raw.language ?? "auto",
         transcribing: Boolean(raw.transcribing),
         contentItems: (raw.contentItems ?? []).map(toContentItem),
         createdAt: raw.created_at,
@@ -153,6 +172,7 @@ export interface VideoProjectUpdate {
     stage?: VideoStage;
     // null clears it; omitted means "don't touch".
     sourceVideoPath?: string | null;
+    language?: string;
 }
 
 export async function updateVideoProject(id: number, update: VideoProjectUpdate): Promise<VideoProject> {

@@ -20,6 +20,34 @@ export type DerivedContentType = "ad" | "instagram-post" | "tiktok-post";
 
 export const DERIVED_CONTENT_TYPES: DerivedContentType[] = ["ad", "instagram-post", "tiktok-post"];
 
+const LANGUAGE_NAMES: Record<string, string> = {
+    cs: "Czech", sk: "Slovak", en: "English", de: "German", pl: "Polish",
+    es: "Spanish", fr: "French", it: "Italian", uk: "Ukrainian",
+};
+
+/**
+ * The line that decides what language the output comes back in.
+ *
+ * Without it, an English prompt gets an English answer — wrong for
+ * anybody whose videos aren't in English. These prompts are written in
+ * English because that's what the model reads best, not because the
+ * script should be.
+ *
+ * 'auto' deliberately says nothing beyond "match the material": with a
+ * transcript in hand that's the right guess, and guessing a language
+ * outright would be worse than following what was actually said.
+ */
+function languageInstruction(language: string): string {
+    if (!language || language === "auto") return "\n\nWrite it in the same language as the material above.";
+    return "\n\nWrite it in " + (LANGUAGE_NAMES[language] ?? language) + ".";
+}
+
+/** How to name the language inside a prompt sentence. */
+function languageName(language: string): string {
+    if (!language || language === "auto") return "the same language as the transcript";
+    return LANGUAGE_NAMES[language] ?? language;
+}
+
 async function ask(prompt: string, maxTokens = 1500): Promise<string> {
     const anthropic = getClient();
     const response = await anthropic.messages.create({
@@ -31,7 +59,7 @@ async function ask(prompt: string, maxTokens = 1500): Promise<string> {
     return textBlock?.text ?? "";
 }
 
-export async function generateVideoScript(title: string, brief: string): Promise<string> {
+export async function generateVideoScript(title: string, brief: string, language: string): Promise<string> {
     return ask(`Write a video script for a video titled "${title}".${brief ? `\n\nWhat it should cover:\n${brief}` : ""}
 
 Structure it as:
@@ -39,7 +67,7 @@ Structure it as:
 - The main sections, each with what to actually say and roughly how long to spend
 - Call to action to close on
 
-Write it to be recorded from, not read as an essay. Plain text, no markdown headers.`);
+Write it to be recorded from, not read as an essay. Plain text, no markdown headers.` + languageInstruction(language));
 }
 
 export interface VideoClip {
@@ -59,6 +87,7 @@ export async function findVideoClips(
     title: string,
     segments: { start: number; end: number; text: string }[],
     fallbackTranscript: string,
+    language: string,
 ): Promise<VideoClip[]> {
     // Timestamped segments are what makes a clip cuttable. When whisper's
     // JSON is missing (see readTranscriptSegments) the plain transcript
@@ -75,7 +104,7 @@ ${body}
 Respond with ONLY a JSON array, no prose around it, in this exact shape:
 [{"start": 12, "end": 47, "label": "short title for the clip", "why": "one sentence on why this moment works alone"}]
 
-start and end are whole seconds from the beginning of the video.`, 2000);
+start and end are whole seconds from the beginning of the video. Write label and why in ` + languageName(language) + `.`, 2000);
 
     // Models sometimes wrap JSON in a code fence even when told not to.
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
@@ -124,6 +153,8 @@ Hook in the first 3 seconds, keep it punchy, and finish with 3-5 hashtags.`,
  * script — deriving an ad from what was actually said beats deriving it
  * from what was planned, but either is far better than the title alone.
  */
-export async function generateDerivedContent(type: DerivedContentType, title: string, material: string): Promise<string> {
-    return ask(DERIVED_PROMPTS[type](title, material), 1024);
+export async function generateDerivedContent(
+    type: DerivedContentType, title: string, material: string, language: string,
+): Promise<string> {
+    return ask(DERIVED_PROMPTS[type](title, material) + languageInstruction(language), 1024);
 }

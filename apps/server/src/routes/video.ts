@@ -100,6 +100,10 @@ const updateBodySchema = z.object({
     // is allowed (null) — that's how you detach a file you pointed at
     // by mistake.
     sourceVideoPath: z.string().trim().max(1000).nullable().optional(),
+    // 'auto', or an ISO 639-1 code. Kept loose rather than an enum so a
+    // language nobody listed still works — whisper knows far more of
+    // them than any list here would.
+    language: z.string().trim().max(12).optional(),
 });
 
 videoRouter.patch("/:id", (req, res) => {
@@ -164,7 +168,7 @@ videoRouter.post("/:id/script", async (req, res) => {
         return;
     }
     try {
-        const script = await generateVideoScript(project.title, parsed.data.brief ?? "");
+        const script = await generateVideoScript(project.title, parsed.data.brief ?? "", project.language);
         // The script is a content_item like any other, so it shows up in
         // Content Hub and can be scheduled there — it just also points
         // back at the video it belongs to.
@@ -213,7 +217,7 @@ videoRouter.post("/:id/transcribe", async (req, res) => {
         fail(e, res, "Could not start transcription");
         return;
     }
-    startTranscription(id, project.source_video_path);
+    startTranscription(id, project.source_video_path, project.language);
     // 202: accepted and running. The client follows transcript_status
     // from here rather than holding a request open for minutes.
     const updated = getVideoProject(id);
@@ -243,7 +247,7 @@ videoRouter.post("/:id/clips", async (req, res) => {
             res.status(409).json({ error: "The transcript file is empty or unreadable — run the transcription again." });
             return;
         }
-        const clips = await findVideoClips(project.title, readTranscriptSegments(id), transcript);
+        const clips = await findVideoClips(project.title, readTranscriptSegments(id), transcript, project.language);
         const updated = saveVideoClips(id, JSON.stringify(clips));
         res.json({ clips, project: updated ? withRelations(updated) : null });
     } catch (e) {
@@ -288,7 +292,7 @@ videoRouter.post("/:id/content", async (req, res) => {
 
     try {
         const type = parsed.data.type as DerivedContentType;
-        const content = await generateDerivedContent(type, project.title, material);
+        const content = await generateDerivedContent(type, project.title, material, project.language);
         const item = insertContentItem(type, project.title, content, id);
         res.json({ item, project: withRelations(getVideoProject(id) as StoredVideoProject) });
     } catch (e) {

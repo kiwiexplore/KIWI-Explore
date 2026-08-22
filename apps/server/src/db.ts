@@ -119,6 +119,14 @@ db.exec(`
         -- per video, with no lifecycle of its own, so it rides here
         -- rather than earning a table.
         clips_json TEXT,
+        -- What language the video is spoken in: an ISO 639-1 code, or
+        -- 'auto' to let whisper work it out. This is NOT cosmetic —
+        -- whisper.cpp's CLI defaults to English, so a Czech recording
+        -- left unset gets transcribed as though it were English and
+        -- comes out as nonsense that still reports success. It also
+        -- tells the generators which language to write the script and
+        -- the posts in.
+        language TEXT NOT NULL DEFAULT 'auto',
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
         updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
@@ -149,6 +157,12 @@ if (!contentItemsColumns.some((c) => c.name === "video_project_id")) {
 // while they're enforced would be seen as orphaning every video_project
 // row that references it. The pragma can't be toggled inside a
 // transaction, hence the ordering here.
+// Databases created before language existed.
+const videoColumns = db.prepare("PRAGMA table_info(video_projects)").all() as { name: string }[];
+if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "language")) {
+    db.exec("ALTER TABLE video_projects ADD COLUMN language TEXT NOT NULL DEFAULT 'auto'");
+}
+
 const contentItemsDDL = (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'content_items'").get() as { sql?: string } | undefined)?.sql ?? "";
 if (contentItemsDDL && !contentItemsDDL.includes("'ad'")) {
     db.exec("PRAGMA foreign_keys = OFF");
@@ -350,13 +364,14 @@ export interface StoredVideoProject {
     transcript_status: TranscriptStatus;
     transcript_error: string | null;
     clips_json: string | null;
+    language: string;
     created_at: string;
     updated_at: string;
 }
 
 const VIDEO_PROJECT_COLUMNS = `
     id, title, stage, source_content_id, source_video_path,
-    transcript_path, transcript_status, transcript_error, clips_json,
+    transcript_path, transcript_status, transcript_error, clips_json, language,
     created_at, updated_at
 `;
 
@@ -382,6 +397,7 @@ export interface VideoProjectUpdate {
     stage?: VideoStage;
     sourceContentId?: number | null;
     sourceVideoPath?: string | null;
+    language?: string;
 }
 
 /**
@@ -403,11 +419,23 @@ export function updateVideoProject(id: number, update: VideoProjectUpdate): Stor
     if (update.sourceVideoPath !== undefined) {
         db.prepare(`UPDATE video_projects SET source_video_path = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.sourceVideoPath, id);
     }
+    if (update.language !== undefined) {
+        db.prepare(`UPDATE video_projects SET language = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.language, id);
+    }
     return getVideoProject(id);
 }
 
 export function deleteVideoProject(id: number): void {
     db.prepare("DELETE FROM video_projects WHERE id = ?").run(id);
+}
+
+/**
+ * Records what whisper actually heard, once. Only fills in a project
+ * left on 'auto' — a language somebody chose by hand is theirs to keep,
+ * even if the detector disagrees.
+ */
+export function saveDetectedLanguage(id: number, language: string): void {
+    db.prepare("UPDATE video_projects SET language = ? WHERE id = ? AND language = 'auto'").run(language, id);
 }
 
 export function saveVideoClips(id: number, clipsJson: string): StoredVideoProject | null {

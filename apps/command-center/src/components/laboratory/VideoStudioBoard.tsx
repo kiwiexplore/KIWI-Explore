@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import type { VideoBusyAction, VideoStudioState } from "../../state/videoStudio";
 import type { DerivedContentType, TranscriptStatus, VideoProject, VideoStage } from "../../lib/videoApi";
-import { VIDEO_STAGES } from "../../lib/videoApi";
+import { VIDEO_LANGUAGES, VIDEO_STAGES } from "../../lib/videoApi";
 import type { ContentItem } from "../../lib/contentApi";
 import "./GlobalBoard.css";
 import "./VideoStudioBoard.css";
@@ -329,6 +329,27 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
                         Save path
                     </button>
                 </div>
+                <label className="video-studio-lang">
+                    <span>Spoken language</span>
+                    <select
+                        value={project.language}
+                        onChange={(e) => videoStudio.update(project.id, { language: e.target.value })}
+                    >
+                        {VIDEO_LANGUAGES.map((lang) => (
+                            <option key={lang.value} value={lang.value}>{lang.label}</option>
+                        ))}
+                    </select>
+                </label>
+                {/* Not a detail: whisper's CLI assumes English when
+                    nothing is set, so a Czech recording left unset comes
+                    back as nonsense that still reports success. It also
+                    decides what language the script and posts get
+                    written in. */}
+                <p className="video-studio-hint">
+                    Used for the transcript and for whatever KIWI writes about this video. Leave it on detect and it
+                    records whatever whisper heard.
+                </p>
+
                 <p className="video-studio-hint">
                     A path on the machine running the backend — raw footage is far too large to push through the browser,
                     and the server reads it directly.
