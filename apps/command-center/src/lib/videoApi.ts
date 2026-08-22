@@ -54,6 +54,8 @@ export interface VideoProject {
     // verbatim rather than a generic "something went wrong".
     transcriptError: string | null;
     clips: VideoClip[];
+    /** The saved cut, as the editor stored it. Null if never saved. */
+    timeline: unknown;
     /** "auto", or an ISO 639-1 code. */
     language: string;
     // True only while a job is genuinely running in the server process.
@@ -76,6 +78,7 @@ interface RawVideoProject {
     transcript_status: TranscriptStatus;
     transcript_error: string | null;
     clips_json: string | null;
+    timeline_json: string | null;
     language: string;
     transcribing: boolean;
     contentItems: RawContentItem[];
@@ -100,6 +103,11 @@ function toContentItem(raw: RawContentItem): ContentItem {
     };
 }
 
+/** A stored timeline that won't parse is treated as none. */
+function safeParse(json: string): unknown {
+    try { return JSON.parse(json); } catch { return null; }
+}
+
 function toVideoProject(raw: RawVideoProject): VideoProject {
     let clips: VideoClip[] = [];
     if (raw.clips_json) {
@@ -118,6 +126,7 @@ function toVideoProject(raw: RawVideoProject): VideoProject {
         transcriptStatus: raw.transcript_status,
         transcriptError: raw.transcript_error,
         clips,
+        timeline: raw.timeline_json ? safeParse(raw.timeline_json) : null,
         language: raw.language ?? "auto",
         transcribing: Boolean(raw.transcribing),
         contentItems: (raw.contentItems ?? []).map(toContentItem),
@@ -269,6 +278,13 @@ export async function exportTimeline(projectId: number, request: ExportRequest):
     });
     if (!res.ok) await readError(res, "Could not export");
     return res.json();
+}
+
+/** Saves the cut. Fire-and-forget: the editor keeps working either way. */
+export async function saveTimeline(id: number, timeline: unknown): Promise<void> {
+    await fetch(`${API_URL}/api/video/${id}/timeline`, {
+        method: "PUT", headers: headers(), body: JSON.stringify(timeline),
+    });
 }
 
 export function exportFileUrl(projectId: number): string {

@@ -38,10 +38,12 @@ export interface MediaAsset {
      */
     frames: string[];
     peaks: number[];
-    /** Kept so an export can send the bytes to the server. */
-    file: File;
-    /** The server's id for it, once uploaded. */
-    serverFile?: string;
+    /**
+     * The file on disk this asset IS, by name inside the project's
+     * folder. That name is the identity: it survives a reload, it is
+     * what an export refers to, and it is what you see in Finder.
+     */
+    serverFile: string;
 }
 
 export type TrackKind = "video" | "audio";
@@ -105,10 +107,11 @@ export interface StudioEditorState {
      */
     beginGesture: () => void;
 
-    importFiles: (files: FileList | File[]) => Promise<void>;
+    /** Replaces the media bin with what's in the project's folder. */
+    setAssets: (assets: MediaAsset[]) => void;
+    /** Restores a saved cut. */
+    load: (clips: Clip[]) => void;
     removeAsset: (id: string) => void;
-    /** Records that an asset now exists on the server. */
-    setServerFile: (id: string, serverFile: string) => void;
     addClip: (assetId: string, trackId?: string, start?: number) => void;
     selectClip: (id: string | null) => void;
     moveClip: (id: string, start: number, snap?: boolean) => void;
@@ -135,19 +138,12 @@ const MIN_CLIP = 0.2;
 /** Far more than anyone reaches for, and cheap: a snapshot is a list. */
 const HISTORY_LIMIT = 60;
 
-function kindOf(file: File): MediaKind | null {
-    if (file.type.startsWith("video/")) return "video";
-    if (file.type.startsWith("audio/")) return "audio";
-    if (file.type.startsWith("image/")) return "image";
-    return null;
-}
-
 /**
  * Reads duration and dimensions by letting the browser load the file's
  * metadata. An image has no duration, so it gets a default length the
  * way every editor gives stills one.
  */
-function readMetadata(url: string, kind: MediaKind): Promise<{ duration: number; width: number; height: number }> {
+export function readMetadata(url: string, kind: MediaKind): Promise<{ duration: number; width: number; height: number }> {
     return new Promise((resolve) => {
         if (kind === "image") {
             const img = new Image();
@@ -174,7 +170,7 @@ function readMetadata(url: string, kind: MediaKind): Promise<{ duration: number;
 }
 
 export function useStudioEditorState(): StudioEditorState {
-    const [assets, setAssets] = useState<MediaAsset[]>([]);
+    const [assets, setAssetsState] = useState<MediaAsset[]>([]);
     // Clips and their history are ONE piece of state, changed in one
     // atomic update.
     //
@@ -201,45 +197,6 @@ export function useStudioEditorState(): StudioEditorState {
 
     const duration = clips.reduce((end, c) => Math.max(end, c.start + c.duration), 0);
 
-    const importFiles = useCallback(async (files: FileList | File[]) => {
-        const list = Array.from(files);
-        const imported: MediaAsset[] = [];
-        for (const file of list) {
-            const kind = kindOf(file);
-            if (!kind) continue;
-            const url = URL.createObjectURL(file);
-            const meta = await readMetadata(url, kind);
-            imported.push({
-                id: `asset-${nextId.current++}`,
-                name: file.name,
-                kind,
-                url,
-                duration: meta.duration,
-                width: meta.width,
-                height: meta.height,
-                frames: [],
-                peaks: [],
-                file,
-            });
-        }
-        if (imported.length === 0) return;
-        setAssets((prev) => [...prev, ...imported]);
-
-        // Frames and peaks land as they finish, one asset at a time, so
-        // importing five files doesn't decode five videos at once.
-        for (const asset of imported) {
-            if (asset.kind === "video") {
-                void extractFrames(asset.url, asset.duration).then((frames) => {
-                    if (frames.length) setAssets((prev) => prev.map((a) => (a.id === asset.id ? { ...a, frames } : a)));
-                });
-            }
-            if (asset.kind !== "image") {
-                void extractPeaks(asset.url).then((peaks) => {
-                    if (peaks.length) setAssets((prev) => prev.map((a) => (a.id === asset.id ? { ...a, peaks } : a)));
-                });
-            }
-        }
-    }, []);
 
     /** Records the edit as it stands, then changes it. */
     const commit = (next: (prev: Clip[]) => Clip[]) => setEdit((e) => ({
@@ -277,11 +234,42 @@ export function useStudioEditorState(): StudioEditorState {
         setSelectedClipId(null);
     };
 
-    const setServerFile = (id: string, serverFile: string) =>
-        setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, serverFile } : a)));
+    /**
+     * Points the bin at the project's folder.
+     *
+     * Frames and peaks are read for anything new since the last look,
+     * and anything already read keeps what it had — re-decoding an
+     * hour of footage every time the folder is re-listed would make
+     * the refresh button unusable.
+     */
+    const setAssets = useCallback((next: MediaAsset[]) => {
+        setAssetsState((prev) => next.map((asset) => {
+            const known = prev.find((a) => a.serverFile === asset.serverFile);
+            return known ? { ...asset, id: known.id, frames: known.frames, peaks: known.peaks } : asset;
+        }));
+
+        for (const asset of next) {
+            if (asset.frames.length > 0 || asset.peaks.length > 0) continue;
+            if (asset.kind === "video") {
+                void extractFrames(asset.url, asset.duration).then((frames) => {
+                    if (frames.length) setAssetsState((prev) => prev.map((a) => (a.serverFile === asset.serverFile ? { ...a, frames } : a)));
+                });
+            }
+            if (asset.kind !== "image") {
+                void extractPeaks(asset.url).then((peaks) => {
+                    if (peaks.length) setAssetsState((prev) => prev.map((a) => (a.serverFile === asset.serverFile ? { ...a, peaks } : a)));
+                });
+            }
+        }
+    }, []);
+
+    /** Restores a saved cut, and clears the history with it. */
+    const load = useCallback((clips: Clip[]) => {
+        setEdit({ clips, history: [], future: [] });
+    }, []);
 
     const removeAsset = (id: string) => {
-        setAssets((prev) => {
+        setAssetsState((prev) => {
             const gone = prev.find((a) => a.id === id);
             // Object URLs are a real allocation — dropping the reference
             // without revoking keeps the file alive for the session.
@@ -444,7 +432,7 @@ export function useStudioEditorState(): StudioEditorState {
         canUndo: edit.history.length > 0,
         canRedo: edit.future.length > 0,
         undo, redo, beginGesture,
-        importFiles, removeAsset, setServerFile, addClip,
+        setAssets, load, removeAsset, addClip,
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,
         addText, setSubtitles, updateText, textAt,

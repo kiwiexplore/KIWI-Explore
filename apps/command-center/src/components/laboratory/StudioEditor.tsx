@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
     Captions, ChevronLeft, Clapperboard, Film, Music2, Redo2, Scissors, SkipBack, SkipForward,
     Sparkles, Trash2, Type, Undo2, Upload, Volume2, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { useStudioEditorState } from "../../state/studioEditor";
-import { exportFileUrl, exportTimeline, fetchTranscript, uploadMedia, type VideoProject } from "../../lib/videoApi";
+import { exportFileUrl, exportTimeline, fetchTranscript, saveTimeline, type VideoProject } from "../../lib/videoApi";
+import { assetsFromFolder } from "../../lib/projectMedia";
+import type { StudioProject } from "../../lib/projectsApi";
 import { analyseEdit, type Finding } from "../../lib/editAnalysis";
 import StudioTimeline from "./StudioTimeline";
 import { formatClock } from "../../lib/timecode";
@@ -14,6 +16,8 @@ const ZOOM_STEPS = [2, 4, 8, 16, 32, 64];
 
 interface StudioEditorProps {
     project: VideoProject;
+    /** The project whose folder the media comes from. */
+    owner: StudioProject | null;
     onBack: () => void;
 }
 
@@ -31,11 +35,10 @@ interface StudioEditorProps {
  * line the whole thing is built on, and it is written into the panel so
  * it can't quietly erode.
  */
-export default function StudioEditor({ project, onBack }: StudioEditorProps) {
+export default function StudioEditor({ project, owner, onBack }: StudioEditorProps) {
     const editor = useStudioEditorState();
     const videoRef = useRef<HTMLVideoElement>(null);
     const [zoom, setZoom] = useState(2);
-    const [dragOver, setDragOver] = useState(false);
     const [volume, setVolume] = useState(1);
     const rootRef = useRef<HTMLDivElement>(null);
     const [subtitleError, setSubtitleError] = useState<string | null>(null);
@@ -44,10 +47,34 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     const [exporting, setExporting] = useState<string | null>(null);
     const [exportDone, setExportDone] = useState<{ bytes: number; warnings: string[] } | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
+    const [saved, setSaved] = useState<boolean | null>(null);
 
     // Focus the editor on open so the shortcuts work without demanding
     // a click somewhere first.
     useEffect(() => { rootRef.current?.focus(); }, []);
+
+    // The bin IS the project's folder. Nothing is imported into the app
+    // — the files are already where they belong, and this reads them.
+    const { setAssets, load } = editor;
+    useEffect(() => {
+        if (!owner) return;
+        let cancelled = false;
+        void assetsFromFolder(owner.id, owner.files).then((assets) => {
+            if (!cancelled) setAssets(assets);
+        });
+        return () => { cancelled = true; };
+    }, [owner, setAssets]);
+
+    // A saved cut, restored once when the video opens.
+    const restored = useRef(false);
+    useEffect(() => {
+        if (restored.current) return;
+        const saved = project.timeline as { clips?: unknown } | null;
+        if (saved && Array.isArray(saved.clips)) {
+            load(saved.clips as Parameters<typeof load>[0]);
+        }
+        restored.current = true;
+    }, [project.timeline, load]);
 
     const pxPerSecond = ZOOM_STEPS[zoom];
     const current = editor.clipAt(editor.playhead);
@@ -112,10 +139,9 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
         }
     };
 
-    const handleDrop = (event: DragEvent) => {
-        event.preventDefault();
-        setDragOver(false);
-        if (event.dataTransfer?.files?.length) void editor.importFiles(event.dataTransfer.files);
+    const saveCut = () => {
+        setSaved(false);
+        void saveTimeline(project.id, { clips: editor.clips }).then(() => setSaved(true));
     };
 
     const step = (seconds: number) => editor.setPlayhead(editor.playhead + seconds);
@@ -162,16 +188,12 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
             return;
         }
         try {
-            const used = [...new Set(media.map((c) => c.assetId))];
+            // Nothing to upload: every clip already names a file in the
+            // project's folder, which is where the render reads from.
             const files = new Map<string, string>();
-            for (const [i, assetId] of used.entries()) {
-                const asset = editor.assets.find((a) => a.id === assetId);
-                if (!asset) continue;
-                if (asset.serverFile) { files.set(assetId, asset.serverFile); continue; }
-                setExporting(`Uploading ${i + 1}/${used.length}…`);
-                const serverFile = await uploadMedia(project.id, asset.file);
-                editor.setServerFile(assetId, serverFile);
-                files.set(assetId, serverFile);
+            for (const clip of media) {
+                const asset = editor.assets.find((a) => a.id === clip.assetId);
+                if (asset) files.set(clip.assetId, asset.serverFile);
             }
 
             setExporting("Rendering…");
@@ -223,7 +245,9 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                         <Redo2 size={13} strokeWidth={2} />Redo
                     </button>
                     <span className="studio-bar-divider" />
-                    <button type="button" className="studio-bar-btn">Save</button>
+                    <button type="button" className="studio-bar-btn" onClick={saveCut}>
+                        {saved === false ? "Saving…" : "Save"}
+                    </button>
                     <button
                         type="button"
                         className="studio-bar-btn studio-bar-btn-export"
@@ -238,23 +262,16 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
             <div className="studio-body">
 
                 {/* LEFT · media */}
-                <aside
-                    className={`studio-media${dragOver ? " studio-media-dragover" : ""}`}
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={handleDrop}
-                >
-                    <label className="studio-import">
-                        <Upload size={15} strokeWidth={2} />
-                        IMPORT MEDIA
-                        <input
-                            type="file"
-                            multiple
-                            accept="video/*,audio/*,image/*"
-                            onChange={(e) => { if (e.target.files) void editor.importFiles(e.target.files); }}
-                        />
-                    </label>
-                    <p className="studio-import-hint">or drop files here</p>
+                <aside className="studio-media">
+                    <div className="studio-folder">
+                        <Upload size={13} strokeWidth={2} />
+                        <span>{owner ? "Project folder" : "No project folder"}</span>
+                    </div>
+                    {/* The files are already on disk. Putting one in the
+                        folder from Finder is the import. */}
+                    <p className="studio-import-hint">
+                        {owner ? "Drop footage into the project's folder in Finder." : "This video isn't in a project yet."}
+                    </p>
                     {editor.assets.length > 0 && (
                         <p className="studio-import-hint studio-import-hint-drag">Drag a clip onto a track, or use Add.</p>
                     )}

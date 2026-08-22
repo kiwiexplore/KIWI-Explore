@@ -274,7 +274,11 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
             />
 
             {editingVideo ? (
-                <StudioEditor project={editingVideo} onBack={() => setEditingVideoId(null)} />
+                <StudioEditor
+                    project={editingVideo}
+                    owner={studioProjects.projects.find((p) => p.videos.some((v) => v.id === editingVideo.id)) ?? null}
+                    onBack={() => setEditingVideoId(null)}
+                />
             ) : (
                 <>
                 <div className="laboratory-body">

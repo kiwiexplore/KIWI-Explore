@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
     deleteVideoProject, getContentItem, getVideoProject, insertContentItem, insertVideoProject,
     listContentItemsForVideo, listVideoProjects, saveVideoClips, updateVideoProject,
-    getLabNote, VIDEO_STAGES, type StoredVideoProject,
+    getLabNote, saveTimeline, getStudioProject, VIDEO_STAGES, type StoredVideoProject,
 } from "../db.js";
 import {
     checkTranscriptionAvailable, isTranscribing, readTranscriptSegments, readTranscriptText,
@@ -438,7 +438,8 @@ const exportBodySchema = z.object({
 
 videoRouter.post("/:id/export", async (req, res) => {
     const id = parseId(req.params.id);
-    if (id === null || !getVideoProject(id)) {
+    const video = id === null ? null : getVideoProject(id);
+    if (!video) {
         res.status(404).json({ error: "No video project with that id." });
         return;
     }
@@ -458,7 +459,11 @@ videoRouter.post("/:id/export", async (req, res) => {
         return;
     }
     try {
-        const result = await renderExport(id, parsed.data as ExportRequest);
+        // Media resolves inside the owning project's folder, and the
+        // render lands in its Exports — beside the footage rather than
+        // in the app's private store.
+        const owner = video.project_id ? getStudioProject(video.project_id) : null;
+        const result = await renderExport(video.id, parsed.data as ExportRequest, owner?.folder || undefined);
         res.json({ file: result.file, bytes: fs.statSync(result.file).size, warnings: result.warnings });
     } catch (e) {
         fail(e, res, "Could not export");
@@ -478,6 +483,30 @@ videoRouter.get("/:id/export/file", (req, res) => {
         return;
     }
     res.sendFile(file);
+});
+
+/**
+ * The cut, saved whole.
+ *
+ * Deliberately not validated field by field: the timeline's shape is
+ * the editor's business and will change as it grows, and a schema here
+ * would have to be updated in lockstep or silently reject work. It is
+ * stored as text and handed back as text; the size cap is the only
+ * thing this needs an opinion about.
+ */
+videoRouter.put("/:id/timeline", (req, res) => {
+    const id = parseId(req.params.id);
+    if (id === null || !getVideoProject(id)) {
+        res.status(404).json({ error: "No video project with that id." });
+        return;
+    }
+    const json = JSON.stringify(req.body ?? {});
+    if (json.length > 4_000_000) {
+        res.status(413).json({ error: "That timeline is too large to store." });
+        return;
+    }
+    saveTimeline(id, json);
+    res.status(204).end();
 });
 
 const derivedBodySchema = z.object({

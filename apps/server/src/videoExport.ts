@@ -100,15 +100,25 @@ function escapeDrawText(value: string): string {
         .replace(/\n/g, " ");
 }
 
-function safeFile(file: string): string {
-    // Ids are generated here, never supplied — but an export writes a
-    // path from them, so anything that could climb out of uploads is
-    // rejected rather than sanitised into something surprising.
-    if (!/^[A-Za-z0-9._-]+$/.test(file) || file.includes("..")) {
-        throw new Error(`Refusing a media id that isn't a plain filename: ${file}`);
+/**
+ * Resolves one clip's media inside the folder it is allowed to come
+ * from — the project's own folder now that projects have one, falling
+ * back to the upload store for edits made before they did.
+ *
+ * The name arrives from a request, so this is the boundary: a path that
+ * resolves outside the folder is refused rather than normalised into
+ * something surprising.
+ */
+function safeFile(file: string, folder: string): string {
+    if (file.includes("..") || path.isAbsolute(file)) {
+        throw new Error(`Refusing a media name that isn't inside the project: ${file}`);
     }
-    const full = path.join(uploadsDir, file);
-    if (!fs.existsSync(full)) throw new Error(`That media isn't on the server any more: ${file}`);
+    const root = path.resolve(folder);
+    const full = path.resolve(root, file);
+    if (full !== root && !full.startsWith(root + path.sep)) {
+        throw new Error(`Refusing a media name that isn't inside the project: ${file}`);
+    }
+    if (!fs.existsSync(full)) throw new Error(`That media isn't in the project's folder any more: ${file}`);
     return full;
 }
 
@@ -117,7 +127,7 @@ function safeFile(file: string): string {
  * to its position, and laid over a black canvas in timeline order, so
  * gaps stay black instead of collapsing the way a concat would.
  */
-function buildGraph(request: ExportRequest, burnText: boolean): { args: string[]; filter: string; map: string[] } {
+function buildGraph(request: ExportRequest, burnText: boolean, folder: string): { args: string[]; filter: string; map: string[] } {
     const { width, height } = request;
     const video = request.clips.filter((c) => c.kind === "video");
     const audio = request.clips;
@@ -132,7 +142,7 @@ function buildGraph(request: ExportRequest, burnText: boolean): { args: string[]
     args.push("-f", "lavfi", "-t", String(total), "-i", "anullsrc=channel_layout=stereo:sample_rate=48000");
 
     request.clips.forEach((clip) => {
-        args.push("-ss", String(clip.offset), "-t", String(clip.duration), "-i", safeFile(clip.file));
+        args.push("-ss", String(clip.offset), "-t", String(clip.duration), "-i", safeFile(clip.file, folder));
     });
 
     let base = "[0:v]";
@@ -169,8 +179,15 @@ export interface ExportResult {
     warnings: string[];
 }
 
-export async function renderExport(id: number, request: ExportRequest): Promise<ExportResult> {
+/**
+ * Renders into the project's own Exports folder when it has one, so the
+ * finished film lands beside the footage it was cut from rather than
+ * inside the app's private store where nobody would think to look.
+ */
+export async function renderExport(id: number, request: ExportRequest, folder?: string): Promise<ExportResult> {
     if (request.clips.length === 0) throw new Error("There's nothing on the timeline to export.");
+    const mediaFolder = folder || uploadsDir;
+    const outDir = folder ? path.join(folder, "Exports") : exportsDir;
 
     const burnText = await canBurnText();
     const warnings: string[] = [];
@@ -178,9 +195,9 @@ export async function renderExport(id: number, request: ExportRequest): Promise<
         warnings.push(`This ffmpeg has no drawtext filter, so ${request.texts.length} text ${request.texts.length === 1 ? "overlay was" : "overlays were"} left out. The picture and sound are complete. A build with libfreetype (on macOS: brew install ffmpeg) would include them.`);
     }
 
-    fs.mkdirSync(exportsDir, { recursive: true });
-    const out = path.join(exportsDir, `${id}.mp4`);
-    const { args, filter, map } = buildGraph(request, burnText);
+    fs.mkdirSync(outDir, { recursive: true });
+    const out = path.join(outDir, `${id}.mp4`);
+    const { args, filter, map } = buildGraph(request, burnText, mediaFolder);
 
     const result = await runCommand(FFMPEG_BIN, [
         "-y",

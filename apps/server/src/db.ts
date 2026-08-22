@@ -171,6 +171,11 @@ db.exec(`
         -- per video, with no lifecycle of its own, so it rides here
         -- rather than earning a table.
         clips_json TEXT,
+        -- The cut itself: tracks, clips, text, all in seconds. Stored
+        -- as JSON because it is read and written whole and never
+        -- queried into — a table of clips would buy nothing and cost a
+        -- join on every save.
+        timeline_json TEXT,
         -- What language the video is spoken in: an ISO 639-1 code, or
         -- 'auto' to let whisper work it out. This is NOT cosmetic —
         -- whisper.cpp's CLI defaults to English, so a Czech recording
@@ -216,6 +221,9 @@ if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "language"))
 }
 if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "source_note_id")) {
     db.exec("ALTER TABLE video_projects ADD COLUMN source_note_id INTEGER REFERENCES lab_notes(id) ON DELETE SET NULL");
+}
+if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "timeline_json")) {
+    db.exec("ALTER TABLE video_projects ADD COLUMN timeline_json TEXT");
 }
 if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "project_id")) {
     db.exec("ALTER TABLE video_projects ADD COLUMN project_id INTEGER REFERENCES studio_projects(id) ON DELETE SET NULL");
@@ -437,6 +445,7 @@ export interface StoredVideoProject {
     transcript_status: TranscriptStatus;
     transcript_error: string | null;
     clips_json: string | null;
+    timeline_json: string | null;
     language: string;
     created_at: string;
     updated_at: string;
@@ -444,7 +453,7 @@ export interface StoredVideoProject {
 
 const VIDEO_PROJECT_COLUMNS = `
     id, title, stage, source_content_id, source_note_id, project_id, source_video_path,
-    transcript_path, transcript_status, transcript_error, clips_json, language,
+    transcript_path, transcript_status, transcript_error, clips_json, timeline_json, language,
     created_at, updated_at
 `;
 
@@ -517,6 +526,10 @@ export function deleteVideoProject(id: number): void {
  */
 export function saveDetectedLanguage(id: number, language: string): void {
     db.prepare("UPDATE video_projects SET language = ? WHERE id = ? AND language = 'auto'").run(language, id);
+}
+
+export function saveTimeline(id: number, timelineJson: string): void {
+    db.prepare(`UPDATE video_projects SET timeline_json = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(timelineJson, id);
 }
 
 export function saveVideoClips(id: number, clipsJson: string): StoredVideoProject | null {

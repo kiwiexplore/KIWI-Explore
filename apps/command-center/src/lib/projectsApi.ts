@@ -70,6 +70,7 @@ function toVideo(raw: Record<string, unknown>): VideoProject {
         transcriptStatus: raw.transcript_status as VideoProject["transcriptStatus"],
         transcriptError: (raw.transcript_error as string | null) ?? null,
         clips,
+        timeline: typeof raw.timeline_json === "string" ? (() => { try { return JSON.parse(raw.timeline_json as string); } catch { return null; } })() : null,
         language: (raw.language as string) ?? "auto",
         transcribing: Boolean(raw.transcribing),
         contentItems: ((raw.contentItems as Record<string, unknown>[]) ?? []).map((i) => ({
