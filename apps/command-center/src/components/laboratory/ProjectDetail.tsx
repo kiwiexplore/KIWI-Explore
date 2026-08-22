@@ -12,6 +12,7 @@ import { createNote, deleteNote, updateNote } from "../../lib/notesApi";
 import { createVideoProject, deleteVideoProject } from "../../lib/videoApi";
 import { createContentItem, deleteContentItem, updateContentItem, type ContentItem } from "../../lib/contentApi";
 import { chainFor, chainSummary } from "../../state/studioChain";
+import GeneratePanel from "./GeneratePanel";
 import "./GlobalBoard.css";
 import "./ProjectDetail.css";
 
@@ -104,6 +105,10 @@ export default function ProjectDetail({
 
             <IdeasPanel project={project} busy={busy} after={after} />
             <ScriptsPanel project={project} busy={busy} after={after} />
+            {/* Above the footage, because what comes out of it IS
+                footage — the file lands in the same folder and the list
+                below refreshes when it does. */}
+            <GeneratePanel projectId={project.id} onFilesChanged={projects.refresh} />
             <FootagePanel project={project} projects={projects} />
             <VideosPanel project={project} busy={busy} after={after} onEdit={onEdit} />
             <PublishPanel project={project} videoStudio={videoStudio} after={after} />

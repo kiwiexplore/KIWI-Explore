@@ -13,7 +13,8 @@ import { analysisRouter } from "./routes/analysis.js";
 import { videoRouter } from "./routes/video.js";
 import { notesRouter } from "./routes/notes.js";
 import { projectsRouter } from "./routes/projects.js";
-import { failInterruptedTranscripts } from "./db.js";
+import { generateRouter } from "./routes/generate.js";
+import { failInterruptedTranscripts, failInterruptedJobs } from "./db.js";
 
 const PORT = Number(process.env.PORT) || 8787;
 // KIWI_API_TOKEN is optional on purpose — this is a personal-mode,
@@ -74,17 +75,25 @@ app.use("/api/analysis", analysisRouter);
 app.use("/api/video", videoRouter);
 app.use("/api/notes", notesRouter);
 app.use("/api/projects", projectsRouter);
+app.use("/api/generate", generateRouter);
 
 // A crash or a restart mid-transcription leaves rows claiming to be
 // 'processing' with nothing behind them, and Video Studio would spin on
 // them forever. Sweeping them into 'failed' at boot is what keeps
 // 'processing' from becoming a silent failure state.
 const sweptTranscripts = failInterruptedTranscripts();
+// Same reasoning for the generation queue: a row still claiming to be
+// running after a restart has nothing behind it, and 'running' must
+// never be a state something sits in forever.
+const sweptJobs = failInterruptedJobs();
 
 app.listen(PORT, () => {
     console.log(`KIWI backend listening on http://localhost:${PORT}`);
     if (sweptTranscripts > 0) {
         console.warn(`${sweptTranscripts} transcription(s) were interrupted by a previous shutdown — marked failed so they show up in Video Studio.`);
+    }
+    if (sweptJobs > 0) {
+        console.warn(`${sweptJobs} generation job(s) were interrupted by a previous shutdown — marked failed so they show up in the queue.`);
     }
     if (!process.env.ANTHROPIC_API_KEY) {
         console.warn("ANTHROPIC_API_KEY isn't set — /api/chat will respond with a clear 'not configured' error until you add it to apps/server/.env.");

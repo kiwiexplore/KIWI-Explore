@@ -1,0 +1,187 @@
+/* Generation, and the queue it goes through. */
+
+.gp-form { display: flex; flex-direction: column; gap: 10px; }
+
+.gp-prompt {
+
+    width: 100%;
+    resize: vertical;
+
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: rgba(5, 8, 22, .6);
+
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+
+}
+
+.gp-prompt:focus { outline: none; border-color: var(--accent); }
+
+.gp-controls { display: flex; flex-wrap: wrap; gap: 9px; align-items: flex-end; }
+
+.gp-field { display: flex; flex-direction: column; gap: 4px; }
+
+.gp-field > span {
+
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.gp-field select {
+
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(16, 25, 46, .92);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    color: var(--text);
+
+}
+
+.gp-field select:focus { outline: none; border-color: var(--accent); }
+
+.gp-go {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-left: auto;
+
+    padding: 9px 18px;
+    border: 1px solid rgba(117, 102, 255, .7);
+    border-radius: 10px;
+    background: linear-gradient(rgba(117, 102, 255, .26), rgba(117, 102, 255, .15)), #0d1526;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: .6px;
+    color: #dcd7ff;
+
+}
+
+.gp-go:hover:not(:disabled) { box-shadow: 0 0 20px rgba(117, 102, 255, .3); }
+.gp-go:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Said before the prompt is written, not after the button is pressed. */
+.gp-unavailable {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 10px 13px;
+    border: 1px solid rgba(255, 79, 109, .4);
+    border-radius: 11px;
+    background: linear-gradient(rgba(255, 79, 109, .08), rgba(255, 79, 109, .08)), #0d1526;
+
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+
+}
+
+.gp-unavailable svg { flex-shrink: 0; color: var(--danger); }
+
+/* ---- the queue ----------------------------------------------------- */
+
+.gp-queue { display: flex; flex-direction: column; gap: 5px; }
+
+.gp-job {
+
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 11px;
+    align-items: center;
+
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .5);
+
+}
+
+.gp-job-queued { border-left-color: var(--border); }
+.gp-job-running { border-left-color: var(--accent); }
+.gp-job-done { border-left-color: var(--secondary); }
+.gp-job-failed { border-left-color: var(--danger); }
+.gp-job-cancelled { border-left-color: var(--border); opacity: .6; }
+
+.gp-job-thumb {
+
+    display: grid;
+    place-items: center;
+
+    width: 40px;
+    aspect-ratio: 16 / 10;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: rgba(16, 25, 46, .9);
+    overflow: hidden;
+
+    color: var(--text-muted);
+
+}
+
+.gp-job-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.gp-job-done .gp-job-thumb { color: var(--secondary); }
+.gp-job-failed .gp-job-thumb { color: var(--danger); }
+
+.gp-job-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.gp-job-prompt {
+
+    font-size: 12.5px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.gp-job-meta {
+
+    font-size: 10.5px;
+    color: var(--text-muted);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.gp-job-failed .gp-job-meta { color: #ffa4b4; }
+
+.gp-job-bar {
+
+    height: 3px;
+    margin-top: 3px;
+    border-radius: 2px;
+    background: rgba(34, 52, 87, .9);
+    overflow: hidden;
+
+}
+
+.gp-job-bar i {
+
+    display: block;
+    height: 100%;
+    background: var(--accent);
+
+    transition: width var(--transition);
+
+}

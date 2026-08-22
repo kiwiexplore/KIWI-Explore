@@ -142,6 +142,47 @@ db.exec(`
         updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
 
+    -- The generation queue.
+    --
+    -- Its own table rather than a field on a video, because a job is
+    -- not a property of anything — it is work that exists for a while
+    -- and then doesn't. It outlives the screen that started it, it has
+    -- to survive a restart to be honest about what happened, and the
+    -- same project can have several in flight.
+    --
+    -- Deliberately NOT coupled to whichever engine runs it: the engine
+    -- column is a name the registry resolves (see generation/engines.ts),
+    -- so adding ComfyUI's neighbours later is not a migration.
+    CREATE TABLE IF NOT EXISTS generation_jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        -- Where the result lands. A generation with no project has
+        -- nowhere to put its output, so this is not nullable the way
+        -- video_projects.project_id is.
+        project_id INTEGER NOT NULL REFERENCES studio_projects(id) ON DELETE CASCADE,
+        -- Which video it was made for, if it was made for one.
+        video_project_id INTEGER REFERENCES video_projects(id) ON DELETE SET NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('image', 'video')),
+        engine TEXT NOT NULL,
+        prompt TEXT NOT NULL,
+        -- Everything engine-specific: size, seed, steps, the workflow.
+        -- JSON because it is read and written whole and never queried
+        -- into, and because each engine wants different keys.
+        params_json TEXT NOT NULL DEFAULT '{}',
+        status TEXT NOT NULL DEFAULT 'queued'
+            CHECK (status IN ('queued', 'running', 'done', 'failed', 'cancelled')),
+        -- 0..100. Whatever the engine reports, or a coarse guess.
+        progress INTEGER NOT NULL DEFAULT 0,
+        -- Never empty when status is 'failed'.
+        error TEXT,
+        -- The file it produced, by NAME inside the project's folder —
+        -- the same identity the bin lists and the timeline points at.
+        -- A finished generation IS footage, with nothing to import.
+        output_file TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        started_at TEXT,
+        finished_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS video_projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -749,4 +790,131 @@ export function deleteStudioProject(id: number): void {
 export function listVideoProjectsForProject(projectId: number): StoredVideoProject[] {
     const stmt = db.prepare(`SELECT ${VIDEO_PROJECT_COLUMNS} FROM video_projects WHERE project_id = ? ORDER BY id DESC`);
     return stmt.all(projectId) as unknown as StoredVideoProject[];
+}
+
+/* ── the generation queue ──────────────────────────────────────────── */
+
+export type JobStatus = "queued" | "running" | "done" | "failed" | "cancelled";
+export type JobKind = "image" | "video";
+
+export interface StoredGenerationJob {
+    id: number;
+    project_id: number;
+    video_project_id: number | null;
+    kind: JobKind;
+    engine: string;
+    prompt: string;
+    params_json: string;
+    status: JobStatus;
+    progress: number;
+    error: string | null;
+    output_file: string | null;
+    created_at: string;
+    started_at: string | null;
+    finished_at: string | null;
+}
+
+const JOB_COLUMNS = `
+    id, project_id, video_project_id, kind, engine, prompt, params_json,
+    status, progress, error, output_file, created_at, started_at, finished_at
+`;
+
+export function insertGenerationJob(job: {
+    projectId: number;
+    videoProjectId: number | null;
+    kind: JobKind;
+    engine: string;
+    prompt: string;
+    params: unknown;
+}): StoredGenerationJob {
+    const stmt = db.prepare(`
+        INSERT INTO generation_jobs (project_id, video_project_id, kind, engine, prompt, params_json)
+        VALUES (?, ?, ?, ?, ?, ?) RETURNING ${JOB_COLUMNS}
+    `);
+    return stmt.get(
+        job.projectId, job.videoProjectId, job.kind, job.engine, job.prompt, JSON.stringify(job.params ?? {}),
+    ) as unknown as StoredGenerationJob;
+}
+
+export function listGenerationJobs(projectId?: number): StoredGenerationJob[] {
+    // Oldest first among the ones still to run, so the list reads in the
+    // order they will actually happen; finished ones sort after by id.
+    const where = projectId === undefined ? "" : "WHERE project_id = ?";
+    const stmt = db.prepare(`SELECT ${JOB_COLUMNS} FROM generation_jobs ${where} ORDER BY id DESC LIMIT 200`);
+    return (projectId === undefined ? stmt.all() : stmt.all(projectId)) as unknown as StoredGenerationJob[];
+}
+
+export function getGenerationJob(id: number): StoredGenerationJob | null {
+    const stmt = db.prepare(`SELECT ${JOB_COLUMNS} FROM generation_jobs WHERE id = ?`);
+    return (stmt.get(id) as unknown as StoredGenerationJob) ?? null;
+}
+
+/** The next thing to run: oldest queued job wins. */
+export function nextQueuedJob(): StoredGenerationJob | null {
+    const stmt = db.prepare(`SELECT ${JOB_COLUMNS} FROM generation_jobs WHERE status = 'queued' ORDER BY id ASC LIMIT 1`);
+    return (stmt.get() as unknown as StoredGenerationJob) ?? null;
+}
+
+export function markJobRunning(id: number): void {
+    db.prepare(`
+        UPDATE generation_jobs
+        SET status = 'running', progress = 0, error = NULL,
+            started_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        WHERE id = ?
+    `).run(id);
+}
+
+export function markJobProgress(id: number, progress: number): void {
+    // Only while running: a progress update arriving after a cancel
+    // must not drag the job back out of the state it ended in.
+    db.prepare("UPDATE generation_jobs SET progress = ? WHERE id = ? AND status = 'running'")
+        .run(Math.max(0, Math.min(100, Math.round(progress))), id);
+}
+
+export function markJobDone(id: number, outputFile: string): void {
+    db.prepare(`
+        UPDATE generation_jobs
+        SET status = 'done', progress = 100, output_file = ?, error = NULL,
+            finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        WHERE id = ?
+    `).run(outputFile, id);
+}
+
+export function markJobFailed(id: number, error: string): void {
+    db.prepare(`
+        UPDATE generation_jobs
+        SET status = 'failed', error = ?, finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        WHERE id = ?
+    `).run(error, id);
+}
+
+/** Cancels only what hasn't finished. Re-cancelling a done job is a
+ *  no-op rather than a way to rewrite history. */
+export function markJobCancelled(id: number): void {
+    db.prepare(`
+        UPDATE generation_jobs
+        SET status = 'cancelled', finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        WHERE id = ? AND status IN ('queued', 'running')
+    `).run(id);
+}
+
+export function deleteGenerationJob(id: number): void {
+    db.prepare("DELETE FROM generation_jobs WHERE id = ?").run(id);
+}
+
+/**
+ * A crash or a restart mid-generation leaves rows claiming to be
+ * 'running' with nothing behind them. Swept into 'failed' at boot, for
+ * the same reason failInterruptedTranscripts() exists: 'running' must
+ * never become a state something sits in forever.
+ */
+export function failInterruptedJobs(): number {
+    const stmt = db.prepare(`
+        UPDATE generation_jobs
+        SET status = 'failed',
+            error = 'The server restarted while this was running.',
+            finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        WHERE status = 'running'
+    `);
+    return stmt.run().changes as number;
 }
