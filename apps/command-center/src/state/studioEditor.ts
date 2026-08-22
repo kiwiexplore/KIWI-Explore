@@ -81,6 +81,18 @@ export interface StudioEditorState {
     /** Where the last clip ends. The project's own length. */
     duration: number;
 
+    canUndo: boolean;
+    canRedo: boolean;
+    undo: () => void;
+    redo: () => void;
+    /**
+     * Called once at the start of a drag. A pointer gesture changes the
+     * edit on every frame; without this, one drag across the timeline
+     * would fill the history with a hundred indistinguishable steps and
+     * undo would become a slow rewind rather than a way back.
+     */
+    beginGesture: () => void;
+
     importFiles: (files: FileList | File[]) => Promise<void>;
     removeAsset: (id: string) => void;
     addClip: (assetId: string, trackId?: string, start?: number) => void;
@@ -99,6 +111,9 @@ export interface StudioEditorState {
 }
 
 const MIN_CLIP = 0.2;
+
+/** Far more than anyone reaches for, and cheap: a snapshot is a list. */
+const HISTORY_LIMIT = 60;
 
 function kindOf(file: File): MediaKind | null {
     if (file.type.startsWith("video/")) return "video";
@@ -140,7 +155,23 @@ function readMetadata(url: string, kind: MediaKind): Promise<{ duration: number;
 
 export function useStudioEditorState(): StudioEditorState {
     const [assets, setAssets] = useState<MediaAsset[]>([]);
-    const [clips, setClips] = useState<Clip[]>([]);
+    // Clips and their history are ONE piece of state, changed in one
+    // atomic update.
+    //
+    // They were three separate useStates, and two actions in the same
+    // tick both snapshotted the same stale list — so adding two clips
+    // recorded "empty" twice and a single undo threw away both. Reading
+    // the previous edit inside the updater is the only way to be sure
+    // what is being recorded is what is actually there.
+    //
+    // Whole-list snapshots rather than a log of inverse operations:
+    // clips are small and few, and storing what the edit WAS is exact
+    // by construction, where replaying inverses has to be kept correct
+    // as every new operation is added.
+    const [edit, setEdit] = useState<{ clips: Clip[]; history: Clip[][]; future: Clip[][] }>({
+        clips: [], history: [], future: [],
+    });
+    const clips = edit.clips;
     const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
     const [playhead, setPlayheadState] = useState(0);
     const [playing, setPlaying] = useState(false);
@@ -189,6 +220,42 @@ export function useStudioEditorState(): StudioEditorState {
         }
     }, []);
 
+    /** Records the edit as it stands, then changes it. */
+    const commit = (next: (prev: Clip[]) => Clip[]) => setEdit((e) => ({
+        clips: next(e.clips),
+        history: [...e.history, e.clips].slice(-HISTORY_LIMIT),
+        future: [],
+    }));
+
+    /** Changes the edit without recording — inside a gesture already
+     *  bracketed by beginGesture(). */
+    const applyLive = (next: (prev: Clip[]) => Clip[]) => setEdit((e) => ({ ...e, clips: next(e.clips) }));
+
+    const beginGesture = () => setEdit((e) => ({
+        ...e,
+        history: [...e.history, e.clips].slice(-HISTORY_LIMIT),
+        future: [],
+    }));
+
+    const undo = () => {
+        setEdit((e) => (e.history.length === 0 ? e : {
+            clips: e.history[e.history.length - 1],
+            history: e.history.slice(0, -1),
+            future: [e.clips, ...e.future].slice(0, HISTORY_LIMIT),
+        }));
+        // The clip that was selected may not exist in the restored edit.
+        setSelectedClipId(null);
+    };
+
+    const redo = () => {
+        setEdit((e) => (e.future.length === 0 ? e : {
+            clips: e.future[0],
+            history: [...e.history, e.clips].slice(-HISTORY_LIMIT),
+            future: e.future.slice(1),
+        }));
+        setSelectedClipId(null);
+    };
+
     const removeAsset = (id: string) => {
         setAssets((prev) => {
             const gone = prev.find((a) => a.id === id);
@@ -197,7 +264,7 @@ export function useStudioEditorState(): StudioEditorState {
             if (gone) URL.revokeObjectURL(gone.url);
             return prev.filter((a) => a.id !== id);
         });
-        setClips((prev) => prev.filter((c) => c.assetId !== id));
+        commit((prev) => prev.filter((c) => c.assetId !== id));
     };
 
     /**
@@ -209,7 +276,7 @@ export function useStudioEditorState(): StudioEditorState {
         const asset = assets.find((a) => a.id === assetId);
         if (!asset) return;
         const track = trackId ?? (asset.kind === "audio" ? "A1" : "V1");
-        setClips((prev) => {
+        commit((prev) => {
             const end = prev.filter((c) => c.trackId === track)
                 .reduce((max, c) => Math.max(max, c.start + c.duration), 0);
             const clip: Clip = {
@@ -237,7 +304,7 @@ export function useStudioEditorState(): StudioEditorState {
     };
 
     const moveClip = (id: string, start: number) => {
-        setClips((prev) => prev.map((c) => (c.id === id ? { ...c, start: Math.max(0, start) } : c)));
+        applyLive((prev) => prev.map((c) => (c.id === id ? { ...c, start: Math.max(0, start) } : c)));
     };
 
     /**
@@ -246,7 +313,7 @@ export function useStudioEditorState(): StudioEditorState {
      * the footage rather than shorten the clip.
      */
     const trimClip = (id: string, edge: "start" | "end", delta: number) => {
-        setClips((prev) => prev.map((c) => {
+        applyLive((prev) => prev.map((c) => {
             if (c.id !== id) return c;
             if (edge === "end") {
                 return { ...c, duration: Math.max(MIN_CLIP, c.duration + delta) };
@@ -260,7 +327,7 @@ export function useStudioEditorState(): StudioEditorState {
 
     /** Cuts every clip the playhead is standing on, on every track. */
     const splitAt = (time: number) => {
-        setClips((prev) => {
+        commit((prev) => {
             const out: Clip[] = [];
             for (const c of prev) {
                 const local = time - c.start;
@@ -283,7 +350,7 @@ export function useStudioEditorState(): StudioEditorState {
 
     const deleteSelected = () => {
         if (!selectedClipId) return;
-        setClips((prev) => prev.filter((c) => c.id !== selectedClipId));
+        commit((prev) => prev.filter((c) => c.id !== selectedClipId));
         setSelectedClipId(null);
     };
 
@@ -306,6 +373,9 @@ export function useStudioEditorState(): StudioEditorState {
 
     return {
         assets, tracks: DEFAULT_TRACKS, clips, selectedClipId, playhead, playing, duration,
+        canUndo: edit.history.length > 0,
+        canRedo: edit.future.length > 0,
+        undo, redo, beginGesture,
         importFiles, removeAsset, addClip,
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,

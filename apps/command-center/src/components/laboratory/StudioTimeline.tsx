@@ -113,6 +113,8 @@ export default function StudioTimeline({ editor, pxPerSecond }: TimelineProps) {
         event.stopPropagation();
         event.preventDefault();
         editor.selectClip(clip.id);
+        // One history entry per gesture, taken before anything moves.
+        editor.beginGesture();
         drag.current = {
             kind,
             id: clip.id,

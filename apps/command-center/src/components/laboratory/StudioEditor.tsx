@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
     ChevronLeft, Clapperboard, Film, Music2, Redo2, Scissors, SkipBack, SkipForward,
     Sparkles, Trash2, Type, Undo2, Upload, Volume2, ZoomIn, ZoomOut,
@@ -36,6 +36,11 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     const [zoom, setZoom] = useState(2);
     const [dragOver, setDragOver] = useState(false);
     const [volume, setVolume] = useState(1);
+    const rootRef = useRef<HTMLDivElement>(null);
+
+    // Focus the editor on open so the shortcuts work without demanding
+    // a click somewhere first.
+    useEffect(() => { rootRef.current?.focus(); }, []);
 
     const pxPerSecond = ZOOM_STEPS[zoom];
     const current = editor.clipAt(editor.playhead);
@@ -73,6 +78,32 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
         editor.setPlayhead(current.clip.start + (el.currentTime - current.clip.offset));
     };
 
+    // The keys people press without thinking, plus Delete and space.
+    // Bound on the editor's own element rather than the window so they
+    // stay inside this room and never fire while somebody is typing in
+    // a field.
+    const onKeyDown = (event: ReactKeyboardEvent) => {
+        const target = event.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+        const mod = event.metaKey || event.ctrlKey;
+        if (mod && event.key.toLowerCase() === "z") {
+            event.preventDefault();
+            if (event.shiftKey) editor.redo();
+            else editor.undo();
+            return;
+        }
+        if (event.key === "Delete" || event.key === "Backspace") {
+            event.preventDefault();
+            editor.deleteSelected();
+            return;
+        }
+        if (event.key === " ") {
+            event.preventDefault();
+            editor.setPlaying(!editor.playing);
+        }
+    };
+
     const handleDrop = (event: DragEvent) => {
         event.preventDefault();
         setDragOver(false);
@@ -82,7 +113,7 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     const step = (seconds: number) => editor.setPlayhead(editor.playhead + seconds);
 
     return (
-        <div className="studio-editor">
+        <div className="studio-editor" tabIndex={-1} onKeyDown={onKeyDown} ref={rootRef}>
 
             {/* Project bar — what you're working on, and what you do to
                 the whole of it. Thin on purpose: it must not compete
@@ -99,8 +130,12 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                     </span>
                 </div>
                 <div className="studio-projectbar-right">
-                    <button type="button" className="studio-bar-btn" disabled><Undo2 size={13} strokeWidth={2} />Undo</button>
-                    <button type="button" className="studio-bar-btn" disabled><Redo2 size={13} strokeWidth={2} />Redo</button>
+                    <button type="button" className="studio-bar-btn" onClick={editor.undo} disabled={!editor.canUndo}>
+                        <Undo2 size={13} strokeWidth={2} />Undo
+                    </button>
+                    <button type="button" className="studio-bar-btn" onClick={editor.redo} disabled={!editor.canRedo}>
+                        <Redo2 size={13} strokeWidth={2} />Redo
+                    </button>
                     <span className="studio-bar-divider" />
                     <button type="button" className="studio-bar-btn">Save</button>
                     <button type="button" className="studio-bar-btn studio-bar-btn-export">EXPORT</button>
