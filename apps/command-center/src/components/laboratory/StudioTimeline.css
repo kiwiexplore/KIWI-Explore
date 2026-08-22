@@ -223,3 +223,88 @@
     clip-path: polygon(0 0, 100% 0, 50% 100%);
 
 }
+
+/* --- what a clip actually shows -------------------------------------- */
+
+/*
+ * The filmstrip. Frames are background images on equal-width cells
+ * rather than <img> tags so a clip narrower than its frames crops
+ * instead of squashing them — a squashed still reads as a rendering
+ * bug, a cropped one reads as a clip.
+ */
+.studio-clip-strip {
+
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+    opacity: .85;
+
+    pointer-events: none;
+
+}
+
+.studio-clip-strip span {
+
+    flex: 1;
+    min-width: 0;
+
+    background-size: cover;
+    background-position: center;
+
+}
+
+.studio-clip-wave {
+
+    position: absolute;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    fill: var(--secondary);
+    opacity: .55;
+
+    pointer-events: none;
+
+}
+
+/* The label sits over the picture, so it needs its own ground to stay
+   readable against a bright frame. */
+.studio-clip-label {
+
+    position: relative;
+    z-index: 1;
+
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(4, 8, 18, .72);
+
+}
+
+/* --- snapping --------------------------------------------------------- */
+
+.studio-lane-drop {
+
+    background: linear-gradient(rgba(73, 199, 255, .08), rgba(73, 199, 255, .08));
+    box-shadow: inset 0 0 0 1px rgba(73, 199, 255, .35);
+
+}
+
+/* Only visible while a drag is actually landing on something. It says
+   "this is where it will sit", which is the whole point of snapping. */
+.studio-snapline {
+
+    position: absolute;
+    top: 26px;
+    bottom: 0;
+    width: 1px;
+
+    background: var(--primary);
+    box-shadow: 0 0 8px rgba(73, 199, 255, .8);
+
+    pointer-events: none;
+
+}

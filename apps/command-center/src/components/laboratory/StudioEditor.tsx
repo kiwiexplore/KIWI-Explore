@@ -127,14 +127,28 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                         />
                     </label>
                     <p className="studio-import-hint">or drop files here</p>
+                    {editor.assets.length > 0 && (
+                        <p className="studio-import-hint studio-import-hint-drag">Drag a clip onto a track, or use Add.</p>
+                    )}
 
                     <div className="studio-asset-list">
                         {editor.assets.length === 0 ? (
                             <p className="studio-empty">Nothing imported yet.</p>
                         ) : editor.assets.map((asset) => (
-                            <div key={asset.id} className="studio-asset">
-                                <div className={`studio-asset-thumb studio-asset-thumb-${asset.kind}`}>
-                                    {asset.kind === "video" && <Film size={15} strokeWidth={1.75} />}
+                            <div
+                                key={asset.id}
+                                className="studio-asset"
+                                draggable
+                                onDragStart={(e) => {
+                                    e.dataTransfer.setData("application/x-kiwi-asset", asset.id);
+                                    e.dataTransfer.effectAllowed = "copy";
+                                }}
+                            >
+                                <div
+                                    className={`studio-asset-thumb studio-asset-thumb-${asset.kind}`}
+                                    style={asset.frames[0] ? { backgroundImage: `url(${asset.frames[0]})` } : undefined}
+                                >
+                                    {!asset.frames[0] && asset.kind === "video" && <Film size={15} strokeWidth={1.75} />}
                                     {asset.kind === "audio" && <Music2 size={15} strokeWidth={1.75} />}
                                 </div>
                                 <div className="studio-asset-meta">

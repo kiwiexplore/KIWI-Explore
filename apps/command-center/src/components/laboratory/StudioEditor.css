@@ -242,6 +242,9 @@
 
 .studio-asset-thumb {
 
+    background-size: cover;
+    background-position: center;
+
     display: flex;
     align-items: center;
     justify-content: center;
@@ -586,3 +589,14 @@
 }
 
 .studio-zoom button:hover { color: var(--primary); }
+
+/* Only shown once there is something to drag. */
+.studio-import-hint-drag {
+
+    margin-top: -8px;
+    color: var(--text-muted);
+
+}
+
+.studio-asset { cursor: grab; }
+.studio-asset:active { cursor: grabbing; }

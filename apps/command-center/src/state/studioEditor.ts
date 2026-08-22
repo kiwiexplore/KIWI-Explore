@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { extractFrames, extractPeaks } from "../lib/mediaPreview";
 
 /**
  * The editor's own model: media you imported, tracks, and the clips on
@@ -29,6 +30,14 @@ export interface MediaAsset {
     duration: number;
     width: number;
     height: number;
+    /**
+     * Filmstrip frames and the audio envelope, filled in after the
+     * import returns. Both are slow enough to be worth not waiting for
+     * — the asset is usable the moment its metadata is read, and the
+     * timeline simply draws a plain block until these arrive.
+     */
+    frames: string[];
+    peaks: number[];
 }
 
 export type TrackKind = "video" | "audio";
@@ -74,9 +83,11 @@ export interface StudioEditorState {
 
     importFiles: (files: FileList | File[]) => Promise<void>;
     removeAsset: (id: string) => void;
-    addClip: (assetId: string, trackId?: string) => void;
+    addClip: (assetId: string, trackId?: string, start?: number) => void;
     selectClip: (id: string | null) => void;
-    moveClip: (id: string, start: number) => void;
+    moveClip: (id: string, start: number, snap?: boolean) => void;
+    /** Edges other clips and the playhead sit on, for snapping. */
+    snapPoints: (exceptClipId?: string) => number[];
     trimClip: (id: string, edge: "start" | "end", delta: number) => void;
     splitAt: (time: number) => void;
     deleteSelected: () => void;
@@ -155,9 +166,27 @@ export function useStudioEditorState(): StudioEditorState {
                 duration: meta.duration,
                 width: meta.width,
                 height: meta.height,
+                frames: [],
+                peaks: [],
             });
         }
-        if (imported.length > 0) setAssets((prev) => [...prev, ...imported]);
+        if (imported.length === 0) return;
+        setAssets((prev) => [...prev, ...imported]);
+
+        // Frames and peaks land as they finish, one asset at a time, so
+        // importing five files doesn't decode five videos at once.
+        for (const asset of imported) {
+            if (asset.kind === "video") {
+                void extractFrames(asset.url, asset.duration).then((frames) => {
+                    if (frames.length) setAssets((prev) => prev.map((a) => (a.id === asset.id ? { ...a, frames } : a)));
+                });
+            }
+            if (asset.kind !== "image") {
+                void extractPeaks(asset.url).then((peaks) => {
+                    if (peaks.length) setAssets((prev) => prev.map((a) => (a.id === asset.id ? { ...a, peaks } : a)));
+                });
+            }
+        }
     }, []);
 
     const removeAsset = (id: string) => {
@@ -171,8 +200,12 @@ export function useStudioEditorState(): StudioEditorState {
         setClips((prev) => prev.filter((c) => c.assetId !== id));
     };
 
-    /** Appends to the end of the track, which is what dropping in does. */
-    const addClip = (assetId: string, trackId?: string) => {
+    /**
+     * Lands at `start` when dropped somewhere specific, otherwise after
+     * whatever is already on the track — which is what the Add button
+     * means.
+     */
+    const addClip = (assetId: string, trackId?: string, start?: number) => {
         const asset = assets.find((a) => a.id === assetId);
         if (!asset) return;
         const track = trackId ?? (asset.kind === "audio" ? "A1" : "V1");
@@ -183,12 +216,24 @@ export function useStudioEditorState(): StudioEditorState {
                 id: makeId("clip"),
                 trackId: track,
                 assetId,
-                start: end,
+                start: start !== undefined ? Math.max(0, start) : end,
                 duration: asset.duration || 5,
                 offset: 0,
             };
             return [...prev, clip];
         });
+    };
+
+    /** Zero and the playhead are always worth snapping to, plus every
+     *  other clip's two edges — that's what makes cuts land flush
+     *  without demanding pixel accuracy from a trackpad. */
+    const snapPoints = (exceptClipId?: string): number[] => {
+        const points = [0, playhead];
+        for (const c of clips) {
+            if (c.id === exceptClipId) continue;
+            points.push(c.start, c.start + c.duration);
+        }
+        return points;
     };
 
     const moveClip = (id: string, start: number) => {
@@ -265,6 +310,7 @@ export function useStudioEditorState(): StudioEditorState {
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,
         setPlayhead, setPlaying,
+        snapPoints,
         clipAt,
     };
 }
