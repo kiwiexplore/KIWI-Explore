@@ -214,9 +214,15 @@ export function readTranscriptSegments(id: number): { start: number; end: number
             transcription?: { offsets?: { from?: number; to?: number }; text?: string }[];
         };
         return (parsed.transcription ?? []).map((segment) => ({
-            // whisper.cpp reports offsets in milliseconds.
-            start: Math.round((segment.offsets?.from ?? 0) / 1000),
-            end: Math.round((segment.offsets?.to ?? 0) / 1000),
+            // whisper.cpp reports offsets in milliseconds, and they are
+            // kept as such. These used to be rounded to whole seconds,
+            // which was harmless while the only reader was a prompt and
+            // is not now that subtitles are laid on a timeline from
+            // them: a segment shorter than a second could round to zero
+            // length and be dropped, and every other one sat up to half
+            // a second away from the words it belongs to.
+            start: (segment.offsets?.from ?? 0) / 1000,
+            end: (segment.offsets?.to ?? 0) / 1000,
             text: (segment.text ?? "").trim(),
         })).filter((segment) => segment.text.length > 0);
     } catch {

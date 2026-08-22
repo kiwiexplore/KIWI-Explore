@@ -222,10 +222,30 @@ export async function generateVideoScript(id: number, brief: string): Promise<Vi
     return toVideoProject((await res.json()).project);
 }
 
+export interface TranscribeOptions {
+    /**
+     * A file in the video's project folder, by name — the same name the
+     * bin lists and the editor plays. Omitted, the server falls back to
+     * whatever absolute path the row is already carrying.
+     */
+    file?: string;
+    /** 'auto', or an ISO 639-1 code. Omitted keeps the video's own. */
+    language?: string;
+}
+
 /** Returns the project as it stands the moment the job was accepted. */
-export async function startTranscription(id: number): Promise<VideoProject> {
-    const res = await fetch(`${API_URL}/api/video/${id}/transcribe`, { method: "POST", headers: headers() });
+export async function startTranscription(id: number, options: TranscribeOptions = {}): Promise<VideoProject> {
+    const res = await fetch(`${API_URL}/api/video/${id}/transcribe`, {
+        method: "POST", headers: headers(), body: JSON.stringify(options),
+    });
     if (!res.ok) await readError(res, "Could not start the transcription");
+    return toVideoProject((await res.json()).project);
+}
+
+/** One video, re-read. What the editor follows while whisper runs. */
+export async function fetchVideoProject(id: number): Promise<VideoProject> {
+    const res = await fetch(`${API_URL}/api/video/${id}`, { headers: headers() });
+    if (!res.ok) await readError(res, "Could not read that video");
     return toVideoProject((await res.json()).project);
 }
 

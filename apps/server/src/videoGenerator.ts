@@ -96,7 +96,10 @@ export async function findVideoClips(
     // still lets the model pick moments, but it can only guess at times —
     // so it's told to, rather than quietly making numbers up.
     const body = segments.length > 0
-        ? `Transcript with timestamps (seconds):\n${segments.map((s) => `[${s.start}-${s.end}] ${s.text}`).join("\n")}`
+        // Rounded HERE rather than at the source: the segments carry
+        // millisecond precision because subtitles need it, and a prompt
+        // full of [12.34-15.67] buys nothing a whole second doesn't.
+        ? `Transcript with timestamps (seconds):\n${segments.map((s) => `[${Math.round(s.start)}-${Math.round(s.end)}] ${s.text}`).join("\n")}`
         : `Transcript (no timestamps available, so estimate the times and keep them conservative):\n${fallbackTranscript}`;
 
     const raw = await ask(`From this transcript of a video titled "${title}", pick the 3-6 moments that would work best as standalone short clips.

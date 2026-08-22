@@ -14,6 +14,7 @@ import {
     DERIVED_CONTENT_TYPES, type DerivedContentType, type VideoClip,
 } from "../videoGenerator.js";
 import { checkClippingAvailable, cutClip, ClippingUnavailableError } from "../videoClipper.js";
+import { resolveProjectFile } from "../projectFolder.js";
 import {
     checkExportAvailable, renderExport, uploadsDir, exportsDir,
     ExportUnavailableError, type ExportRequest,
@@ -258,6 +259,19 @@ videoRouter.post("/:id/script", async (req, res) => {
     }
 });
 
+/**
+ * `file` is a name in the video's own project folder, not a path.
+ *
+ * That is the same identity the bin lists, the browser plays, the saved
+ * timeline points at and the export renders from — so "transcribe what
+ * I am watching" is a name the editor already has, rather than an
+ * absolute path somebody had to type into a field.
+ */
+const transcribeBodySchema = z.object({
+    file: z.string().trim().min(1).max(400).optional(),
+    language: z.string().trim().max(12).optional(),
+});
+
 videoRouter.post("/:id/transcribe", async (req, res) => {
     const id = parseId(req.params.id);
     if (id === null) {
@@ -269,7 +283,33 @@ videoRouter.post("/:id/transcribe", async (req, res) => {
         res.status(404).json({ error: "No video project with that id." });
         return;
     }
-    if (!project.source_video_path) {
+    const parsed = transcribeBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+        res.status(400).json({ error: "Invalid file or language." });
+        return;
+    }
+
+    // A named file wins over whatever path the row is carrying: it is
+    // what was just picked, and the row's path may be from before this
+    // video was in a project at all.
+    let sourcePath = project.source_video_path;
+    if (parsed.data.file) {
+        const owner = project.project_id === null ? null : getStudioProject(project.project_id);
+        if (!owner) {
+            res.status(409).json({ error: "This video isn't in a project, so there is no folder to take that file from." });
+            return;
+        }
+        // resolveProjectFile is the boundary — a name that climbs out of
+        // the folder is refused rather than normalised into a path to
+        // somewhere else on the disk.
+        const resolved = resolveProjectFile(owner.folder, parsed.data.file);
+        if (!resolved) {
+            res.status(400).json({ error: `There is no file called "${parsed.data.file}" in ${owner.title}'s folder.` });
+            return;
+        }
+        sourcePath = resolved;
+    }
+    if (!sourcePath) {
         res.status(400).json({ error: "This project has no video file path yet — add one first." });
         return;
     }
@@ -290,7 +330,12 @@ videoRouter.post("/:id/transcribe", async (req, res) => {
         fail(e, res, "Could not start transcription");
         return;
     }
-    startTranscription(id, project.source_video_path, project.language);
+    // Written only once the job is certainly going to run. A request
+    // that answered 503 because whisper isn't installed should leave the
+    // row exactly as it found it.
+    const language = parsed.data.language ?? project.language;
+    updateVideoProject(id, { sourceVideoPath: sourcePath, language });
+    startTranscription(id, sourcePath, language);
     // 202: accepted and running. The client follows transcript_status
     // from here rather than holding a request open for minutes.
     const updated = getVideoProject(id);

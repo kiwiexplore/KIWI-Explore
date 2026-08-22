@@ -816,3 +816,79 @@
     color: var(--text-muted);
 
 }
+
+/* --- the transcript job ----------------------------------------------
+
+   A strip under the toolbar rather than a modal. The transcription is
+   about the file on the timeline, and a dialog over the timeline would
+   hide the thing it is asking about. */
+
+.studio-subs {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(73, 199, 255, .07);
+
+    font-size: 12px;
+    color: var(--text);
+
+}
+
+.studio-subs > svg { flex-shrink: 0; color: var(--primary); }
+
+.studio-subs-label { color: var(--text-muted); }
+
+.studio-subs-running { color: var(--text-muted); }
+
+.studio-subs-select {
+
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .7);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    color: var(--text);
+
+}
+
+.studio-subs-select:focus { outline: none; border-color: var(--primary); }
+
+.studio-subs-run {
+
+    padding: 6px 14px;
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    background: linear-gradient(rgba(73, 199, 255, .16), rgba(73, 199, 255, .16)), #0d1526;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 650;
+    color: var(--primary);
+
+}
+
+.studio-subs-run:disabled { opacity: .4; cursor: not-allowed; }
+
+.studio-subs-close {
+
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11.5px;
+    color: var(--text-muted);
+
+}

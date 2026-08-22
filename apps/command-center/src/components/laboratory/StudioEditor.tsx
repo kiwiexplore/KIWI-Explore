@@ -5,7 +5,8 @@ import {
 } from "lucide-react";
 import { useStudioEditorState, type Clip } from "../../state/studioEditor";
 import {
-    exportFileUrl, exportTimeline, fetchTranscript, saveTimeline, saveTimelineOnUnload,
+    exportFileUrl, exportTimeline, fetchTranscript, fetchVideoProject, saveTimeline,
+    saveTimelineOnUnload, startTranscription, VideoStepBlockedError, VIDEO_LANGUAGES,
     type VideoProject,
 } from "../../lib/videoApi";
 import { assetsFromFolder } from "../../lib/projectMedia";
@@ -32,6 +33,21 @@ const SAVE_AFTER = 900;
  * second copy of that fact, free to disagree with the first.
  */
 type SaveState = "idle" | "saving" | "failed";
+
+/**
+ * Where the subtitle flow is.
+ *
+ * "picking" is not an error state. A video with no transcript yet is
+ * the ordinary case, and the editor already knows both things the job
+ * needs — which file is under the playhead and what the video is spoken
+ * in — so it offers to run it rather than reporting that it can't.
+ */
+type SubtitleStage = "closed" | "picking" | "transcribing";
+
+/** How often the row is re-read while whisper runs. Same three seconds
+ *  Video Studio's own poll uses, and for the same reason: the job
+ *  finishes in the server process with nothing to push. */
+const TRANSCRIPT_POLL = 3000;
 
 /** The saved cut, or an empty one. A stored shape that isn't a list of
  *  clips is treated as nothing saved rather than trusted. */
@@ -72,6 +88,13 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const rootRef = useRef<HTMLDivElement>(null);
     const [subtitleError, setSubtitleError] = useState<string | null>(null);
     const [loadingSubs, setLoadingSubs] = useState(false);
+    // Already running when the editor opened — the job outlives the
+    // screen it was started from.
+    const [subs, setSubs] = useState<SubtitleStage>(
+        project.transcriptStatus === "processing" ? "transcribing" : "closed",
+    );
+    const [subFile, setSubFile] = useState("");
+    const [subLanguage, setSubLanguage] = useState(project.language);
     const [findings, setFindings] = useState<Finding[] | null>(null);
     const [exporting, setExporting] = useState<string | null>(null);
     const [exportDone, setExportDone] = useState<{ bytes: number; warnings: string[] } | null>(null);
@@ -225,10 +248,31 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
 
     const step = (seconds: number) => editor.setPlayhead(editor.playhead + seconds);
 
+    /** Video files in the project's folder — what can be transcribed. */
+    const videoAssets = editor.assets.filter((a) => a.kind === "video");
+
+    /**
+     * Which file the transcription should run on, if nobody says
+     * otherwise: whatever the preview is showing.
+     *
+     * That is the whole point of doing this from the editor. The file
+     * under the playhead is the one you are looking at, and it is the
+     * one you mean — where before, the job read an absolute path that
+     * had been typed into a field on another screen and had no
+     * connection to what was on the timeline.
+     */
+    const fileUnderPlayhead = (): string => {
+        const under = editor.clipAt(editor.playhead);
+        if (under) return under.asset.serverFile;
+        const first = editor.clips.find((c) => c.text === undefined);
+        const asset = first ? editor.assets.find((a) => a.id === first.assetId) : undefined;
+        return asset?.serverFile ?? videoAssets[0]?.serverFile ?? "";
+    };
+
     /**
      * Subtitles from the video's own transcript — the timestamps whisper
-     * wrote have been on disk since it ran, and this is the first thing
-     * that reads them back as something you can see.
+     * wrote have been on disk since it ran, and this is what reads them
+     * back as something you can see.
      */
     const importSubtitles = () => {
         setSubtitleError(null);
@@ -240,10 +284,63 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     return;
                 }
                 editor.setSubtitles(t.segments);
+                setSubs("closed");
             })
-            .catch((e) => setSubtitleError(e instanceof Error ? e.message : "Could not read the transcript."))
+            .catch((e) => {
+                // 409 means there is no finished transcript, which is
+                // the ordinary state of a video nobody has transcribed —
+                // the next step, not a failure. Anything else is one.
+                if (e instanceof VideoStepBlockedError) {
+                    setSubFile(fileUnderPlayhead());
+                    setSubs("picking");
+                    return;
+                }
+                setSubtitleError(e instanceof Error ? e.message : "Could not read the transcript.");
+            })
             .finally(() => setLoadingSubs(false));
     };
+
+    const runTranscribe = () => {
+        setSubtitleError(null);
+        setSubs("transcribing");
+        void startTranscription(project.id, { file: subFile, language: subLanguage })
+            .catch((e) => {
+                setSubtitleError(e instanceof Error ? e.message : "Could not start the transcription.");
+                setSubs("picking");
+            });
+    };
+
+    /**
+     * Follows the row while whisper runs, and lays the subtitles down
+     * the moment it finishes.
+     *
+     * The job lives in the server process and the row simply changes
+     * underneath, so there is nothing to subscribe to. The poll stops
+     * completely when it is not running.
+     */
+    useEffect(() => {
+        if (subs !== "transcribing") return;
+        const timer = setInterval(() => {
+            void fetchVideoProject(project.id).then((latest) => {
+                if (latest.transcriptStatus === "done") {
+                    setSubs("closed");
+                    void fetchTranscript(project.id)
+                        .then((t) => editor.setSubtitles(t.segments))
+                        .catch((e) => setSubtitleError(e instanceof Error ? e.message : "Could not read the transcript."));
+                } else if (latest.transcriptStatus === "failed") {
+                    // Never empty when the status is 'failed' — the
+                    // server writes what actually went wrong.
+                    setSubtitleError(latest.transcriptError ?? "The transcription failed.");
+                    setSubs("picking");
+                }
+            }).catch(() => { /* the next poll is three seconds away */ });
+        }, TRANSCRIPT_POLL);
+        return () => clearInterval(timer);
+        // `editor` is rebuilt on every render, so listing it would tear
+        // down and restart the poll continuously. Only the two things
+        // that decide whether to poll at all are listed.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [subs, project.id]);
 
     const addTitle = () => editor.addText("Title", editor.playhead, 3);
 
@@ -529,6 +626,57 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     <button type="button" onClick={() => setZoom((z) => Math.min(ZOOM_STEPS.length - 1, z + 1))} aria-label="Zoom in"><ZoomIn size={14} strokeWidth={2} /></button>
                 </div>
             </div>
+
+            {/* The transcript job, driven from the room it belongs to.
+                The file is the one under the playhead and the language
+                is the video's own, so both are already answered — this
+                is here to be corrected, not filled in. */}
+            {subs !== "closed" && (
+                <div className="studio-subs">
+                    <Captions size={14} strokeWidth={2} />
+                    {subs === "transcribing" ? (
+                        <span className="studio-subs-running">
+                            Transcribing{subFile ? ` ${subFile}` : ""} — whisper is running on this machine.
+                            Subtitles land on V3 when it finishes, and you can keep cutting meanwhile.
+                        </span>
+                    ) : videoAssets.length === 0 ? (
+                        <span className="studio-subs-running">
+                            Nothing in the project's folder to transcribe.
+                        </span>
+                    ) : (
+                        <>
+                            <span className="studio-subs-label">No transcript yet. Transcribe</span>
+                            <select
+                                className="studio-subs-select"
+                                value={subFile}
+                                onChange={(e) => setSubFile(e.target.value)}
+                                aria-label="File to transcribe"
+                            >
+                                {videoAssets.map((a) => (
+                                    <option key={a.id} value={a.serverFile}>{a.name}</option>
+                                ))}
+                            </select>
+                            <span className="studio-subs-label">spoken in</span>
+                            <select
+                                className="studio-subs-select"
+                                value={subLanguage}
+                                onChange={(e) => setSubLanguage(e.target.value)}
+                                aria-label="Language spoken on the video"
+                            >
+                                {VIDEO_LANGUAGES.map((l) => (
+                                    <option key={l.value} value={l.value}>{l.label}</option>
+                                ))}
+                            </select>
+                            <button type="button" className="studio-subs-run" onClick={runTranscribe} disabled={!subFile}>
+                                Transcribe
+                            </button>
+                            <button type="button" className="studio-subs-close" onClick={() => setSubs("closed")}>
+                                Cancel
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
 
             {selectedText && (
                 <div className="studio-text-edit">
