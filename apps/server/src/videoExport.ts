@@ -145,10 +145,45 @@ function buildGraph(request: ExportRequest, burnText: boolean, folder: string): 
         args.push("-ss", String(clip.offset), "-t", String(clip.duration), "-i", safeFile(clip.file, folder));
     });
 
+    // Clips composite in timeline order, each over what came before.
+    //
+    // A crossfade is simply an OVERLAP: where a clip starts before the
+    // previous one ends, the incoming clip fades its alpha in across
+    // that overlap and the two are seen through each other. There is no
+    // separate transition object and no control to set — dragging a clip
+    // onto its neighbour is the transition, which is both how editors
+    // work and the only version of this that can't disagree with what
+    // the timeline shows.
+    const ordered = [...video].sort((a, b) => a.start - b.start);
     let base = "[0:v]";
-    video.forEach((clip) => {
+    ordered.forEach((clip, i) => {
         const input = request.clips.indexOf(clip) + 2;
-        parts.push(`[${input}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:-1:-1:color=black,setpts=PTS-STARTPTS[v${input}]`);
+        const previous = ordered[i - 1];
+        const overlap = previous
+            ? Math.max(0, Math.min(previous.start + previous.duration - clip.start, clip.duration, previous.duration))
+            : 0;
+
+        const chain = [
+            `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
+            `pad=${width}:${height}:-1:-1:color=black`,
+            // Shifted to WHERE IT SITS, not just zeroed.
+            //
+            // overlay pairs frames by timestamp, so a clip whose PTS
+            // starts at 0 plays from its own beginning at base time 0
+            // and is merely made visible later by `enable`. It looked
+            // right until two clips were laid over each other and the
+            // second one turned out to be showing the wrong moment —
+            // and any alpha fade timed from the clip's start was long
+            // over by the time the clip appeared.
+            `setpts=PTS-STARTPTS+${clip.start.toFixed(3)}/TB`,
+        ];
+        if (overlap > 0.04) {
+            // yuva420p first: fade can only touch an alpha channel on a
+            // pixel format that has one, and without it the fade is
+            // accepted and silently does nothing.
+            chain.push("format=yuva420p", `fade=t=in:st=${clip.start.toFixed(3)}:d=${overlap.toFixed(3)}:alpha=1`);
+        }
+        parts.push(`[${input}:v]${chain.join(",")}[v${input}]`);
         parts.push(`${base}[v${input}]overlay=enable='between(t,${clip.start},${clip.start + clip.duration})':x=0:y=0[b${input}]`);
         base = `[b${input}]`;
     });
@@ -165,7 +200,11 @@ function buildGraph(request: ExportRequest, burnText: boolean, folder: string): 
     const audioLabels: string[] = ["[1:a]"];
     audio.forEach((clip) => {
         const input = request.clips.indexOf(clip) + 2;
-        parts.push(`[${input}:a]adelay=${Math.round(clip.start * 1000)}|${Math.round(clip.start * 1000)},apad[a${input}]`);
+        // adelay already places audio at its timeline position, which
+        // is why the picture being out of place went unnoticed for as
+        // long as it did.
+        const at = Math.round(clip.start * 1000);
+        parts.push(`[${input}:a]asetpts=PTS-STARTPTS,adelay=${at}|${at},apad[a${input}]`);
         audioLabels.push(`[a${input}]`);
     });
     parts.push(`${audioLabels.join("")}amix=inputs=${audioLabels.length}:duration=first:dropout_transition=0[aout]`);
