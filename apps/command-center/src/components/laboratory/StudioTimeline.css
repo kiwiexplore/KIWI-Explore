@@ -1,0 +1,225 @@
+/*
+ * The timeline. Track heads in a fixed column on the left, lanes
+ * scrolling horizontally beside them, and one playhead drawn over the
+ * lot.
+ *
+ * Clip positions come from seconds × pxPerSecond at render time — no
+ * pixel values live in state, so zooming re-lays out the same edit
+ * rather than nudging it.
+ */
+
+.studio-timeline {
+
+    display: flex;
+    flex-shrink: 0;
+
+    height: 236px;
+
+    border-top: 1px solid var(--border);
+    background: rgba(6, 10, 22, .98);
+
+}
+
+/* --- track heads ------------------------------------------------------ */
+
+.studio-timeline-heads {
+
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+
+    width: 62px;
+    border-right: 1px solid #1a2949;
+
+}
+
+.studio-timeline-corner {
+
+    height: 26px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #1a2949;
+
+}
+
+.studio-track-head {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    height: 35px;
+    flex-shrink: 0;
+    padding: 0 10px;
+
+    border-bottom: 1px solid #12203c;
+
+    font-size: 11px;
+    font-weight: 700;
+    color: #8b97ad;
+
+}
+
+.studio-track-dot {
+
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #2b4272;
+
+}
+
+.studio-track-head-video:first-of-type { color: #cfd8e6; }
+.studio-track-head-video:first-of-type .studio-track-dot { background: var(--primary); }
+
+/* --- lanes ------------------------------------------------------------ */
+
+.studio-timeline-lanes {
+
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    /* Nothing here should ever start a text selection — every gesture
+       in this area is a drag. */
+    user-select: none;
+    -webkit-user-select: none;
+
+}
+
+.studio-ruler {
+
+    position: relative;
+    height: 26px;
+
+    border-bottom: 1px solid #1a2949;
+    cursor: ew-resize;
+
+}
+
+.studio-tick {
+
+    position: absolute;
+    bottom: 4px;
+
+    padding-left: 5px;
+    border-left: 1px solid var(--border);
+
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+    color: #59678a;
+
+    pointer-events: none;
+
+}
+
+.studio-lane {
+
+    position: relative;
+    height: 35px;
+    border-bottom: 1px solid #12203c;
+
+}
+
+.studio-lane-audio { background: rgba(110, 243, 165, .02); }
+
+/* --- clips ------------------------------------------------------------ */
+
+.studio-clip {
+
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 8px;
+    border: 1px solid #2b4272;
+    border-radius: 5px;
+    background: linear-gradient(100deg, #17384f, #0d2438);
+
+    cursor: grab;
+    overflow: hidden;
+
+}
+
+.studio-clip-audio {
+
+    border-color: #24503c;
+    background: linear-gradient(180deg, #123024, #0a1c15);
+
+}
+
+.studio-clip-selected {
+
+    border-color: var(--primary);
+    border-width: 1.5px;
+    box-shadow: 0 0 16px rgba(73, 199, 255, .3);
+
+}
+
+.studio-clip-audio.studio-clip-selected { border-color: var(--secondary); box-shadow: 0 0 16px rgba(110, 243, 165, .3); }
+
+.studio-clip-label {
+
+    font-size: 10px;
+    color: #cfe6ff;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    pointer-events: none;
+
+}
+
+/* Grab targets wide enough to hit with a trackpad, and only on the
+   selected clip — handles on every clip is a wall of stripes. */
+.studio-clip-handle {
+
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+
+    background: var(--primary);
+    cursor: ew-resize;
+
+}
+
+.studio-clip-audio .studio-clip-handle { background: var(--secondary); }
+
+.studio-clip-handle-start { left: 0; border-radius: 4px 0 0 4px; }
+.studio-clip-handle-end { right: 0; border-radius: 0 4px 4px 0; }
+
+/* --- playhead ---------------------------------------------------------- */
+
+.studio-playhead {
+
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+
+    background: var(--danger);
+    box-shadow: 0 0 10px rgba(255, 79, 109, .7);
+
+    pointer-events: none;
+
+}
+
+.studio-playhead-grip {
+
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: 11px;
+    height: 11px;
+
+    background: var(--danger);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+
+}

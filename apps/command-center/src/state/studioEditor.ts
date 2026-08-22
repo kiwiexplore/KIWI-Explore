@@ -1,0 +1,270 @@
+import { useCallback, useRef, useState } from "react";
+
+/**
+ * The editor's own model: media you imported, tracks, and the clips on
+ * them.
+ *
+ * Deliberately NOT server-backed yet. An imported file lives as an
+ * object URL for the session — the browser cannot read a path off the
+ * disk, and uploading gigabytes of raw footage to a backend running on
+ * the same machine would be work for its own sake. What this owns is
+ * the shape of an edit; where those bytes eventually come from is a
+ * separate question (see Video Studio's own source_video_path, which
+ * the server already reads directly).
+ *
+ * Everything here is measured in SECONDS. Pixels belong to the timeline
+ * component and are derived from a zoom factor; keeping the model in
+ * time means zooming can never move a cut.
+ */
+
+export type MediaKind = "video" | "audio" | "image";
+
+export interface MediaAsset {
+    id: string;
+    name: string;
+    kind: MediaKind;
+    /** Object URL for the session. Revoked when the asset is removed. */
+    url: string;
+    /** Seconds, once the browser has read the file's metadata. */
+    duration: number;
+    width: number;
+    height: number;
+}
+
+export type TrackKind = "video" | "audio";
+
+export interface Track {
+    id: string;
+    label: string;
+    kind: TrackKind;
+}
+
+export interface Clip {
+    id: string;
+    trackId: string;
+    assetId: string;
+    /** Where the clip sits on the timeline. */
+    start: number;
+    /** How long it plays for. */
+    duration: number;
+    /** Where playback starts INSIDE the source — what trimming moves. */
+    offset: number;
+}
+
+/** V1 on top, A3 at the bottom, matching how the timeline reads. */
+export const DEFAULT_TRACKS: Track[] = [
+    { id: "V1", label: "V1", kind: "video" },
+    { id: "V2", label: "V2", kind: "video" },
+    { id: "V3", label: "V3", kind: "video" },
+    { id: "A1", label: "A1", kind: "audio" },
+    { id: "A2", label: "A2", kind: "audio" },
+    { id: "A3", label: "A3", kind: "audio" },
+];
+
+export interface StudioEditorState {
+    assets: MediaAsset[];
+    tracks: Track[];
+    clips: Clip[];
+    selectedClipId: string | null;
+    /** Seconds. The playhead — what the preview is showing. */
+    playhead: number;
+    playing: boolean;
+    /** Where the last clip ends. The project's own length. */
+    duration: number;
+
+    importFiles: (files: FileList | File[]) => Promise<void>;
+    removeAsset: (id: string) => void;
+    addClip: (assetId: string, trackId?: string) => void;
+    selectClip: (id: string | null) => void;
+    moveClip: (id: string, start: number) => void;
+    trimClip: (id: string, edge: "start" | "end", delta: number) => void;
+    splitAt: (time: number) => void;
+    deleteSelected: () => void;
+    setPlayhead: (time: number) => void;
+    setPlaying: (playing: boolean) => void;
+
+    /** Which clip covers the playhead on the topmost video track. */
+    clipAt: (time: number) => { clip: Clip; asset: MediaAsset } | null;
+}
+
+const MIN_CLIP = 0.2;
+
+function kindOf(file: File): MediaKind | null {
+    if (file.type.startsWith("video/")) return "video";
+    if (file.type.startsWith("audio/")) return "audio";
+    if (file.type.startsWith("image/")) return "image";
+    return null;
+}
+
+/**
+ * Reads duration and dimensions by letting the browser load the file's
+ * metadata. An image has no duration, so it gets a default length the
+ * way every editor gives stills one.
+ */
+function readMetadata(url: string, kind: MediaKind): Promise<{ duration: number; width: number; height: number }> {
+    return new Promise((resolve) => {
+        if (kind === "image") {
+            const img = new Image();
+            img.onload = () => resolve({ duration: 5, width: img.naturalWidth, height: img.naturalHeight });
+            img.onerror = () => resolve({ duration: 5, width: 0, height: 0 });
+            img.src = url;
+            return;
+        }
+        const el = document.createElement(kind === "video" ? "video" : "audio");
+        el.preload = "metadata";
+        el.onloadedmetadata = () => {
+            const v = el as HTMLVideoElement;
+            resolve({
+                duration: Number.isFinite(el.duration) ? el.duration : 0,
+                width: v.videoWidth ?? 0,
+                height: v.videoHeight ?? 0,
+            });
+        };
+        // A file the browser can't decode still belongs in the bin — it
+        // just can't say how long it is.
+        el.onerror = () => resolve({ duration: 0, width: 0, height: 0 });
+        el.src = url;
+    });
+}
+
+export function useStudioEditorState(): StudioEditorState {
+    const [assets, setAssets] = useState<MediaAsset[]>([]);
+    const [clips, setClips] = useState<Clip[]>([]);
+    const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+    const [playhead, setPlayheadState] = useState(0);
+    const [playing, setPlaying] = useState(false);
+    const nextId = useRef(1);
+
+    const makeId = (prefix: string) => `${prefix}-${nextId.current++}`;
+
+    const duration = clips.reduce((end, c) => Math.max(end, c.start + c.duration), 0);
+
+    const importFiles = useCallback(async (files: FileList | File[]) => {
+        const list = Array.from(files);
+        const imported: MediaAsset[] = [];
+        for (const file of list) {
+            const kind = kindOf(file);
+            if (!kind) continue;
+            const url = URL.createObjectURL(file);
+            const meta = await readMetadata(url, kind);
+            imported.push({
+                id: `asset-${nextId.current++}`,
+                name: file.name,
+                kind,
+                url,
+                duration: meta.duration,
+                width: meta.width,
+                height: meta.height,
+            });
+        }
+        if (imported.length > 0) setAssets((prev) => [...prev, ...imported]);
+    }, []);
+
+    const removeAsset = (id: string) => {
+        setAssets((prev) => {
+            const gone = prev.find((a) => a.id === id);
+            // Object URLs are a real allocation — dropping the reference
+            // without revoking keeps the file alive for the session.
+            if (gone) URL.revokeObjectURL(gone.url);
+            return prev.filter((a) => a.id !== id);
+        });
+        setClips((prev) => prev.filter((c) => c.assetId !== id));
+    };
+
+    /** Appends to the end of the track, which is what dropping in does. */
+    const addClip = (assetId: string, trackId?: string) => {
+        const asset = assets.find((a) => a.id === assetId);
+        if (!asset) return;
+        const track = trackId ?? (asset.kind === "audio" ? "A1" : "V1");
+        setClips((prev) => {
+            const end = prev.filter((c) => c.trackId === track)
+                .reduce((max, c) => Math.max(max, c.start + c.duration), 0);
+            const clip: Clip = {
+                id: makeId("clip"),
+                trackId: track,
+                assetId,
+                start: end,
+                duration: asset.duration || 5,
+                offset: 0,
+            };
+            return [...prev, clip];
+        });
+    };
+
+    const moveClip = (id: string, start: number) => {
+        setClips((prev) => prev.map((c) => (c.id === id ? { ...c, start: Math.max(0, start) } : c)));
+    };
+
+    /**
+     * Dragging the left edge moves BOTH where the clip sits and where it
+     * starts inside the source — otherwise trimming the head would slide
+     * the footage rather than shorten the clip.
+     */
+    const trimClip = (id: string, edge: "start" | "end", delta: number) => {
+        setClips((prev) => prev.map((c) => {
+            if (c.id !== id) return c;
+            if (edge === "end") {
+                return { ...c, duration: Math.max(MIN_CLIP, c.duration + delta) };
+            }
+            const shift = Math.min(delta, c.duration - MIN_CLIP);
+            const start = Math.max(0, c.start + shift);
+            const moved = start - c.start;
+            return { ...c, start, offset: Math.max(0, c.offset + moved), duration: c.duration - moved };
+        }));
+    };
+
+    /** Cuts every clip the playhead is standing on, on every track. */
+    const splitAt = (time: number) => {
+        setClips((prev) => {
+            const out: Clip[] = [];
+            for (const c of prev) {
+                const local = time - c.start;
+                if (local > MIN_CLIP && local < c.duration - MIN_CLIP) {
+                    out.push({ ...c, duration: local });
+                    out.push({
+                        ...c,
+                        id: makeId("clip"),
+                        start: time,
+                        duration: c.duration - local,
+                        offset: c.offset + local,
+                    });
+                } else {
+                    out.push(c);
+                }
+            }
+            return out;
+        });
+    };
+
+    const deleteSelected = () => {
+        if (!selectedClipId) return;
+        setClips((prev) => prev.filter((c) => c.id !== selectedClipId));
+        setSelectedClipId(null);
+    };
+
+    const setPlayhead = (time: number) => setPlayheadState(Math.max(0, time));
+
+    /**
+     * The topmost video track wins, the way it does in every editor —
+     * V1 is the base and anything above it covers.
+     */
+    const clipAt = (time: number) => {
+        for (const track of DEFAULT_TRACKS.filter((t) => t.kind === "video").slice().reverse()) {
+            const clip = clips.find((c) => c.trackId === track.id && time >= c.start && time < c.start + c.duration);
+            if (clip) {
+                const asset = assets.find((a) => a.id === clip.assetId);
+                if (asset) return { clip, asset };
+            }
+        }
+        return null;
+    };
+
+    return {
+        assets, tracks: DEFAULT_TRACKS, clips, selectedClipId, playhead, playing, duration,
+        importFiles, removeAsset, addClip,
+        selectClip: setSelectedClipId,
+        moveClip, trimClip, splitAt, deleteSelected,
+        setPlayhead, setPlaying,
+        clipAt,
+    };
+}

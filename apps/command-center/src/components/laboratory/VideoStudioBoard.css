@@ -831,3 +831,31 @@
     cursor: not-allowed;
 
 }
+
+/* The way into the cut. Sits with the stage picker rather than among
+   the numbered steps, because it isn't one of them — it's the other
+   room. */
+.video-studio-open-editor {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    padding: 8px 15px;
+    border: 1px solid var(--primary);
+    border-radius: 9px;
+    background: linear-gradient(rgba(73, 199, 255, .14), rgba(73, 199, 255, .14)), #0d1526;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    color: var(--primary);
+
+}
+
+.video-studio-open-editor:hover {
+
+    box-shadow: 0 0 18px rgba(73, 199, 255, .3);
+
+}

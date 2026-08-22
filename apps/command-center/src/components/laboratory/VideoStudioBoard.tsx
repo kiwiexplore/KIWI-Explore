@@ -1,7 +1,7 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
     AlertTriangle, ArrowLeft, Check, Clapperboard, FileText, Info, Instagram, Loader2, Megaphone,
-    Film, Music2, Plus, RotateCcw, Scissors, Trash2, Wand2,
+    Film, Music2, Plus, RotateCcw, Scissors, SlidersHorizontal, Trash2, Wand2,
 } from "lucide-react";
 import type { VideoBusyAction, VideoStudioState } from "../../state/videoStudio";
 import type { DerivedContentType, TranscriptStatus, VideoProject, VideoStage } from "../../lib/videoApi";
@@ -175,9 +175,10 @@ interface VideoDetailProps {
     busy: VideoBusyAction | undefined;
     videoStudio: VideoStudioState;
     onBack: () => void;
+    onOpenEditor: () => void;
 }
 
-function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
+function VideoDetail({ project, busy, videoStudio, onBack, onOpenEditor }: VideoDetailProps) {
     const [pathDraft, setPathDraft] = useState(project.sourceVideoPath ?? "");
     const [brief, setBrief] = useState("");
     // Held locally and committed on blur/Enter rather than on every
@@ -251,6 +252,10 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
                     aria-label="Video title"
                 />
                 <div className="video-studio-detail-head-right">
+                    <button type="button" className="video-studio-open-editor" onClick={onOpenEditor}>
+                        <SlidersHorizontal size={14} strokeWidth={2} />
+                        Open the editor
+                    </button>
                     <label className="video-studio-stage-picker">
                         <span>Stage</span>
                         <select
@@ -490,6 +495,8 @@ function VideoDetail({ project, busy, videoStudio, onBack }: VideoDetailProps) {
  */
 interface VideoStudioBoardProps {
     videoStudio: VideoStudioState;
+    /** Switches the whole Laboratory over to the cut. */
+    onOpenEditor: (id: number) => void;
     /**
      * Which video is open, owned by Laboratory.tsx rather than here —
      * the pipeline board sends you straight into one, and two components
@@ -500,7 +507,7 @@ interface VideoStudioBoardProps {
     onSelect: (id: number | null) => void;
 }
 
-export default function VideoStudioBoard({ videoStudio, selectedId, onSelect }: VideoStudioBoardProps) {
+export default function VideoStudioBoard({ videoStudio, selectedId, onSelect, onOpenEditor }: VideoStudioBoardProps) {
     const [newTitle, setNewTitle] = useState("");
 
     const selected = videoStudio.projects.find((p) => p.id === selectedId) ?? null;
@@ -539,6 +546,7 @@ export default function VideoStudioBoard({ videoStudio, selectedId, onSelect }: 
                     busy={videoStudio.busy[selected.id]}
                     videoStudio={videoStudio}
                     onBack={() => onSelect(null)}
+                    onOpenEditor={() => onOpenEditor(selected.id)}
                 />
             ) : (
                 <>

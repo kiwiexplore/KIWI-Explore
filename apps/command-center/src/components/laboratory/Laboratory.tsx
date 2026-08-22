@@ -21,6 +21,7 @@ import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import ContentHubBoard from "./ContentHubBoard";
 import LaboratoryGuide from "./LaboratoryGuide";
 import NotesBoard from "./NotesBoard";
+import StudioEditor from "./StudioEditor";
 import VideoStudioBoard from "./VideoStudioBoard";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
@@ -151,6 +152,8 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // itself shouldn't have to be told after the fact.
     const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
 
+    const [editingVideoId, setEditingVideoId] = useState<number | null>(null);
+
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
 
@@ -168,6 +171,10 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // video_projects), so a remount refetches instead of losing work.
     const contentHub = useContentHubState();
     const videoStudio = useVideoStudioState();
+    // The cut takes the whole window — no sidebar, no quick bar, no page
+    // padding. It is a different room, not another panel, so it replaces
+    // the Laboratory's body rather than rendering inside it.
+    const editingVideo = videoStudio.projects.find((p) => p.id === editingVideoId) ?? null;
     // Ideas / trends / research / notes, server-backed since Sprint 091
     // — same reasoning as the two above: persisted, so a remount
     // refetches rather than losing what you wrote.
@@ -203,9 +210,11 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
         <div
             className={`laboratory${leaving ? " laboratory-leaving" : ""}`}
             // The wash is what keeps text over the background readable.
-            // Lighter than it was: it was tuned against a starfield, and
-            // at 55% it flattened the moonscape into grey card.
-            style={{ backgroundImage: `linear-gradient(rgba(2,6,17,0.38), rgba(2,6,17,0.38)), ${resolveBackgroundImage(account.background)}` }}
+            // It was 38%, tuned to let the moonscape read clearly — but
+            // this is a workspace now, and terrain showing through the
+            // panels competed with the work on them. The moon stays;
+            // it just sits further back.
+            style={{ backgroundImage: `linear-gradient(rgba(2,6,17,0.72), rgba(2,6,17,0.72)), ${resolveBackgroundImage(account.background)}` }}
         >
             <LaboratoryTopBar
                 onBack={() => setLeaving(true)}
@@ -221,213 +230,220 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 spotify={spotify}
             />
 
-            <div className="laboratory-body">
-                <LaboratorySidebar
-                    section={section}
-                    onSectionChange={setSection}
-                    onCreateProject={handleCreateProject}
-                    onOpenKiwi={() => setKiwiOpen(true)}
-                />
+            {editingVideo ? (
+                <StudioEditor project={editingVideo} onBack={() => setEditingVideoId(null)} />
+            ) : (
+                <>
+                <div className="laboratory-body">
+                    <LaboratorySidebar
+                        section={section}
+                        onSectionChange={setSection}
+                        onCreateProject={handleCreateProject}
+                        onOpenKiwi={() => setKiwiOpen(true)}
+                    />
 
-                <main className="laboratory-main">
-                    {section === "overview" && (
-                        <Overview
-                            projects={projects}
-                            notes={notes}
-                            researchEntries={researchEntries}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onCreateProject={handleCreateProject}
-                            onGoToSection={setSection}
-                            onSelectNote={() => setSection("notes")}
-                            onSelectResearch={() => setSection("research")}
-                            onToggleTask={handleToggleTask}
-                        />
-                    )}
+                    <main className="laboratory-main">
+                        {section === "overview" && (
+                            <Overview
+                                projects={projects}
+                                notes={notes}
+                                researchEntries={researchEntries}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                                onCreateProject={handleCreateProject}
+                                onGoToSection={setSection}
+                                onSelectNote={() => setSection("notes")}
+                                onSelectResearch={() => setSection("research")}
+                                onToggleTask={handleToggleTask}
+                            />
+                        )}
 
-                    {section === "tasks" && (
-                        <TasksBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddTask={handleAddTask}
-                            onToggleTask={handleToggleTask}
-                            onRemoveTask={handleRemoveTask}
-                        />
-                    )}
-
-                    {section === "ideas" && <NotesBoard kind="idea" notes={labNotes} />}
-
-                    {section === "design" && (
-                        <DesignStudioBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddDesignRef={handleAddDesignRef}
-                            onRemoveDesignRef={handleRemoveDesignRef}
-                        />
-                    )}
-
-                    {section === "prototypes" && (
-                        <PrototypesBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddPrototype={handleAddPrototype}
-                            onCyclePrototypeStage={handleCyclePrototypeStage}
-                            onRemovePrototype={handleRemovePrototype}
-                        />
-                    )}
-
-                    {section === "resources" && (
-                        <ResourcesBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddResource={handleAddResource}
-                            onRemoveResource={handleRemoveResource}
-                        />
-                    )}
-
-                    {section === "tests" && (
-                        <TestsBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddTest={handleAddTest}
-                            onCycleTestStatus={handleCycleTestStatus}
-                            onRemoveTest={handleRemoveTest}
-                        />
-                    )}
-
-                    {section === "documents" && (
-                        <DocumentsBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddDocument={handleAddDocument}
-                            onRemoveDocument={handleRemoveDocument}
-                        />
-                    )}
-
-                    {section === "products" && (
-                        <ProductsBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddProduct={handleAddProduct}
-                            onCycleProductStage={handleCycleProductStage}
-                            onRemoveProduct={handleRemoveProduct}
-                            onUpdateProductSpecs={handleUpdateProductSpecs}
-                        />
-                    )}
-
-                    {section === "store" && (
-                        <StoreBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddStoreChannel={handleAddStoreChannel}
-                            onRemoveStoreChannel={handleRemoveStoreChannel}
-                        />
-                    )}
-
-                    {section === "marketing" && (
-                        <MarketingBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddMarketingItem={handleAddMarketingItem}
-                            onCycleMarketingStatus={handleCycleMarketingStatus}
-                            onRemoveMarketingItem={handleRemoveMarketingItem}
-                        />
-                    )}
-
-                    {section === "analytics" && (
-                        <AnalyticsPage projects={projects} noteCount={notes.length} researchCount={researchEntries.length} />
-                    )}
-
-                    {section === "image-generation" && (
-                        <ImageGenerationBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddImagePrompt={handleAddImagePrompt}
-                            onRemoveImagePrompt={handleRemoveImagePrompt}
-                        />
-                    )}
-
-                    {section === "market-analysis" && (
-                        <MarketAnalysisBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddMarketQuery={handleAddMarketQuery}
-                            onRemoveMarketQuery={handleRemoveMarketQuery}
-                        />
-                    )}
-
-                    {section === "trend-scanner" && <NotesBoard kind="trend" notes={labNotes} />}
-
-                    {section === "guide" && (
-                        <LaboratoryGuide
-                            videoStudio={videoStudio}
-                            onOpenVideo={(id) => { setSelectedVideoId(id); setSection("video-studio"); }}
-                        />
-                    )}
-
-                    {section === "content-hub" && <ContentHubBoard contentHub={contentHub} />}
-
-                    {section === "video-studio" && (
-                        <VideoStudioBoard
-                            videoStudio={videoStudio}
-                            selectedId={selectedVideoId}
-                            onSelect={setSelectedVideoId}
-                        />
-                    )}
-
-                    {section === "projects" && (
-                        selectedProject ? (
-                            <ProjectWorkspace
-                                project={selectedProject}
-                                onBack={() => setSelectedProjectId(null)}
-                                onOpenKiwi={() => setKiwiOpen(true)}
-                                onChange={handleProjectChange}
+                        {section === "tasks" && (
+                            <TasksBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddTask={handleAddTask}
                                 onToggleTask={handleToggleTask}
                                 onRemoveTask={handleRemoveTask}
-                                onAddIdea={handleAddIdea}
-                                onRemoveIdea={handleRemoveIdea}
+                            />
+                        )}
+
+                        {section === "ideas" && <NotesBoard kind="idea" notes={labNotes} />}
+
+                        {section === "design" && (
+                            <DesignStudioBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddDesignRef={handleAddDesignRef}
                                 onRemoveDesignRef={handleRemoveDesignRef}
+                            />
+                        )}
+
+                        {section === "prototypes" && (
+                            <PrototypesBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddPrototype={handleAddPrototype}
                                 onCyclePrototypeStage={handleCyclePrototypeStage}
                                 onRemovePrototype={handleRemovePrototype}
-                                onAddFile={handleAddFile}
-                                onRemoveFile={handleRemoveFile}
-                                onAddModel={handleAddModel}
-                                onRemoveModel={handleRemoveModel}
+                            />
+                        )}
+
+                        {section === "resources" && (
+                            <ResourcesBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddResource={handleAddResource}
                                 onRemoveResource={handleRemoveResource}
+                            />
+                        )}
+
+                        {section === "tests" && (
+                            <TestsBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddTest={handleAddTest}
                                 onCycleTestStatus={handleCycleTestStatus}
                                 onRemoveTest={handleRemoveTest}
+                            />
+                        )}
+
+                        {section === "documents" && (
+                            <DocumentsBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddDocument={handleAddDocument}
                                 onRemoveDocument={handleRemoveDocument}
+                            />
+                        )}
+
+                        {section === "products" && (
+                            <ProductsBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddProduct={handleAddProduct}
                                 onCycleProductStage={handleCycleProductStage}
                                 onRemoveProduct={handleRemoveProduct}
                                 onUpdateProductSpecs={handleUpdateProductSpecs}
+                            />
+                        )}
+
+                        {section === "store" && (
+                            <StoreBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddStoreChannel={handleAddStoreChannel}
                                 onRemoveStoreChannel={handleRemoveStoreChannel}
+                            />
+                        )}
+
+                        {section === "marketing" && (
+                            <MarketingBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                                 onAddMarketingItem={handleAddMarketingItem}
                                 onCycleMarketingStatus={handleCycleMarketingStatus}
                                 onRemoveMarketingItem={handleRemoveMarketingItem}
-                                onAddNote={handleAddProjectNote}
-                                onNoteChange={handleProjectNoteChange}
-                                onAddResearch={handleAddProjectResearch}
-                                onResearchChange={handleProjectResearchChange}
                             />
-                        ) : (
-                            <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />
-                        )
-                    )}
+                        )}
 
-                    {section === "research" && <NotesBoard kind="research" notes={labNotes} />}
+                        {section === "analytics" && (
+                            <AnalyticsPage projects={projects} noteCount={notes.length} researchCount={researchEntries.length} />
+                        )}
 
-                    {section === "notes" && <NotesBoard kind="note" notes={labNotes} />}
-                </main>
-            </div>
+                        {section === "image-generation" && (
+                            <ImageGenerationBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                                onAddImagePrompt={handleAddImagePrompt}
+                                onRemoveImagePrompt={handleRemoveImagePrompt}
+                            />
+                        )}
 
-            <LaboratoryQuickBar />
+                        {section === "market-analysis" && (
+                            <MarketAnalysisBoard
+                                projects={projects}
+                                onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
+                                onAddMarketQuery={handleAddMarketQuery}
+                                onRemoveMarketQuery={handleRemoveMarketQuery}
+                            />
+                        )}
+
+                        {section === "trend-scanner" && <NotesBoard kind="trend" notes={labNotes} />}
+
+                        {section === "guide" && (
+                            <LaboratoryGuide
+                                videoStudio={videoStudio}
+                                onOpenVideo={(id) => { setSelectedVideoId(id); setSection("video-studio"); }}
+                            />
+                        )}
+
+                        {section === "content-hub" && <ContentHubBoard contentHub={contentHub} />}
+
+                        {section === "video-studio" && (
+                            <VideoStudioBoard
+                                videoStudio={videoStudio}
+                                selectedId={selectedVideoId}
+                                onSelect={setSelectedVideoId}
+                                onOpenEditor={setEditingVideoId}
+                            />
+                        )}
+
+                        {section === "projects" && (
+                            selectedProject ? (
+                                <ProjectWorkspace
+                                    project={selectedProject}
+                                    onBack={() => setSelectedProjectId(null)}
+                                    onOpenKiwi={() => setKiwiOpen(true)}
+                                    onChange={handleProjectChange}
+                                    onAddTask={handleAddTask}
+                                    onToggleTask={handleToggleTask}
+                                    onRemoveTask={handleRemoveTask}
+                                    onAddIdea={handleAddIdea}
+                                    onRemoveIdea={handleRemoveIdea}
+                                    onAddDesignRef={handleAddDesignRef}
+                                    onRemoveDesignRef={handleRemoveDesignRef}
+                                    onAddPrototype={handleAddPrototype}
+                                    onCyclePrototypeStage={handleCyclePrototypeStage}
+                                    onRemovePrototype={handleRemovePrototype}
+                                    onAddFile={handleAddFile}
+                                    onRemoveFile={handleRemoveFile}
+                                    onAddModel={handleAddModel}
+                                    onRemoveModel={handleRemoveModel}
+                                    onAddResource={handleAddResource}
+                                    onRemoveResource={handleRemoveResource}
+                                    onAddTest={handleAddTest}
+                                    onCycleTestStatus={handleCycleTestStatus}
+                                    onRemoveTest={handleRemoveTest}
+                                    onAddDocument={handleAddDocument}
+                                    onRemoveDocument={handleRemoveDocument}
+                                    onAddProduct={handleAddProduct}
+                                    onCycleProductStage={handleCycleProductStage}
+                                    onRemoveProduct={handleRemoveProduct}
+                                    onUpdateProductSpecs={handleUpdateProductSpecs}
+                                    onAddStoreChannel={handleAddStoreChannel}
+                                    onRemoveStoreChannel={handleRemoveStoreChannel}
+                                    onAddMarketingItem={handleAddMarketingItem}
+                                    onCycleMarketingStatus={handleCycleMarketingStatus}
+                                    onRemoveMarketingItem={handleRemoveMarketingItem}
+                                    onAddNote={handleAddProjectNote}
+                                    onNoteChange={handleProjectNoteChange}
+                                    onAddResearch={handleAddProjectResearch}
+                                    onResearchChange={handleProjectResearchChange}
+                                />
+                            ) : (
+                                <ProjectGrid projects={projects} onSelectProject={setSelectedProjectId} onCreateProject={handleCreateProject} />
+                            )
+                        )}
+
+                        {section === "research" && <NotesBoard kind="research" notes={labNotes} />}
+
+                        {section === "notes" && <NotesBoard kind="note" notes={labNotes} />}
+                    </main>
+                </div>
+
+                <LaboratoryQuickBar />
+                </>
+            )}
 
             <KiwiPanel
                 isOpen={kiwiOpen}
