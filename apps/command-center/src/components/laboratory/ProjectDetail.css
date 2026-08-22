@@ -583,3 +583,273 @@
     color: var(--text-muted);
 
 }
+
+/* --- header actions -------------------------------------------------- */
+
+.pd-header-right { display: flex; align-items: center; gap: 16px; }
+
+.pd-delete-project {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+
+    padding: 7px 13px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: none;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+
+}
+
+/* Destructive, so it only wears the colour when you are on it — a red
+   button sitting in the header would read as a warning about the
+   project rather than an action. */
+.pd-delete-project:hover { border-color: rgba(255, 79, 109, .55); color: var(--danger); }
+
+.pd-error {
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 11px 14px;
+    border: 1px solid rgba(255, 79, 109, .45);
+    border-radius: 11px;
+    background: linear-gradient(rgba(255, 79, 109, .1), rgba(255, 79, 109, .1)), #0d1526;
+
+    font-size: 12.5px;
+
+}
+
+.pd-error svg { flex-shrink: 0; color: var(--danger); }
+
+/* --- shared small controls ------------------------------------------- */
+
+.pd-panel-note {
+
+    font-size: 11.5px;
+    color: var(--text-muted);
+
+}
+
+.pd-panel-head .pd-refresh { margin-left: auto; }
+
+.pd-icon-btn {
+
+    display: inline-flex;
+    flex-shrink: 0;
+
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: none;
+    cursor: pointer;
+
+    color: var(--text-muted);
+
+}
+
+.pd-icon-btn:hover:not(:disabled) { color: var(--danger); border-color: rgba(255, 79, 109, .4); }
+.pd-icon-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+.pd-small-btn {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .6);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11px;
+    font-weight: 620;
+    color: var(--text-muted);
+
+}
+
+.pd-small-btn:hover:not(:disabled) { color: var(--text); border-color: var(--primary); }
+.pd-small-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.pd-small-btn-on {
+
+    border-color: rgba(110, 243, 165, .5);
+    background: linear-gradient(rgba(110, 243, 165, .12), rgba(110, 243, 165, .12)), #0d1526;
+    color: var(--secondary);
+
+}
+
+/* --- scripts, now writable ------------------------------------------- */
+
+.pd-script-head { display: flex; align-items: center; gap: 6px; }
+
+.pd-script-open {
+
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+
+    padding: 9px 11px;
+    border: none;
+    border-radius: 9px;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+
+    font: inherit;
+    color: var(--text);
+
+}
+
+.pd-script-open:hover { background: rgba(22, 35, 64, .6); }
+
+.pd-script-for { font-size: 11px; color: var(--text-muted); }
+
+.pd-script-body { display: flex; flex-direction: column; gap: 8px; padding: 0 11px 11px; }
+
+.pd-script-body textarea,
+.pd-piece textarea {
+
+    width: 100%;
+    resize: vertical;
+
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .6);
+
+    font: inherit;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+
+}
+
+.pd-script-body textarea:focus,
+.pd-piece textarea:focus { outline: none; border-color: var(--primary); }
+
+.pd-script-foot { display: flex; align-items: center; gap: 10px; }
+.pd-script-foot .pd-muted { margin-right: auto; font-size: 11px; }
+
+/* --- footage: the drop zone ------------------------------------------ */
+
+.pd-drop {
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+
+    padding: 22px 16px;
+    border: 1px dashed var(--border);
+    border-radius: 13px;
+    background: rgba(5, 8, 22, .4);
+    cursor: pointer;
+
+    text-align: center;
+
+}
+
+.pd-drop:hover,
+.pd-drop:focus-visible { border-color: var(--primary); }
+
+.pd-drop-over {
+
+    border-color: var(--primary);
+    background: linear-gradient(rgba(73, 199, 255, .1), rgba(73, 199, 255, .1)), #0d1526;
+
+}
+
+.pd-drop > svg { color: var(--primary); }
+
+.pd-drop-main { font-size: 13px; font-weight: 620; }
+.pd-drop-sub { font-size: 11.5px; color: var(--text-muted); }
+
+.pd-file-error { margin: 0; font-size: 12px; color: var(--danger); }
+
+.pd-file .pd-icon-btn { margin-left: 6px; }
+
+/* --- publish, in the page -------------------------------------------- */
+
+.pd-pub-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.pd-pub-tab {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 6px 13px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(5, 8, 22, .55);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.pd-pub-tab-on { border-color: var(--primary); background: rgba(73, 199, 255, .12); color: var(--text); }
+
+.pd-pub-state { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.pd-pub-spacer { margin-left: auto; }
+.pd-pub-ok { color: var(--secondary); }
+.pd-pub-wait { color: var(--text-muted); }
+
+.pd-pieces {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 12px;
+
+}
+
+.pd-piece {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(5, 8, 22, .45);
+
+}
+
+.pd-piece-head { display: flex; align-items: center; gap: 6px; }
+
+.pd-piece-head h3 {
+
+    margin: 0;
+
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.pd-piece-hint { font-size: 11px; }

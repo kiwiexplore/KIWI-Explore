@@ -24,7 +24,6 @@ import ProjectsHome from "./ProjectsHome";
 import StudioRail from "./StudioRail";
 import ProjectDetail from "./ProjectDetail";
 import { useStudioProjectsState } from "../../state/studioProjects";
-import StudioPublish from "./StudioPublish";
 import VideoStudioBoard from "./VideoStudioBoard";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
@@ -187,7 +186,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     const studioProjects = useStudioProjectsState();
     const [openProjectId, setOpenProjectId] = useState<number | null>(null);
     // Publish is a page about one video, reached from inside a project.
-    const [publishingVideoId, setPublishingVideoId] = useState<number | null>(null);
+
 
     // The overview rail. Collapsing it is remembered, because it is a
     // standing preference about how much room you want the work to
@@ -212,7 +211,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
         ?? studioProjects.projects.flatMap((p) => p.videos).find((v) => v.id === id)
         ?? null;
 
-    const publishingVideo = findVideo(publishingVideoId);
+
     const editingVideo = findVideo(editingVideoId);
 
 
@@ -278,13 +277,12 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 onOpenNotifications={openNotifications}
                 unreadNotificationCount={notifications.unreadCount}
                 projectCount={studioProjects.projects.length}
-                atProjects={openProjectId === null && editingVideoId === null && publishingVideoId === null}
+                atProjects={openProjectId === null && editingVideoId === null}
                 onGoToProjects={() => {
-                    // Every one of these has to be cleared: the render
-                    // checks publish first, then the open project, so
-                    // leaving any of them set makes the button look
-                    // broken rather than do nothing.
-                    setPublishingVideoId(null);
+                    // Both have to be cleared: the render checks the
+                    // open project before the projects list, so leaving
+                    // either set makes the button look broken rather
+                    // than do nothing.
                     setOpenProjectId(null);
                     setEditingVideoId(null);
                     setSection("guide");
@@ -450,20 +448,14 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                         {section === "trend-scanner" && <NotesBoard kind="trend" notes={labNotes} />}
 
                         {section === "guide" && (
-                            publishingVideo ? (
-                                <StudioPublish
-                                    project={publishingVideo}
-                                    videoStudio={videoStudio}
-                                    onBack={() => setPublishingVideoId(null)}
-                                />
-                            ) : openProject ? (
+                            openProject ? (
                                 <ProjectDetail
                                     project={openProject}
                                     projects={studioProjects}
+                                    videoStudio={videoStudio}
                                     onVideosChanged={videoStudio.refresh}
                                     onBack={() => setOpenProjectId(null)}
                                     onEdit={(id) => { setSelectedVideoId(id); setEditingVideoId(id); }}
-                                    onPublish={(id) => setPublishingVideoId(id)}
                                 />
                             ) : (
                                 <ProjectsHome

@@ -5,9 +5,12 @@ import {
     listLabNotesForProject, listVideoProjectsForProject, updateStudioProject,
     listContentItemsForVideo,
 } from "../db.js";
-import { createProjectFolder, listProjectFiles, resolveProjectFile } from "../projectFolder.js";
+import {
+    createProjectFolder, listProjectFiles, resolveProjectFile, isMediaName, freeName,
+} from "../projectFolder.js";
 import { hasExport } from "../videoExport.js";
 import fs from "node:fs";
+import path from "node:path";
 
 /**
  * Projects: the thing you work on, and everything under it.
@@ -133,6 +136,84 @@ projectsRouter.get("/:id/files/:name", (req, res) => {
     // sendFile handles Range, Content-Type and caching headers; doing it
     // by hand here would be re-implementing them slightly worse.
     res.sendFile(file);
+});
+
+/**
+ * Puts a file INTO the project's folder.
+ *
+ * Dropping it in from Finder has always worked and still does — this is
+ * the same act from the other side of the screen, for the times you are
+ * already looking at the project. The file lands in the same folder,
+ * under its own name, and from that moment it is indistinguishable from
+ * one you copied there yourself. Nothing is stored twice.
+ *
+ * Raw body with the name in a header, matching the media upload the
+ * editor already uses: one file per request, nothing to parse.
+ */
+projectsRouter.post("/:id/files", (req, res) => {
+    const id = parseId(req.params.id);
+    const project = id === null ? null : getStudioProject(id);
+    if (!project || !project.folder) {
+        res.status(404).json({ error: "No project with that id, or it has no folder." });
+        return;
+    }
+    if (!fs.existsSync(project.folder)) {
+        res.status(409).json({ error: `This project's folder is gone: ${project.folder}` });
+        return;
+    }
+
+    const declared = decodeURIComponent(String(req.header("x-file-name") ?? "")).trim();
+    // The name arrives from a browser, so it is checked the same way a
+    // name in a URL is: anything that would climb out of the folder is
+    // refused rather than normalised into a path somewhere else.
+    const safe = path.basename(declared);
+    if (!safe || safe.startsWith(".") || safe !== declared) {
+        res.status(400).json({ error: "That filename isn't usable inside the project's folder." });
+        return;
+    }
+    if (!isMediaName(safe)) {
+        res.status(400).json({ error: `${safe} isn't a video, audio or image file the studio reads.` });
+        return;
+    }
+
+    // An upload must never quietly replace footage a cut already points
+    // at, so a clashing name gets a suffix rather than the old file
+    // getting overwritten.
+    const target = path.join(project.folder, freeName(project.folder, safe));
+    const sink = fs.createWriteStream(target);
+    req.pipe(sink);
+
+    sink.on("finish", () => {
+        if (fs.statSync(target).size === 0) {
+            fs.rmSync(target, { force: true });
+            res.status(400).json({ error: "That upload arrived empty." });
+            return;
+        }
+        res.json({ file: path.basename(target), files: listProjectFiles(project.folder) });
+    });
+    // A half-written file is worse than none: it would show up in the
+    // bin and fail to decode.
+    sink.on("error", (e) => {
+        fs.rmSync(target, { force: true });
+        res.status(500).json({ error: `Could not store that file: ${e.message}` });
+    });
+});
+
+/** Takes a file out of the project's folder, for real. */
+projectsRouter.delete("/:id/files/:name", (req, res) => {
+    const id = parseId(req.params.id);
+    const project = id === null ? null : getStudioProject(id);
+    if (!project) {
+        res.status(404).json({ error: "No project with that id." });
+        return;
+    }
+    const file = resolveProjectFile(project.folder, req.params.name);
+    if (!file) {
+        res.status(404).json({ error: "That file isn't in this project's folder." });
+        return;
+    }
+    fs.rmSync(file, { force: true });
+    res.json({ files: listProjectFiles(project.folder) });
 });
 
 /** Re-reads the folder. Drop a file in from Finder and press refresh. */

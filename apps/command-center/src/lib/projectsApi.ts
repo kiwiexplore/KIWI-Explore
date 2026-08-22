@@ -158,6 +158,37 @@ export function projectFileUrl(projectId: number, name: string): string {
     return `${API_URL}/api/projects/${projectId}/files/${encodeURIComponent(name)}`;
 }
 
+/**
+ * Puts a file in the project's folder from the browser.
+ *
+ * Raw body with the name in a header — the server writes the stream
+ * straight to disk. Returns the folder as it now stands, so the caller
+ * doesn't have to re-read it separately and can't briefly show a list
+ * that is one file out of date.
+ */
+export async function uploadProjectFile(id: number, file: File): Promise<ProjectFile[]> {
+    const res = await fetch(`${API_URL}/api/projects/${id}/files`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/octet-stream",
+            "x-file-name": encodeURIComponent(file.name),
+            ...(API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {}),
+        },
+        body: file,
+    });
+    if (!res.ok) await readError(res, `Could not add ${file.name}`);
+    return (await res.json()).files as ProjectFile[];
+}
+
+/** Deletes it off the disk. Returns the folder as it now stands. */
+export async function deleteProjectFile(id: number, name: string): Promise<ProjectFile[]> {
+    const res = await fetch(`${API_URL}/api/projects/${id}/files/${encodeURIComponent(name)}`, {
+        method: "DELETE", headers: headers(),
+    });
+    if (!res.ok) await readError(res, "Could not delete that file");
+    return (await res.json()).files as ProjectFile[];
+}
+
 export async function deleteProject(id: number): Promise<void> {
     await fetch(`${API_URL}/api/projects/${id}`, { method: "DELETE", headers: headers() });
 }

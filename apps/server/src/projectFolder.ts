@@ -86,6 +86,30 @@ export function listProjectFiles(folder: string): ProjectFile[] {
     return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Whether the studio reads this kind of file at all. */
+export function isMediaName(name: string): boolean {
+    return MEDIA_EXTENSIONS.has(path.extname(name).toLowerCase());
+}
+
+/**
+ * A name nothing is using yet.
+ *
+ * An upload must never quietly replace footage an existing cut points
+ * at — the timeline refers to files by NAME, so overwriting one would
+ * silently change what an edit plays.
+ */
+export function freeName(folder: string, name: string): string {
+    const extension = path.extname(name);
+    const stem = name.slice(0, name.length - extension.length);
+    let candidate = name;
+    let n = 2;
+    while (fs.existsSync(path.join(folder, candidate))) {
+        candidate = `${stem} ${n}${extension}`;
+        n += 1;
+    }
+    return candidate;
+}
+
 /**
  * Resolves a file inside the project's folder, refusing anything that
  * would climb out of it. The name arrives from a URL, so this is the

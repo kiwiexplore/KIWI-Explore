@@ -75,8 +75,23 @@ export async function generateContentItem(type: GeneratableContentType, topic: s
     return toContentItem(data.item);
 }
 
+/** Writes a piece by hand, instead of asking for one. */
+export async function createContentItem(
+    type: ContentType, topic: string, content = "", videoProjectId?: number,
+): Promise<ContentItem> {
+    const res = await fetch(`${API_URL}/api/content`, {
+        method: "POST", headers: headers(), body: JSON.stringify({ type, topic, content, videoProjectId }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error ?? `Could not save that: ${res.status}`);
+    return toContentItem(data.item);
+}
+
 export interface ContentItemUpdate {
     status?: ContentStatus;
+    /** The words themselves. */
+    content?: string;
+    topic?: string;
     // null explicitly clears the scheduled date; omitted means "don't touch it".
     scheduledDate?: string | null;
 }

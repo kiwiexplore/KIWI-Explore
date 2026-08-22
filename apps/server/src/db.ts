@@ -418,9 +418,18 @@ export function getContentItem(id: number): StoredContentItem | null {
 export interface ContentItemUpdate {
     status?: ContentStatus;
     scheduledDate?: string | null;
+    /** The words themselves. A script you can't edit is a suggestion. */
+    content?: string;
+    topic?: string;
 }
 
 export function updateContentItem(id: number, update: ContentItemUpdate): StoredContentItem | null {
+    if (update.content !== undefined) {
+        db.prepare("UPDATE content_items SET content = ? WHERE id = ?").run(update.content, id);
+    }
+    if (update.topic !== undefined) {
+        db.prepare("UPDATE content_items SET topic = ? WHERE id = ?").run(update.topic, id);
+    }
     if (update.status !== undefined) {
         db.prepare("UPDATE content_items SET status = ? WHERE id = ?").run(update.status, id);
     }
