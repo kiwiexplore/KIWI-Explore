@@ -1,0 +1,190 @@
+/*
+ * The video library. Cards are picture-first and carry the one next
+ * thing to do, so the whole shelf can be read without opening anything.
+ */
+
+.studio-muted { margin: 0; font-size: 13px; color: var(--text-muted); }
+
+.studio-new { display: flex; gap: 10px; }
+
+.studio-new-input {
+
+    width: 280px;
+    padding: 11px 15px;
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(5, 8, 22, .74);
+
+    font: inherit;
+    font-size: 13px;
+    color: var(--text);
+
+}
+
+.studio-new-input:focus { outline: none; border-color: var(--primary); }
+
+.studio-new-btn {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 0 20px;
+    border: 1px solid var(--primary);
+    border-radius: 12px;
+    background: linear-gradient(rgba(73, 199, 255, .14), rgba(73, 199, 255, .14)), #0d1526;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 650;
+    color: var(--primary);
+
+}
+
+.studio-new-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.studio-attention {
+
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    padding: 13px 16px;
+    border: 1px solid rgba(255, 79, 109, .45);
+    border-radius: 12px;
+    background: linear-gradient(rgba(255, 79, 109, .1), rgba(255, 79, 109, .1)), #0d1526;
+
+    font-size: 12.5px;
+    color: var(--text);
+
+}
+
+.studio-attention svg { flex-shrink: 0; color: var(--danger); }
+
+.studio-grid {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+
+}
+
+.studio-card {
+
+    display: flex;
+    flex-direction: column;
+
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: rgba(16, 25, 46, .92);
+    overflow: hidden;
+    cursor: pointer;
+
+    font: inherit;
+    text-align: left;
+
+    transition: border-color var(--transition), transform var(--transition);
+
+}
+
+.studio-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+.studio-card-failed { border-color: rgba(255, 79, 109, .5); }
+
+.studio-card-thumb {
+
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(145deg, #10233a 0%, #0a1524 60%, #060d1a 100%);
+
+}
+
+/* Each stage gets its own light, so a shelf of cards reads at a
+   glance even before the titles are. */
+.studio-card-thumb-script { background: linear-gradient(145deg, #14304a, #0a1a2e 60%, #071120); }
+.studio-card-thumb-recorded,
+.studio-card-thumb-transcribing { background: linear-gradient(145deg, #2a1c3f, #150f26 60%, #0a0716); }
+.studio-card-thumb-editing { background: linear-gradient(145deg, #3a2f14, #201a0c 60%, #120e06); }
+.studio-card-thumb-published { background: linear-gradient(145deg, #12351f, #0a2014 60%, #061208); }
+
+.studio-card-mark { color: #2c3f66; }
+
+.studio-card-stage {
+
+    position: absolute;
+    top: 12px;
+    right: 12px;
+
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: rgba(5, 8, 22, .8);
+
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.studio-card-time {
+
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(5, 8, 22, .75);
+
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    color: #cfe6ff;
+
+}
+
+.studio-card-body {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding: 15px 17px 17px;
+
+}
+
+.studio-card-title { font-size: 14.5px; font-weight: 650; line-height: 1.35; }
+
+.studio-card-next {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    font-size: 12px;
+    color: var(--text-muted);
+
+}
+
+.studio-card-failed .studio-card-next { color: var(--danger); }
+
+.studio-card-progress { display: flex; gap: 6px; margin-top: 4px; }
+
+.studio-card-progress span {
+
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border);
+
+}
+
+.studio-card-progress .studio-card-progress-on { background: var(--secondary); }

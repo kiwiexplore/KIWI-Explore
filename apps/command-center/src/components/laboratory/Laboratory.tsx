@@ -19,9 +19,11 @@ import AnalyticsPage from "./AnalyticsPage";
 import ImageGenerationBoard from "./ImageGenerationBoard";
 import MarketAnalysisBoard from "./MarketAnalysisBoard";
 import ContentHubBoard from "./ContentHubBoard";
-import LaboratoryGuide from "./LaboratoryGuide";
 import NotesBoard from "./NotesBoard";
 import StudioEditor from "./StudioEditor";
+import StudioStages, { type StudioStage } from "./StudioStages";
+import StudioProjects from "./StudioProjects";
+import StudioPublish from "./StudioPublish";
 import VideoStudioBoard from "./VideoStudioBoard";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
@@ -175,6 +177,26 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // padding. It is a different room, not another panel, so it replaces
     // the Laboratory's body rather than rendering inside it.
     const editingVideo = videoStudio.projects.find((p) => p.id === editingVideoId) ?? null;
+
+    // Which of the four stages the studio is showing, and which video
+    // the last three are about. PROJECTS is the only one that means
+    // anything without a video picked.
+    const [stage, setStage] = useState<StudioStage>("projects");
+    const studioVideo = videoStudio.projects.find((p) => p.id === selectedVideoId) ?? null;
+
+    const goToStage = (next: StudioStage) => {
+        setStage(next);
+        setSection("guide");
+        // EDIT is the full-screen room; the other three are pages inside
+        // the Laboratory's own frame.
+        setEditingVideoId(next === "edit" ? selectedVideoId : null);
+    };
+
+    const openVideo = (id: number) => {
+        setSelectedVideoId(id);
+        setStage("create");
+        setSection("guide");
+    };
     // Ideas / trends / research / notes, server-backed since Sprint 091
     // — same reasoning as the two above: persisted, so a remount
     // refetches rather than losing what you wrote.
@@ -231,7 +253,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
             />
 
             {editingVideo ? (
-                <StudioEditor project={editingVideo} onBack={() => setEditingVideoId(null)} />
+                <StudioEditor project={editingVideo} onBack={() => goToStage("publish")} />
             ) : (
                 <>
                 <div className="laboratory-body">
@@ -371,10 +393,21 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                         {section === "trend-scanner" && <NotesBoard kind="trend" notes={labNotes} />}
 
                         {section === "guide" && (
-                            <LaboratoryGuide
-                                videoStudio={videoStudio}
-                                onOpenVideo={(id) => { setSelectedVideoId(id); setSection("video-studio"); }}
-                            />
+                            <>
+                                <StudioStages active={stage} project={studioVideo} onGo={goToStage} />
+                                {stage === "projects" && <StudioProjects videoStudio={videoStudio} onOpen={openVideo} />}
+                                {stage === "create" && studioVideo && (
+                                    <VideoStudioBoard
+                                        videoStudio={videoStudio}
+                                        selectedId={studioVideo.id}
+                                        onSelect={(id) => { if (id === null) setStage("projects"); }}
+                                        onOpenEditor={(id) => { setSelectedVideoId(id); goToStage("edit"); }}
+                                    />
+                                )}
+                                {stage === "publish" && studioVideo && (
+                                    <StudioPublish project={studioVideo} videoStudio={videoStudio} />
+                                )}
+                            </>
                         )}
 
                         {section === "content-hub" && <ContentHubBoard contentHub={contentHub} />}
