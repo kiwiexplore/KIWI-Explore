@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { liberecStories } from "./liberec.mjs";
 import { liberecBrief } from "./brief.mjs";
 import { financeStories } from "./finance.mjs";
+import { worldStories } from "./world.mjs";
 import { indexQuotes } from "./indices.mjs";
 import { inbox, mailConfigured } from "./mail.mjs";
 
@@ -102,6 +103,16 @@ export async function handleFeedRequest(req, res) {
             // The dashboard treats a failure here as "no extra sources"
             // and still shows the two it reads itself, so this only has
             // to be honest, not graceful.
+            send(res, 502, { error: String(error?.message ?? error), stories: [] });
+        }
+        return true;
+    }
+
+    if (path === "/api/world") {
+        try {
+            const stories = await cached("world", worldStories);
+            send(res, 200, { stories });
+        } catch (error) {
             send(res, 502, { error: String(error?.message ?? error), stories: [] });
         }
         return true;

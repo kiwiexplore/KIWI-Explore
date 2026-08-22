@@ -1,24 +1,26 @@
-// Live world news via Wikipedia's "In the news" feed, through the
-// Wikimedia REST API — free, public, no API key, and CORS-enabled for
-// direct browser fetches.
+// World news, through KIWI's own feed service (apps/feed-service).
 //
-// This was not the first choice. GDELT's document API looked ideal on
-// paper (keyless, worldwide, many languages) but does NOT send CORS
-// headers, so a browser can't read it; every conventional news API
-// (NewsAPI, GNews, Guardian, Bing) needs a secret a frontend can't hold.
-// Wikipedia's own front-page news section is the rare thing that's
-// keyless, browser-readable, and genuinely global — and it's editorially
-// filtered to events that actually matter rather than to whatever a
-// publisher pushed hardest today.
+// This read Wikipedia's "In the news" section directly — keyless,
+// CORS-enabled, and editorially filtered, which all looked ideal. It
+// wasn't: that section is a digest, not a wire. Its handful of items are
+// chosen by editors and stay on the front page for days, so the module
+// showed the same headlines all week. Asking it for today's date, which
+// this file already did, changed nothing — the date picks which digest,
+// and the digest barely moves.
+//
+// It now reads real wires (BBC World, the Guardian, Al Jazeera, NPR)
+// server-side, cut to the last 24 hours. None of them send CORS headers,
+// which is precisely why the feed service reads them instead of the
+// browser.
 
 export interface WorldNewsStory {
     id: string;
-    /** Plain-text summary of the event. */
+    /** The headline. */
     text: string;
-    /** The article the story links to. */
+    /** Which wire it came from. */
     title: string;
     url: string;
-    /** One-line note on what that article is ("Earthquake in Indonesia"). */
+    /** How long ago it ran, as a phrase ("2h ago"). */
     description: string;
     /** Opening of the article itself — what the story is about, in full
      *  sentences, so a reader can decide before leaving the app. */
@@ -29,30 +31,32 @@ export interface WorldNewsStory {
     image: string | null;
 }
 
-interface WikimediaLink {
-    titles?: { normalized?: string };
-    title?: string;
-    description?: string;
-    extract?: string;
-    thumbnail?: { source?: string };
-    content_urls?: { desktop?: { page?: string } };
+interface RawWorldStory {
+    id: string;
+    title: string;
+    url: string;
+    summary: string;
+    image: string | null;
+    source: string;
+    publishedAt: string | null;
 }
 
-interface WikimediaNewsItem {
-    story: string;
-    links?: WikimediaLink[];
+/** "just now", "2h ago", "yesterday" — enough to judge how fresh it is. */
+function howLongAgo(iso: string | null): string {
+    if (!iso) return "";
+    const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (!Number.isFinite(minutes) || minutes < 0) return "";
+    if (minutes < 2) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    return days === 1 ? "yesterday" : `${days}d ago`;
 }
 
-// The feed's story text is a fragment of HTML — links and italics.
-function stripMarkup(html: string): string {
-    const el = document.createElement("div");
-    el.innerHTML = html;
-    return (el.textContent ?? "").replace(/\s+/g, " ").trim();
-}
-
-// Enough of the article to know what it is, cut on a sentence rather
-// than mid-word — a summary that stops in the middle of a clause reads
-// as broken data rather than as an excerpt.
+// Enough of the story to know what it is, cut on a sentence rather than
+// mid-word — a summary that stops in the middle of a clause reads as
+// broken data rather than as an excerpt.
 function firstSentences(text: string, maxLength = 230): string {
     const clean = text.replace(/\s+/g, " ").trim();
     if (clean.length <= maxLength) return clean;
@@ -64,30 +68,19 @@ function firstSentences(text: string, maxLength = 230): string {
 }
 
 export async function fetchWorldNews(limit = 6): Promise<WorldNewsStory[]> {
-    const today = new Date();
-    const pad = (value: number) => String(value).padStart(2, "0");
-    const path = `${today.getFullYear()}/${pad(today.getMonth() + 1)}/${pad(today.getDate())}`;
+    const res = await fetch("/api/world");
+    if (!res.ok) throw new Error(`World news request failed: ${res.status}`);
 
-    const res = await fetch(`https://api.wikimedia.org/feed/v1/wikipedia/en/featured/${path}`);
-    if (!res.ok) throw new Error(`Wikimedia feed request failed: ${res.status}`);
+    const data = await res.json() as { stories?: RawWorldStory[] };
 
-    const data = await res.json() as { news?: WikimediaNewsItem[] };
-
-    return (data.news ?? []).slice(0, limit).map((item, index) => {
-        // The first link is the event's own article — what the story is
-        // "about" — with the rest being context (countries, people).
-        const primary = item.links?.[0];
-        const title = primary?.titles?.normalized ?? primary?.title ?? "Wikipedia";
-        return {
-            id: `${path}-${index}`,
-            text: stripMarkup(item.story),
-            title,
-            url: primary?.content_urls?.desktop?.page
-                ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`,
-            description: primary?.description ?? "",
-            excerpt: firstSentences(primary?.extract ?? ""),
-            summary: (primary?.extract ?? "").trim(),
-            image: primary?.thumbnail?.source ?? null,
-        };
-    });
+    return (data.stories ?? []).slice(0, limit).map((story) => ({
+        id: story.id,
+        text: story.title,
+        title: story.source,
+        url: story.url,
+        description: howLongAgo(story.publishedAt),
+        excerpt: firstSentences(story.summary),
+        summary: story.summary,
+        image: story.image,
+    }));
 }
