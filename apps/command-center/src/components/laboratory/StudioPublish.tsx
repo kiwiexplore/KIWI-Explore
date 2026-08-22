@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { AlertTriangle, Check, Instagram, Megaphone, Music2 } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, Instagram, Megaphone, Music2 } from "lucide-react";
 import type { VideoStudioState } from "../../state/videoStudio";
 import { exportFileUrl, VIDEO_STAGES, type DerivedContentType, type VideoProject } from "../../lib/videoApi";
 import { formatClock } from "../../lib/timecode";
 import "./GlobalBoard.css";
+import "./ProjectDetail.css";
 import "./StudioPublish.css";
 
 const DERIVED: { type: DerivedContentType; label: string; icon: typeof Megaphone }[] = [
@@ -15,6 +16,7 @@ const DERIVED: { type: DerivedContentType; label: string; icon: typeof Megaphone
 interface StudioPublishProps {
     project: VideoProject;
     videoStudio: VideoStudioState;
+    onBack: () => void;
 }
 
 /**
@@ -24,7 +26,7 @@ interface StudioPublishProps {
  * nothing back, and this screen says so rather than implying a
  * connection by showing a button that only changes a database row.
  */
-export default function StudioPublish({ project, videoStudio }: StudioPublishProps) {
+export default function StudioPublish({ project, videoStudio, onBack }: StudioPublishProps) {
     const [openId, setOpenId] = useState<number | null>(null);
     const busy = videoStudio.busy[project.id];
 
@@ -34,6 +36,11 @@ export default function StudioPublish({ project, videoStudio }: StudioPublishPro
 
     return (
         <div className="global-board-page">
+            <button type="button" className="pd-back" onClick={onBack}>
+                <ChevronLeft size={15} strokeWidth={2} />
+                Back to the project
+            </button>
+
             <div className="global-board-header">
                 <div>
                     <span className="global-board-eyebrow">KIWI Studio</span>

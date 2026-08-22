@@ -4,6 +4,7 @@
 
 import type { VideoProject } from "./videoApi";
 import type { LabNote } from "./notesApi";
+import type { ContentItem } from "./contentApi";
 
 const API_URL = import.meta.env.VITE_KIWI_API_URL ?? "http://localhost:8787";
 const API_TOKEN = import.meta.env.VITE_KIWI_API_TOKEN ?? "";
@@ -14,14 +15,26 @@ export interface ProjectCounts {
     failed: number;
     ideas: number;
     ideasDone: number;
+    files: number;
+}
+
+/** A media file sitting in the project's own folder on disk. */
+export interface ProjectFile {
+    name: string;
+    bytes: number;
+    kind: "video" | "audio" | "image";
+    modifiedAt: string;
 }
 
 export interface StudioProject {
     id: number;
     title: string;
     description: string;
+    /** The real folder on this machine where its media lives. */
+    folder: string;
     videos: VideoProject[];
     notes: LabNote[];
+    files: ProjectFile[];
     counts: ProjectCounts;
     createdAt: string;
     updatedAt: string;
@@ -32,8 +45,10 @@ interface RawProject {
     id: number;
     title: string;
     description: string;
+    folder: string;
     videos: Record<string, unknown>[];
     notes: Record<string, unknown>[];
+    files: ProjectFile[];
     counts: ProjectCounts;
     created_at: string;
     updated_at: string;
@@ -57,7 +72,15 @@ function toVideo(raw: Record<string, unknown>): VideoProject {
         clips,
         language: (raw.language as string) ?? "auto",
         transcribing: Boolean(raw.transcribing),
-        contentItems: [],
+        contentItems: ((raw.contentItems as Record<string, unknown>[]) ?? []).map((i) => ({
+            id: Number(i.id),
+            type: i.type as ContentItem["type"],
+            topic: String(i.topic),
+            content: String(i.content),
+            status: i.status as ContentItem["status"],
+            scheduledDate: (i.scheduled_date as string | null) ?? null,
+            created_at: String(i.created_at ?? ""),
+        })),
         createdAt: String(raw.created_at ?? ""),
         updatedAt: String(raw.updated_at ?? ""),
     };
@@ -81,8 +104,10 @@ function toProject(raw: RawProject): StudioProject {
         id: raw.id,
         title: raw.title,
         description: raw.description,
+        folder: raw.folder ?? "",
         videos: (raw.videos ?? []).map(toVideo),
         notes: (raw.notes ?? []).map(toNote),
+        files: raw.files ?? [],
         counts: raw.counts,
         createdAt: raw.created_at,
         updatedAt: raw.updated_at,
@@ -122,6 +147,11 @@ export async function updateProject(id: number, changes: { title?: string; descr
     });
     if (!res.ok) await readError(res, "Could not save");
     return toProject((await res.json()).project);
+}
+
+/** Where the browser plays a file from the project's folder. */
+export function projectFileUrl(projectId: number, name: string): string {
+    return `${API_URL}/api/projects/${projectId}/files/${encodeURIComponent(name)}`;
 }
 
 export async function deleteProject(id: number): Promise<void> {

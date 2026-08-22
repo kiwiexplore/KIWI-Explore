@@ -27,6 +27,8 @@ export interface VideoStudioState {
     setupNeeded: boolean;
     busy: Record<number, VideoBusyAction | undefined>;
     dismissError: () => void;
+    /** Re-reads the studio-wide list — after something else made a video. */
+    refresh: () => void;
     create: (title: string, sourceNoteId?: number) => Promise<VideoProject | null>;
     update: (id: number, changes: VideoProjectUpdate) => void;
     remove: (id: number) => void;
@@ -161,6 +163,7 @@ export function useVideoStudioState(): VideoStudioState {
         setupNeeded,
         busy,
         dismissError: () => { setError(null); setSetupNeeded(false); },
+        refresh: () => void load().catch(() => { /* the list simply stays as it was */ }),
         create,
         update,
         remove,

@@ -176,7 +176,6 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // The cut takes the whole window — no sidebar, no quick bar, no page
     // padding. It is a different room, not another panel, so it replaces
     // the Laboratory's body rather than rendering inside it.
-    const editingVideo = videoStudio.projects.find((p) => p.id === editingVideoId) ?? null;
 
     // Which of the four stages the studio is showing, and which video
     // the last three are about. PROJECTS is the only one that means
@@ -189,7 +188,20 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // Publish is a page about one video, reached from inside a project.
     const [publishingVideoId, setPublishingVideoId] = useState<number | null>(null);
     const openProject = studioProjects.projects.find((p) => p.id === openProjectId) ?? null;
-    const publishingVideo = videoStudio.projects.find((p) => p.id === publishingVideoId) ?? null;
+    /**
+     * Videos arrive from two places: videoStudio's own list, and inside
+     * whichever project is open. A video created in a project isn't in
+     * the first until it refetches, which is why Publish opened onto
+     * nothing — so both are consulted, videoStudio first because its
+     * copy carries the live transcription state.
+     */
+    const findVideo = (id: number | null) => id === null ? null
+        : videoStudio.projects.find((p) => p.id === id)
+        ?? studioProjects.projects.flatMap((p) => p.videos).find((v) => v.id === id)
+        ?? null;
+
+    const publishingVideo = findVideo(publishingVideoId);
+    const editingVideo = findVideo(editingVideoId);
 
 
 
@@ -247,8 +259,17 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 inProgressCount={videoStudio.projects.filter((p) => p.stage !== "published").length}
                 publishedCount={videoStudio.projects.filter((p) => p.stage === "published").length}
                 failedCount={videoStudio.projects.filter((p) => p.transcriptStatus === "failed").length}
-                atProjects={openProjectId === null && editingVideoId === null}
-                onGoToProjects={() => { setOpenProjectId(null); setEditingVideoId(null); setSection("guide"); }}
+                atProjects={openProjectId === null && editingVideoId === null && publishingVideoId === null}
+                onGoToProjects={() => {
+                    // Every one of these has to be cleared: the render
+                    // checks publish first, then the open project, so
+                    // leaving any of them set makes the button look
+                    // broken rather than do nothing.
+                    setPublishingVideoId(null);
+                    setOpenProjectId(null);
+                    setEditingVideoId(null);
+                    setSection("guide");
+                }}
                 spotify={spotify}
             />
 
@@ -391,11 +412,16 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
 
                         {section === "guide" && (
                             publishingVideo ? (
-                                <StudioPublish project={publishingVideo} videoStudio={videoStudio} />
+                                <StudioPublish
+                                    project={publishingVideo}
+                                    videoStudio={videoStudio}
+                                    onBack={() => setPublishingVideoId(null)}
+                                />
                             ) : openProject ? (
                                 <ProjectDetail
                                     project={openProject}
                                     projects={studioProjects}
+                                    onVideosChanged={videoStudio.refresh}
                                     onBack={() => setOpenProjectId(null)}
                                     onEdit={(id) => { setSelectedVideoId(id); setEditingVideoId(id); }}
                                     onPublish={(id) => setPublishingVideoId(id)}

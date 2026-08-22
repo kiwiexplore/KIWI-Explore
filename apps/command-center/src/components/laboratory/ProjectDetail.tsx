@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import {
-    AlertTriangle, ArrowRight, Check, ChevronLeft, Clapperboard, Plus, Send, Trash2,
+    AlertTriangle, ArrowRight, Check, ChevronLeft, Clapperboard, FileText, Film,
+    FolderOpen, Music2, Plus, RefreshCw, Send, Trash2,
 } from "lucide-react";
 import type { StudioProjectsState } from "../../state/studioProjects";
 import type { StudioProject } from "../../lib/projectsApi";
@@ -8,12 +9,15 @@ import type { VideoProject } from "../../lib/videoApi";
 import { createNote, deleteNote, updateNote } from "../../lib/notesApi";
 import { createVideoProject } from "../../lib/videoApi";
 import { nextAction, stepFor } from "../../state/videoPipeline";
+import type { ContentItem } from "../../lib/contentApi";
 import "./GlobalBoard.css";
 import "./ProjectDetail.css";
 
 interface ProjectDetailProps {
     project: StudioProject;
     projects: StudioProjectsState;
+    /** Re-read the studio-wide video list, which the top bar counts. */
+    onVideosChanged: () => void;
     onBack: () => void;
     onEdit: (videoId: number) => void;
     onPublish: (videoId: number) => void;
@@ -27,7 +31,7 @@ interface ProjectDetailProps {
  * rather than behind tabs: the whole point of a project is seeing the
  * work together, and a tab is a place to hide half of it.
  */
-export default function ProjectDetail({ project, projects, onBack, onEdit, onPublish }: ProjectDetailProps) {
+export default function ProjectDetail({ project, projects, onVideosChanged, onBack, onEdit, onPublish }: ProjectDetailProps) {
     const [idea, setIdea] = useState("");
     const [videoTitle, setVideoTitle] = useState("");
     const [busy, setBusy] = useState(false);
@@ -41,7 +45,9 @@ export default function ProjectDetail({ project, projects, onBack, onEdit, onPub
      *  children, so a change to one has to come back through it. */
     const after = <T,>(work: Promise<T>) => {
         setBusy(true);
-        void work.then(() => projects.refresh()).finally(() => setBusy(false));
+        void work
+            .then(() => { projects.refresh(); onVideosChanged(); })
+            .finally(() => setBusy(false));
     };
 
     const addIdea = (event: FormEvent) => {
@@ -50,6 +56,12 @@ export default function ProjectDetail({ project, projects, onBack, onEdit, onPub
         after(createNote("idea", idea.trim(), project.id));
         setIdea("");
     };
+
+    // Every script the AI has written for any video in this project.
+    // Kept in one place because a script is a thing you go back and
+    // read, and hunting through videos for it is how it gets lost.
+    const scripts: { video: string; item: ContentItem }[] = project.videos.flatMap((v) =>
+        v.contentItems.filter((i) => i.type === "youtube-script").map((item) => ({ video: v.title, item })));
 
     const addVideo = (event: FormEvent) => {
         event.preventDefault();
@@ -120,6 +132,56 @@ export default function ProjectDetail({ project, projects, onBack, onEdit, onPub
 
             <section className="pd-panel">
                 <div className="pd-panel-head">
+                    <h2>Scripts</h2>
+                    <span className="pd-count">{scripts.length}</span>
+                </div>
+                {scripts.length === 0 ? (
+                    <p className="pd-muted">
+                        Nothing written yet. Open a video and ask KIWI to draft one — it lands here.
+                    </p>
+                ) : (
+                    <div className="pd-scripts">
+                        {scripts.map(({ video, item }) => <ScriptRow key={item.id} video={video} item={item} />)}
+                    </div>
+                )}
+            </section>
+
+            <section className="pd-panel">
+                <div className="pd-panel-head">
+                    <h2>Media</h2>
+                    <span className="pd-count">{project.files.length}</span>
+                    <button type="button" className="pd-refresh" onClick={() => projects.refresh()} aria-label="Re-read the folder">
+                        <RefreshCw size={13} strokeWidth={2} />
+                    </button>
+                </div>
+                {/* The folder is the point: put files here from Finder
+                    and they are in the project. Nothing is copied and
+                    nothing is uploaded — which is also why moving them
+                    afterwards breaks it, exactly as it would anywhere
+                    else. */}
+                <div className="pd-folder">
+                    <FolderOpen size={14} strokeWidth={1.75} />
+                    <code>{project.folder || "No folder yet"}</code>
+                </div>
+                {project.files.length === 0 ? (
+                    <p className="pd-muted">Empty. Drop your footage into that folder and press refresh.</p>
+                ) : (
+                    <div className="pd-files">
+                        {project.files.map((file) => (
+                            <div key={file.name} className="pd-file">
+                                {file.kind === "audio"
+                                    ? <Music2 size={13} strokeWidth={1.75} />
+                                    : <Film size={13} strokeWidth={1.75} />}
+                                <span className="pd-file-name">{file.name}</span>
+                                <span className="pd-file-size">{(file.bytes / 1_000_000).toFixed(1)} MB</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            <section className="pd-panel">
+                <div className="pd-panel-head">
                     <h2>Videos</h2>
                     <span className="pd-count">{counts.published}/{counts.videos} published</span>
                 </div>
@@ -139,6 +201,20 @@ export default function ProjectDetail({ project, projects, onBack, onEdit, onPub
                     </div>
                 )}
             </section>
+        </div>
+    );
+}
+
+function ScriptRow({ video, item }: { video: string; item: ContentItem }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="pd-script">
+            <button type="button" onClick={() => setOpen((o) => !o)}>
+                <FileText size={13} strokeWidth={1.75} />
+                <span className="pd-script-video">{video}</span>
+                <span className="pd-script-status">{item.status}</span>
+            </button>
+            {open && <pre>{item.content}</pre>}
         </div>
     );
 }

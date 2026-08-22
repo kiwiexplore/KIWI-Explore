@@ -116,6 +116,13 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
+        -- A real folder on this machine. Media lives THERE, not in a
+        -- database and not uploaded anywhere: the same arrangement every
+        -- editor uses, where the project points at files and the files
+        -- stay put. The cost is the same one DaVinci has — move a file
+        -- and the project stops finding it — and it is worth paying to
+        -- avoid copying hundreds of gigabytes into an app's own store.
+        folder TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
         updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
@@ -212,6 +219,11 @@ if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "source_note
 }
 if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "project_id")) {
     db.exec("ALTER TABLE video_projects ADD COLUMN project_id INTEGER REFERENCES studio_projects(id) ON DELETE SET NULL");
+}
+
+const studioColumns = db.prepare("PRAGMA table_info(studio_projects)").all() as { name: string }[];
+if (studioColumns.length > 0 && !studioColumns.some((c) => c.name === "folder")) {
+    db.exec("ALTER TABLE studio_projects ADD COLUMN folder TEXT NOT NULL DEFAULT ''");
 }
 
 const noteColumns = db.prepare("PRAGMA table_info(lab_notes)").all() as { name: string }[];
@@ -643,11 +655,12 @@ export interface StoredStudioProject {
     id: number;
     title: string;
     description: string;
+    folder: string;
     created_at: string;
     updated_at: string;
 }
 
-const STUDIO_PROJECT_COLUMNS = "id, title, description, created_at, updated_at";
+const STUDIO_PROJECT_COLUMNS = "id, title, description, folder, created_at, updated_at";
 
 export function listStudioProjects(): StoredStudioProject[] {
     const stmt = db.prepare(`SELECT ${STUDIO_PROJECT_COLUMNS} FROM studio_projects ORDER BY id DESC`);
@@ -659,17 +672,20 @@ export function getStudioProject(id: number): StoredStudioProject | null {
     return (stmt.get(id) as unknown as StoredStudioProject) ?? null;
 }
 
-export function insertStudioProject(title: string, description = ""): StoredStudioProject {
-    const stmt = db.prepare(`INSERT INTO studio_projects (title, description) VALUES (?, ?) RETURNING ${STUDIO_PROJECT_COLUMNS}`);
-    return stmt.get(title, description) as unknown as StoredStudioProject;
+export function insertStudioProject(title: string, description = "", folder = ""): StoredStudioProject {
+    const stmt = db.prepare(`INSERT INTO studio_projects (title, description, folder) VALUES (?, ?, ?) RETURNING ${STUDIO_PROJECT_COLUMNS}`);
+    return stmt.get(title, description, folder) as unknown as StoredStudioProject;
 }
 
-export function updateStudioProject(id: number, update: { title?: string; description?: string }): StoredStudioProject | null {
+export function updateStudioProject(id: number, update: { title?: string; description?: string; folder?: string }): StoredStudioProject | null {
     if (update.title !== undefined) {
         db.prepare(`UPDATE studio_projects SET title = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.title, id);
     }
     if (update.description !== undefined) {
         db.prepare(`UPDATE studio_projects SET description = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.description, id);
+    }
+    if (update.folder !== undefined) {
+        db.prepare(`UPDATE studio_projects SET folder = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.folder, id);
     }
     return getStudioProject(id);
 }
