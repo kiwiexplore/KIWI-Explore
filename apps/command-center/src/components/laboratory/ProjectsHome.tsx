@@ -4,7 +4,6 @@ import type { StudioProjectsState } from "../../state/studioProjects";
 import type { StudioProject } from "../../lib/projectsApi";
 import type { VideoProject } from "../../lib/videoApi";
 import "./GlobalBoard.css";
-import StudioOverviewCharts from "./StudioOverviewCharts";
 import "./ProjectsHome.css";
 
 /**
@@ -25,6 +24,10 @@ function progressOf(p: StudioProject): number {
 function ProjectCard({ project, onOpen }: { project: StudioProject; onOpen: () => void }) {
     const { counts } = project;
     const percent = progressOf(project);
+    // What KIND of work is in here, which is the thing you most want to
+    // know before opening one: generated, shot, or a series with both.
+    const ai = project.videos.filter((v) => v.track === "ai").length;
+    const shot = project.videos.length - ai;
 
     return (
         <button type="button" className="ph-card" onClick={onOpen}>
@@ -39,6 +42,13 @@ function ProjectCard({ project, onOpen }: { project: StudioProject; onOpen: () =
             </div>
 
             {project.description && <p className="ph-card-desc">{project.description}</p>}
+
+            {project.videos.length > 0 && (
+                <div className="ph-card-tracks">
+                    {ai > 0 && <span className="ph-track ph-track-ai">AI {ai}</span>}
+                    {shot > 0 && <span className="ph-track ph-track-shot">Shot {shot}</span>}
+                </div>
+            )}
 
             <div className="ph-card-stats">
                 <span><strong>{counts.videos}</strong> {counts.videos === 1 ? "video" : "videos"}</span>
@@ -169,10 +179,6 @@ export default function ProjectsHome({ projects, videos, onOpen, onAssignVideo }
                 </div>
             )}
 
-            {/* The overview belongs on the home page rather than behind
-                a tab: it is the answer to "how is this going", which is
-                the question you open the studio with. */}
-            {!projects.loading && <StudioOverviewCharts projects={projects.projects} videos={videos} />}
 
             {projects.loading ? (
                 <p className="ph-muted">Loading…</p>

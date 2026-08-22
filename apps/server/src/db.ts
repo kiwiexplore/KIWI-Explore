@@ -228,6 +228,14 @@ if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "timeline_js
 if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "project_id")) {
     db.exec("ALTER TABLE video_projects ADD COLUMN project_id INTEGER REFERENCES studio_projects(id) ON DELETE SET NULL");
 }
+// Which of the two ways this video is being made. 'shot' is the default
+// because every video that existed before this column was one: footage
+// already on disk. No CHECK constraint — SQLite cannot add one to an
+// existing table, so the routes are where the two values are enforced,
+// and a CHECK on the fresh table only would make two databases disagree.
+if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "track")) {
+    db.exec("ALTER TABLE video_projects ADD COLUMN track TEXT NOT NULL DEFAULT 'shot'");
+}
 
 const studioColumns = db.prepare("PRAGMA table_info(studio_projects)").all() as { name: string }[];
 if (studioColumns.length > 0 && !studioColumns.some((c) => c.name === "folder")) {
@@ -433,10 +441,23 @@ export const VIDEO_STAGES: VideoStage[] = ["idea", "script", "recorded", "transc
 
 export type TranscriptStatus = "pending" | "processing" | "done" | "failed";
 
+/**
+ * How the pictures come into existence.
+ *
+ * 'ai' generates them from the script; 'shot' means the footage is
+ * already in the project's folder. It hangs on the VIDEO rather than
+ * the project so one series can hold both — an AI-made opener over
+ * footage you actually shot is one project, not two.
+ */
+export type VideoTrack = "ai" | "shot";
+
+export const VIDEO_TRACKS: VideoTrack[] = ["ai", "shot"];
+
 export interface StoredVideoProject {
     id: number;
     title: string;
     stage: VideoStage;
+    track: VideoTrack;
     source_content_id: number | null;
     source_note_id: number | null;
     project_id: number | null;
@@ -452,7 +473,7 @@ export interface StoredVideoProject {
 }
 
 const VIDEO_PROJECT_COLUMNS = `
-    id, title, stage, source_content_id, source_note_id, project_id, source_video_path,
+    id, title, stage, track, source_content_id, source_note_id, project_id, source_video_path,
     transcript_path, transcript_status, transcript_error, clips_json, timeline_json, language,
     created_at, updated_at
 `;
@@ -469,14 +490,15 @@ export function getVideoProject(id: number): StoredVideoProject | null {
     return (stmt.get(id) as unknown as StoredVideoProject) ?? null;
 }
 
-export function insertVideoProject(title: string, sourceContentId: number | null = null): StoredVideoProject {
-    const stmt = db.prepare(`INSERT INTO video_projects (title, source_content_id) VALUES (?, ?) RETURNING ${VIDEO_PROJECT_COLUMNS}`);
-    return stmt.get(title, sourceContentId) as unknown as StoredVideoProject;
+export function insertVideoProject(title: string, sourceContentId: number | null = null, track: VideoTrack = "shot"): StoredVideoProject {
+    const stmt = db.prepare(`INSERT INTO video_projects (title, source_content_id, track) VALUES (?, ?, ?) RETURNING ${VIDEO_PROJECT_COLUMNS}`);
+    return stmt.get(title, sourceContentId, track) as unknown as StoredVideoProject;
 }
 
 export interface VideoProjectUpdate {
     title?: string;
     stage?: VideoStage;
+    track?: VideoTrack;
     sourceContentId?: number | null;
     sourceNoteId?: number | null;
     projectId?: number | null;
@@ -496,6 +518,9 @@ export function updateVideoProject(id: number, update: VideoProjectUpdate): Stor
     }
     if (update.stage !== undefined) {
         db.prepare(`UPDATE video_projects SET stage = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.stage, id);
+    }
+    if (update.track !== undefined) {
+        db.prepare(`UPDATE video_projects SET track = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.track, id);
     }
     if (update.sourceContentId !== undefined) {
         db.prepare(`UPDATE video_projects SET source_content_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.sourceContentId, id);

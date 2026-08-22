@@ -6,6 +6,7 @@ import {
     listContentItemsForVideo,
 } from "../db.js";
 import { createProjectFolder, listProjectFiles, resolveProjectFile } from "../projectFolder.js";
+import { hasExport } from "../videoExport.js";
 import fs from "node:fs";
 
 /**
@@ -27,10 +28,18 @@ function parseId(raw: string): number | null {
 function summarise(projectId: number) {
     // Each video carries what has been written for it, so the project
     // can show its scripts without the client fetching per video.
-    const videos = listVideoProjectsForProject(projectId)
-        .map((v) => ({ ...v, contentItems: listContentItemsForVideo(v.id) }));
-    const notes = listLabNotesForProject(projectId);
     const project = getStudioProject(projectId);
+    // `exported` is read here as well as on /api/video, because the two
+    // routes build the same shape and a screen that had it from one and
+    // not the other would show the chain differently depending on which
+    // request filled it.
+    const videos = listVideoProjectsForProject(projectId)
+        .map((v) => ({
+            ...v,
+            contentItems: listContentItemsForVideo(v.id),
+            exported: hasExport(v.id, project?.folder || undefined),
+        }));
+    const notes = listLabNotesForProject(projectId);
     const files = project ? listProjectFiles(project.folder) : [];
     return {
         videos,

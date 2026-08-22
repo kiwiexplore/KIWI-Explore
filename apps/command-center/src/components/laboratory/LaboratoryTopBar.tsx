@@ -14,10 +14,6 @@ interface LaboratoryTopBarProps {
     onOpenNotifications?: () => void;
     unreadNotificationCount?: number;
     projectCount: number;
-    videoCount: number;
-    inProgressCount: number;
-    publishedCount: number;
-    failedCount: number;
     /** Projects is the one place to go, and it lives in this bar. */
     atProjects: boolean;
     onGoToProjects: () => void;
@@ -52,8 +48,7 @@ interface LaboratoryTopBarProps {
  */
 export default function LaboratoryTopBar({
     onBack, listening, onOpenSearch, onOpenCalendar, onOpenNotifications, unreadNotificationCount = 0,
-    projectCount, videoCount, inProgressCount, publishedCount, failedCount,
-    atProjects, onGoToProjects, spotify,
+    projectCount, atProjects, onGoToProjects, spotify,
 }: LaboratoryTopBarProps) {
     return (
         <header className="lab-topbar">
@@ -76,10 +71,6 @@ export default function LaboratoryTopBar({
                 atProjects={atProjects}
                 onGoToProjects={onGoToProjects}
                 projectCount={projectCount}
-                videoCount={videoCount}
-                inProgressCount={inProgressCount}
-                publishedCount={publishedCount}
-                failedCount={failedCount}
             />
 
             <div className="lab-topbar-account">

@@ -247,15 +247,24 @@
 
 }
 
-.pd-video-mark-script { background: #14304a; color: var(--primary); }
-.pd-video-mark-recorded,
-.pd-video-mark-transcribing { background: #2a1c3f; color: #9b8fff; }
-.pd-video-mark-editing { background: #3a2f14; color: #F5C451; }
-.pd-video-mark-published { background: #12351f; color: var(--secondary); }
+/* The mark now says which TRACK, not which stage — the stage is the
+   chain to its right, said in four words rather than one colour. */
+.pd-video-mark-ai { background: #241c47; color: #a294ff; }
+.pd-video-mark-shot { background: #14304a; color: var(--primary); }
 
 .pd-video-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
 .pd-video-title {
+
+    display: flex;
+    align-items: center;
+    min-width: 0;
+
+}
+
+.pd-video-name {
+
+    min-width: 0;
 
     font-size: 13.5px;
     font-weight: 600;
@@ -279,19 +288,124 @@
 
 .pd-video-failed .pd-video-next { color: var(--danger); }
 
-.pd-video-stage {
+/* ---- the chain ----------------------------------------------------
+
+   Four links, always four, so a row reads the same length whichever
+   track it is on. A step that doesn't apply is struck through rather
+   than removed: absent looks like a bug, struck through looks like a
+   decision. */
+
+.pd-chain { display: flex; align-items: center; flex-shrink: 0; }
+
+.pd-chain-cell { display: flex; align-items: center; }
+
+.pd-chain-link { width: 7px; height: 1px; background: var(--border); }
+
+.pd-chain-step {
+
+    padding: 3px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: default;
+
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .7px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--text-muted);
+
+}
+
+.pd-chain-done {
+
+    border-color: rgba(110, 243, 165, .4);
+    background: linear-gradient(rgba(110, 243, 165, .1), rgba(110, 243, 165, .1)), #0d1526;
+    color: var(--secondary);
+
+}
+
+/* Where the work is. The only link that asks for attention. */
+.pd-chain-now {
+
+    border-color: rgba(117, 102, 255, .6);
+    background: linear-gradient(rgba(117, 102, 255, .16), rgba(117, 102, 255, .16)), #0d1526;
+    color: #cfc7ff;
+
+}
+
+.pd-chain-na { opacity: .38; text-decoration: line-through; }
+
+/* ---- which track --------------------------------------------------- */
+
+.pd-track {
 
     flex-shrink: 0;
 
-    padding: 3px 10px;
-    border: 1px solid var(--border);
+    margin-left: 8px;
+    padding: 1px 7px;
+    border: 1px solid currentColor;
     border-radius: 999px;
 
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: .6px;
+    letter-spacing: 1px;
     text-transform: uppercase;
+
+}
+
+.pd-track-ai { color: var(--accent); }
+.pd-track-shot { color: var(--primary); }
+
+.pd-track-pick { display: flex; gap: 9px; margin-bottom: 10px; }
+
+.pd-track-opt {
+
+    flex: 1;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 9px;
+    align-items: center;
+    text-align: left;
+
+    padding: 11px 13px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(5, 8, 22, .5);
+    cursor: pointer;
+
+    font: inherit;
+    color: var(--text);
+
+}
+
+.pd-track-opt svg { grid-row: 1; }
+
+.pd-track-name { font-size: 12.5px; font-weight: 620; }
+
+.pd-track-why {
+
+    grid-column: 2;
+
+    font-size: 11px;
     color: var(--text-muted);
+
+}
+
+.pd-track-opt-ai svg { color: var(--accent); }
+.pd-track-opt-shot svg { color: var(--primary); }
+
+.pd-track-opt-ai.pd-track-opt-on {
+
+    border-color: rgba(117, 102, 255, .65);
+    background: linear-gradient(rgba(117, 102, 255, .13), rgba(117, 102, 255, .13)), #0d1526;
+
+}
+
+.pd-track-opt-shot.pd-track-opt-on {
+
+    border-color: rgba(73, 199, 255, .6);
+    background: linear-gradient(rgba(73, 199, 255, .11), rgba(73, 199, 255, .11)), #0d1526;
 
 }
 

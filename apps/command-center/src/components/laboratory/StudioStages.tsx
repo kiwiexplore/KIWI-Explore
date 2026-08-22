@@ -6,27 +6,20 @@ interface StudioOverviewProps {
     atProjects: boolean;
     onGoToProjects: () => void;
     projectCount: number;
-    videoCount: number;
-    inProgressCount: number;
-    publishedCount: number;
-    failedCount: number;
 }
 
 /**
- * The top bar's overview: one button and a read-out.
+ * The top bar's studio control: one button.
  *
  * Projects is the only thing here you can press, because it is the only
- * place there is to go — everything else lives inside a project. The
- * four stages that used to sit here were navigation to screens that no
- * longer exist on their own, and three of them were unreachable
- * without a video picked anyway.
+ * place there is to go — everything else lives inside a project.
  *
- * The rest is what you currently have, at a glance and not clickable:
- * numbers that answer "where am I" without pretending to be a menu.
+ * The three counts that used to sit beside it are gone. They now live
+ * in the overview rail, where they are on every screen instead of
+ * competing with the navigation for the top bar's width, and where the
+ * same numbers can't be stated twice and drift.
  */
-export default function StudioOverview({
-    atProjects, onGoToProjects, projectCount, videoCount, inProgressCount, publishedCount, failedCount,
-}: StudioOverviewProps) {
+export default function StudioOverview({ atProjects, onGoToProjects, projectCount }: StudioOverviewProps) {
     return (
         <div className="studio-overview">
             <button
@@ -39,25 +32,6 @@ export default function StudioOverview({
                 Projects
                 <span className="studio-overview-badge">{projectCount}</span>
             </button>
-
-            <span className="studio-overview-divider" />
-
-            <span className="studio-overview-stat"><strong>{videoCount}</strong> videos</span>
-            <span className="studio-overview-divider" />
-            <span className="studio-overview-stat"><strong>{inProgressCount}</strong> in progress</span>
-            <span className="studio-overview-divider" />
-            <span className="studio-overview-stat"><strong>{publishedCount}</strong> published</span>
-
-            {/* Only when there is one. A zero here would be a number
-                claiming your attention for nothing. */}
-            {failedCount > 0 && (
-                <>
-                    <span className="studio-overview-divider" />
-                    <span className="studio-overview-stat studio-overview-alert">
-                        <strong>{failedCount}</strong> needs you
-                    </span>
-                </>
-            )}
         </div>
     );
 }

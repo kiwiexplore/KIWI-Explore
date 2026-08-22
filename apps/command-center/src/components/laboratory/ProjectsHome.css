@@ -296,3 +296,26 @@
 }
 
 .ph-loose-select:focus { outline: none; border-color: var(--primary); }
+
+/* --- which kind of work is in a project ------------------------------
+
+   Two counts rather than a ratio bar: at three videos a bar is noise,
+   and "AI 1 · Shot 1" is the whole fact. */
+
+.ph-card-tracks { display: flex; gap: 6px; }
+
+.ph-track {
+
+    padding: 2px 9px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+
+}
+
+.ph-track-ai { color: var(--accent); }
+.ph-track-shot { color: var(--primary); }

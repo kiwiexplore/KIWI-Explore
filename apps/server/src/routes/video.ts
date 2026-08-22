@@ -3,7 +3,8 @@ import { z } from "zod";
 import {
     deleteVideoProject, getContentItem, getVideoProject, insertContentItem, insertVideoProject,
     listContentItemsForVideo, listVideoProjects, saveVideoClips, updateVideoProject,
-    getLabNote, saveTimeline, getStudioProject, VIDEO_STAGES, type StoredVideoProject,
+    getLabNote, saveTimeline, getStudioProject, VIDEO_STAGES, VIDEO_TRACKS,
+    type StoredVideoProject,
 } from "../db.js";
 import {
     checkTranscriptionAvailable, isTranscribing, readTranscriptSegments, readTranscriptText,
@@ -16,7 +17,7 @@ import {
 import { checkClippingAvailable, cutClip, ClippingUnavailableError } from "../videoClipper.js";
 import { resolveProjectFile } from "../projectFolder.js";
 import {
-    checkExportAvailable, renderExport, uploadsDir, exportsDir,
+    checkExportAvailable, renderExport, uploadsDir, exportsDir, hasExport,
     ExportUnavailableError, type ExportRequest,
 } from "../videoExport.js";
 import fs from "node:fs";
@@ -43,10 +44,24 @@ function fail(e: unknown, res: import("express").Response, fallback: string): vo
     res.status(502).json({ error: e instanceof Error ? e.message : fallback });
 }
 
+/**
+ * Whether this video has been rendered out.
+ *
+ * A fact on disk, not a flag: it is the gate between editing and
+ * publishing, and a gate you could tick without doing the work is a
+ * decoration. Looked up through the project because that is where the
+ * render puts it.
+ */
+export function exportedFor(project: { id: number; project_id: number | null }): boolean {
+    const owner = project.project_id === null ? null : getStudioProject(project.project_id);
+    return hasExport(project.id, owner?.folder || undefined);
+}
+
 /** Shared by every response so the client never has to merge two shapes. */
 function withRelations(project: StoredVideoProject) {
     return {
         ...project,
+        exported: exportedFor(project),
         // Reported separately from transcript_status because a row can
         // say 'processing' while no process is actually running (a crash
         // between the two). failInterruptedTranscripts() cleans that up
@@ -79,6 +94,8 @@ videoRouter.get("/:id", (req, res) => {
     res.json({ project: withRelations(project) });
 });
 
+const trackSchema = z.enum(VIDEO_TRACKS as [string, ...string[]]);
+
 const createBodySchema = z.object({
     title: z.string().trim().min(1).max(200),
     sourceContentId: z.number().int().nullable().optional(),
@@ -86,6 +103,12 @@ const createBodySchema = z.object({
     sourceNoteId: z.number().int().nullable().optional(),
     /** The project it belongs to. */
     projectId: z.number().int().nullable().optional(),
+    /**
+     * Which of the two ways this one is being made. Answered when the
+     * video is created, because it decides whether the chain has a
+     * generation step in it at all.
+     */
+    track: trackSchema.optional(),
 });
 
 videoRouter.post("/", (req, res) => {
@@ -107,7 +130,7 @@ videoRouter.post("/", (req, res) => {
         res.status(400).json({ error: "No note with that id to link as the source." });
         return;
     }
-    const created = insertVideoProject(title, sourceContentId ?? null);
+    const created = insertVideoProject(title, sourceContentId ?? null, (parsed.data.track ?? "shot") as StoredVideoProject["track"]);
     // Set straight after insert rather than threading another argument
     // through: the column is optional and this is the only caller that
     // ever fills it at creation.
@@ -121,6 +144,7 @@ videoRouter.post("/", (req, res) => {
 const updateBodySchema = z.object({
     title: z.string().trim().min(1).max(200).optional(),
     stage: z.enum(VIDEO_STAGES as [string, ...string[]]).optional(),
+    track: trackSchema.optional(),
     sourceContentId: z.number().int().nullable().optional(),
     // An absolute path on the machine running this server. Emptying it
     // is allowed (null) — that's how you detach a file you pointed at
@@ -171,6 +195,7 @@ videoRouter.patch("/:id", (req, res) => {
     const updated = updateVideoProject(id, {
         ...parsed.data,
         stage: parsed.data.stage as StoredVideoProject["stage"] | undefined,
+        track: parsed.data.track as StoredVideoProject["track"] | undefined,
         // An empty string from a cleared input means "no file", not a
         // path of "".
         sourceVideoPath: parsed.data.sourceVideoPath === "" ? null : parsed.data.sourceVideoPath,

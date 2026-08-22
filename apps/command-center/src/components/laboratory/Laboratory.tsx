@@ -21,6 +21,7 @@ import ContentHubBoard from "./ContentHubBoard";
 import NotesBoard from "./NotesBoard";
 import StudioEditor from "./StudioEditor";
 import ProjectsHome from "./ProjectsHome";
+import StudioRail from "./StudioRail";
 import ProjectDetail from "./ProjectDetail";
 import { useStudioProjectsState } from "../../state/studioProjects";
 import StudioPublish from "./StudioPublish";
@@ -187,6 +188,17 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     const [openProjectId, setOpenProjectId] = useState<number | null>(null);
     // Publish is a page about one video, reached from inside a project.
     const [publishingVideoId, setPublishingVideoId] = useState<number | null>(null);
+
+    // The overview rail. Collapsing it is remembered, because it is a
+    // standing preference about how much room you want the work to
+    // have — not a per-visit decision.
+    const [railCollapsed, setRailCollapsed] = useState(
+        () => localStorage.getItem("kiwi.studio.rail") === "collapsed",
+    );
+    const toggleRail = () => setRailCollapsed((was) => {
+        localStorage.setItem("kiwi.studio.rail", was ? "open" : "collapsed");
+        return !was;
+    });
     const openProject = studioProjects.projects.find((p) => p.id === openProjectId) ?? null;
     /**
      * Videos arrive from two places: videoStudio's own list, and inside
@@ -266,10 +278,6 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                 onOpenNotifications={openNotifications}
                 unreadNotificationCount={notifications.unreadCount}
                 projectCount={studioProjects.projects.length}
-                videoCount={videoStudio.projects.length}
-                inProgressCount={videoStudio.projects.filter((p) => p.stage !== "published").length}
-                publishedCount={videoStudio.projects.filter((p) => p.stage === "published").length}
-                failedCount={videoStudio.projects.filter((p) => p.transcriptStatus === "failed").length}
                 atProjects={openProjectId === null && editingVideoId === null && publishingVideoId === null}
                 onGoToProjects={() => {
                     // Every one of these has to be cleared: the render
@@ -298,6 +306,17 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
             ) : (
                 <>
                 <div className="laboratory-body">
+                    {/* Beside the work, on every screen. It used to be
+                        the header of Projects, which is the one screen
+                        where you are least likely to want it — you ask
+                        "how is this going" while you are in the middle
+                        of something. */}
+                    <StudioRail
+                        projects={studioProjects.projects}
+                        videos={videoStudio.projects}
+                        collapsed={railCollapsed}
+                        onToggle={toggleRail}
+                    />
                     {/* No rail. Everything that was on it — ideas,
                         research, posts — belongs to a project, and a
                         second way to reach half of it was most of what

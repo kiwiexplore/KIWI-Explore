@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from "react";
 import {
     AlertTriangle, ArrowRight, Check, ChevronLeft, Clapperboard, FileText, Film,
-    FolderOpen, Music2, Plus, RefreshCw, Send, Trash2,
+    FolderOpen, Music2, Plus, RefreshCw, Send, Sparkles, Trash2, Video,
 } from "lucide-react";
 import type { StudioProjectsState } from "../../state/studioProjects";
 import type { StudioProject } from "../../lib/projectsApi";
-import type { VideoProject } from "../../lib/videoApi";
+import type { VideoProject, VideoTrack } from "../../lib/videoApi";
 import { createNote, deleteNote, updateNote } from "../../lib/notesApi";
 import { createVideoProject } from "../../lib/videoApi";
-import { nextAction, stepFor } from "../../state/videoPipeline";
+import { chainFor, chainSummary } from "../../state/studioChain";
 import type { ContentItem } from "../../lib/contentApi";
 import "./GlobalBoard.css";
 import "./ProjectDetail.css";
@@ -34,6 +34,9 @@ interface ProjectDetailProps {
 export default function ProjectDetail({ project, projects, onVideosChanged, onBack, onEdit, onPublish }: ProjectDetailProps) {
     const [idea, setIdea] = useState("");
     const [videoTitle, setVideoTitle] = useState("");
+    // The one question worth asking before a video exists, because it
+    // decides whether the chain has a generation step in it at all.
+    const [track, setTrack] = useState<VideoTrack>("shot");
     const [busy, setBusy] = useState(false);
 
     const { counts } = project;
@@ -66,7 +69,7 @@ export default function ProjectDetail({ project, projects, onVideosChanged, onBa
     const addVideo = (event: FormEvent) => {
         event.preventDefault();
         if (!videoTitle.trim()) return;
-        after(createVideoProject(videoTitle.trim(), undefined, project.id));
+        after(createVideoProject(videoTitle.trim(), undefined, project.id, track));
         setVideoTitle("");
     };
 
@@ -186,6 +189,36 @@ export default function ProjectDetail({ project, projects, onVideosChanged, onBa
                     <span className="pd-count">{counts.published}/{counts.videos} published</span>
                 </div>
 
+                {/* Which track BEFORE the title, because it is the one
+                    thing that can't be changed later without the chain
+                    underneath the video changing with it. Two buttons
+                    rather than a dropdown: there are exactly two, and a
+                    dropdown would hide the one you aren't on. */}
+                <div className="pd-track-pick" role="radiogroup" aria-label="How this video gets made">
+                    <button
+                        type="button"
+                        role="radio"
+                        aria-checked={track === "ai"}
+                        className={`pd-track-opt pd-track-opt-ai${track === "ai" ? " pd-track-opt-on" : ""}`}
+                        onClick={() => setTrack("ai")}
+                    >
+                        <Sparkles size={14} strokeWidth={2} />
+                        <span className="pd-track-name">Generate it with AI</span>
+                        <span className="pd-track-why">Script first, then the pictures come from it.</span>
+                    </button>
+                    <button
+                        type="button"
+                        role="radio"
+                        aria-checked={track === "shot"}
+                        className={`pd-track-opt pd-track-opt-shot${track === "shot" ? " pd-track-opt-on" : ""}`}
+                        onClick={() => setTrack("shot")}
+                    >
+                        <Video size={14} strokeWidth={2} />
+                        <span className="pd-track-name">Edit footage I shot</span>
+                        <span className="pd-track-why">The material is already in this folder.</span>
+                    </button>
+                </div>
+
                 <form className="pd-add" onSubmit={addVideo}>
                     <input value={videoTitle} onChange={(e) => setVideoTitle(e.target.value)} placeholder="A video in this project…" />
                     <button type="submit" disabled={!videoTitle.trim() || busy}><Plus size={14} strokeWidth={2} /></button>
@@ -196,7 +229,13 @@ export default function ProjectDetail({ project, projects, onVideosChanged, onBa
                 ) : (
                     <div className="pd-videos">
                         {project.videos.map((video) => (
-                            <VideoRow key={video.id} video={video} onEdit={() => onEdit(video.id)} onPublish={() => onPublish(video.id)} />
+                            <VideoRow
+                                key={video.id}
+                                video={video}
+                                owner={project}
+                                onEdit={() => onEdit(video.id)}
+                                onPublish={() => onPublish(video.id)}
+                            />
                         ))}
                     </div>
                 )}
@@ -219,23 +258,68 @@ function ScriptRow({ video, item }: { video: string; item: ContentItem }) {
     );
 }
 
-function VideoRow({ video, onEdit, onPublish }: { video: VideoProject; onEdit: () => void; onPublish: () => void }) {
-    const step = stepFor(video.stage);
+/**
+ * One video and where it actually is.
+ *
+ * The chain replaces the single stage label that used to sit here. A
+ * label says what somebody set; the chain says what has been done —
+ * and, on the step that hasn't, what is missing. That is the difference
+ * between a video you have to open to understand and one you don't.
+ */
+function VideoRow({ video, owner, onEdit, onPublish }: {
+    video: VideoProject;
+    owner: StudioProject;
+    onEdit: () => void;
+    onPublish: () => void;
+}) {
     const failed = video.transcriptStatus === "failed";
+    const chain = chainFor(video, owner);
 
     return (
         <div className={`pd-video${failed ? " pd-video-failed" : ""}`}>
-            <div className={`pd-video-mark pd-video-mark-${video.stage}`}>
-                <Clapperboard size={15} strokeWidth={1.75} />
+            <div className={`pd-video-mark pd-video-mark-${video.track}`}>
+                {video.track === "ai"
+                    ? <Sparkles size={15} strokeWidth={1.75} />
+                    : <Clapperboard size={15} strokeWidth={1.75} />}
             </div>
             <div className="pd-video-body">
-                <span className="pd-video-title">{video.title}</span>
+                <span className="pd-video-title">
+                    <span className="pd-video-name">{video.title}</span>
+                    <span className={`pd-track pd-track-${video.track}`}>{video.track === "ai" ? "AI" : "Shot"}</span>
+                </span>
                 <span className="pd-video-next">
                     {failed && <AlertTriangle size={11} strokeWidth={2.5} />}
-                    {nextAction(video)}
+                    {chainSummary(video, owner)}
                 </span>
             </div>
-            <span className="pd-video-stage">{step.label}</span>
+
+            <div className="pd-chain" aria-label={`${chain.done} of ${chain.total} done`}>
+                {chain.steps.map((step, i) => (
+                    <span key={step.stage} className="pd-chain-cell">
+                        {i > 0 && <span className="pd-chain-link" />}
+                        <span
+                            className={
+                                // A step that doesn't apply is only ever
+                                // struck through. It counts as satisfied
+                                // so the chain can move past it, but
+                                // painting it green would claim work
+                                // that was never done.
+                                "pd-chain-step" + (
+                                    !step.applies ? " pd-chain-na"
+                                        : step.done ? " pd-chain-done"
+                                            : step === chain.current ? " pd-chain-now" : ""
+                                )
+                            }
+                            // The step that isn't done says why, right
+                            // where you are pointing at it.
+                            title={step.applies ? (step.blocker ?? `${step.label} — done`) : `${step.label} — not needed for footage you shot`}
+                        >
+                            {step.label}
+                        </span>
+                    </span>
+                ))}
+            </div>
+
             <div className="pd-video-actions">
                 <button type="button" onClick={onEdit}>Edit<ArrowRight size={12} strokeWidth={2} /></button>
                 <button type="button" onClick={onPublish}><Send size={12} strokeWidth={2} />Publish</button>

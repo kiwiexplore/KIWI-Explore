@@ -14,6 +14,20 @@ export const VIDEO_STAGES: VideoStage[] = ["idea", "script", "recorded", "transc
 export type TranscriptStatus = "pending" | "processing" | "done" | "failed";
 
 /**
+ * How the pictures come into existence: generated from the script, or
+ * already shot and sitting in the project's folder.
+ *
+ * On the VIDEO rather than the project, so one series can hold both —
+ * an AI-made opener over footage you actually shot is one project.
+ */
+export type VideoTrack = "ai" | "shot";
+
+export const VIDEO_TRACK_LABELS: Record<VideoTrack, string> = {
+    ai: "AI",
+    shot: "Shot",
+};
+
+/**
  * What the video is spoken in. "auto" lets whisper detect it and then
  * records what it heard — which matters more than it sounds: whisper's
  * CLI assumes English when nothing is set, so an unset Czech recording
@@ -44,6 +58,13 @@ export interface VideoProject {
     id: number;
     title: string;
     stage: VideoStage;
+    track: VideoTrack;
+    /**
+     * Whether a rendered file is actually on disk. Read by the server
+     * from the project's Exports folder — the one gate in the chain
+     * that cannot be ticked without doing the work.
+     */
+    exported: boolean;
     sourceContentId: number | null;
     /** The idea or trend it came from, if it came from one. */
     sourceNoteId: number | null;
@@ -79,6 +100,8 @@ interface RawVideoProject {
     id: number;
     title: string;
     stage: VideoStage;
+    track: VideoTrack;
+    exported: boolean;
     source_content_id: number | null;
     source_note_id: number | null;
     project_id: number | null;
@@ -128,6 +151,10 @@ function toVideoProject(raw: RawVideoProject): VideoProject {
         id: raw.id,
         title: raw.title,
         stage: raw.stage,
+        // A row written before the column existed reads as shot, which
+        // is what it was.
+        track: raw.track ?? "shot",
+        exported: Boolean(raw.exported),
         sourceContentId: raw.source_content_id,
         sourceNoteId: raw.source_note_id ?? null,
         projectId: raw.project_id ?? null,
@@ -184,9 +211,11 @@ export async function fetchVideoProjects(): Promise<VideoProject[]> {
     return ((data.projects ?? []) as RawVideoProject[]).map(toVideoProject);
 }
 
-export async function createVideoProject(title: string, sourceNoteId?: number, projectId?: number): Promise<VideoProject> {
+export async function createVideoProject(
+    title: string, sourceNoteId?: number, projectId?: number, track: VideoTrack = "shot",
+): Promise<VideoProject> {
     const res = await fetch(`${API_URL}/api/video`, {
-        method: "POST", headers: headers(), body: JSON.stringify({ title, sourceNoteId, projectId }),
+        method: "POST", headers: headers(), body: JSON.stringify({ title, sourceNoteId, projectId, track }),
     });
     if (!res.ok) await readError(res, "Could not create the project");
     return toVideoProject((await res.json()).project);
@@ -200,6 +229,7 @@ export interface VideoProjectUpdate {
     language?: string;
     /** Which project it belongs to. null takes it out of one. */
     projectId?: number | null;
+    track?: VideoTrack;
 }
 
 export async function updateVideoProject(id: number, update: VideoProjectUpdate): Promise<VideoProject> {

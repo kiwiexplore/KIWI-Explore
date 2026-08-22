@@ -25,6 +25,24 @@ export const exportsDir = path.join(dataDir, "exports");
 
 export class ExportUnavailableError extends Error {}
 
+/**
+ * Where a video's export lands, and whether it is there.
+ *
+ * The render already decides this — the project's own Exports folder
+ * when it has one, the app's store when it doesn't — and now something
+ * other than the render needs to know: "has this been exported" is the
+ * gate between editing and publishing, and a gate has to be a fact on
+ * disk rather than a checkbox somebody could tick without doing it.
+ */
+export function exportPathFor(id: number, folder?: string): string {
+    return path.join(folder ? path.join(folder, "Exports") : exportsDir, `${id}.mp4`);
+}
+
+export function hasExport(id: number, folder?: string): boolean {
+    const file = exportPathFor(id, folder);
+    return fs.existsSync(file) && fs.statSync(file).size > 0;
+}
+
 export async function checkExportAvailable(): Promise<void> {
     if (!(await binaryExists(FFMPEG_BIN))) {
         throw new ExportUnavailableError(

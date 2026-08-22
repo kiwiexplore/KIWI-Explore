@@ -63,6 +63,8 @@ function toVideo(raw: Record<string, unknown>): VideoProject {
         id: Number(raw.id),
         title: String(raw.title),
         stage: raw.stage as VideoProject["stage"],
+        track: (raw.track as VideoProject["track"]) ?? "shot",
+        exported: Boolean(raw.exported),
         sourceContentId: (raw.source_content_id as number | null) ?? null,
         sourceNoteId: (raw.source_note_id as number | null) ?? null,
         projectId: (raw.project_id as number | null) ?? null,
