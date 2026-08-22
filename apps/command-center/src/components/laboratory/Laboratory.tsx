@@ -7,7 +7,6 @@ import CalendarPanel from "./CalendarPanel";
 import NotificationsPanel from "./NotificationsPanel";
 import Overview from "./Overview";
 import TasksBoard from "./TasksBoard";
-import IdeasBoard from "./IdeasBoard";
 import DesignStudioBoard from "./DesignStudioBoard";
 import PrototypesBoard from "./PrototypesBoard";
 import ResourcesBoard from "./ResourcesBoard";
@@ -19,22 +18,19 @@ import MarketingBoard from "./MarketingBoard";
 import AnalyticsPage from "./AnalyticsPage";
 import ImageGenerationBoard from "./ImageGenerationBoard";
 import MarketAnalysisBoard from "./MarketAnalysisBoard";
-import TrendScannerBoard from "./TrendScannerBoard";
 import ContentHubBoard from "./ContentHubBoard";
 import LaboratoryGuide from "./LaboratoryGuide";
+import NotesBoard from "./NotesBoard";
 import VideoStudioBoard from "./VideoStudioBoard";
 import ProjectGrid from "./ProjectGrid";
 import ProjectWorkspace from "./ProjectWorkspace";
-import NotesGrid from "./NotesGrid";
-import NoteEditor from "./NoteEditor";
-import ResearchGrid from "./ResearchGrid";
-import ResearchDetail from "./ResearchDetail";
 import KiwiPanel from "./KiwiPanel";
 import { useKiwiChat } from "../../lib/useKiwiChat";
 import { resolveBackgroundImage } from "../../state/backgrounds";
 import type { NotificationsState } from "../../state/notifications";
 import { useContentHubState } from "../../state/contentHub";
 import { useVideoStudioState } from "../../state/videoStudio";
+import { useLabNotesState } from "../../state/labNotes";
 import type { AccountState } from "../../state/account";
 import type { CalendarState } from "../../state/calendar";
 import type { LaboratoryDataState } from "../../state/laboratoryData";
@@ -138,9 +134,8 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
         handleAddMarketingItem, handleCycleMarketingStatus, handleRemoveMarketingItem,
         handleAddImagePrompt, handleRemoveImagePrompt,
         handleAddMarketQuery, handleRemoveMarketQuery,
-        handleAddTrendTopic, handleRemoveTrendTopic,
-        createNote, handleNoteChange, handleAddProjectNote, handleProjectNoteChange,
-        createResearchEntry, handleResearchChange, handleAddProjectResearch, handleProjectResearchChange,
+        handleAddProjectNote, handleProjectNoteChange,
+        handleAddProjectResearch, handleProjectResearchChange,
     } = data;
 
     // The Guide is the landing screen: opening the Laboratory on a page
@@ -159,11 +154,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
 
-    const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-    const selectedNote = notes.find((n) => n.id === selectedNoteId) ?? null;
 
-    const [selectedResearchId, setSelectedResearchId] = useState<string | null>(null);
-    const selectedResearch = researchEntries.find((r) => r.id === selectedResearchId) ?? null;
 
     const [kiwiOpen, setKiwiOpen] = useState(false);
     const kiwiChat = useKiwiChat();
@@ -177,6 +168,10 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
     // video_projects), so a remount refetches instead of losing work.
     const contentHub = useContentHubState();
     const videoStudio = useVideoStudioState();
+    // Ideas / trends / research / notes, server-backed since Sprint 091
+    // — same reasoning as the two above: persisted, so a remount
+    // refetches rather than losing what you wrote.
+    const labNotes = useLabNotesState();
 
     // Search and Notifications both drop down from the same top-right
     // spot — opening one closes the other so they never stack.
@@ -193,20 +188,15 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
         setSection("projects");
     };
 
-    const handleCreateNote = () => {
-        const note = createNote();
-        setSelectedNoteId(note.id);
-    };
 
-    const handleCreateResearchEntry = () => {
-        const entry = createResearchEntry();
-        setSelectedResearchId(entry.id);
-    };
 
     const handleSearchSelect = (kind: "project" | "note" | "research", id: string) => {
+        // Notes and research are one flat list now rather than a grid
+        // you walk into, so there's no single item to select — the
+        // section itself is the destination.
         if (kind === "project") { setSection("projects"); setSelectedProjectId(id); }
-        else if (kind === "note") { setSection("notes"); setSelectedNoteId(id); }
-        else { setSection("research"); setSelectedResearchId(id); }
+        else if (kind === "note") setSection("notes");
+        else setSection("research");
     };
 
     return (
@@ -248,8 +238,8 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                             onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
                             onCreateProject={handleCreateProject}
                             onGoToSection={setSection}
-                            onSelectNote={(id) => { setSelectedNoteId(id); setSection("notes"); }}
-                            onSelectResearch={(id) => { setSelectedResearchId(id); setSection("research"); }}
+                            onSelectNote={() => setSection("notes")}
+                            onSelectResearch={() => setSection("research")}
                             onToggleTask={handleToggleTask}
                         />
                     )}
@@ -264,14 +254,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                         />
                     )}
 
-                    {section === "ideas" && (
-                        <IdeasBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddIdea={handleAddIdea}
-                            onRemoveIdea={handleRemoveIdea}
-                        />
-                    )}
+                    {section === "ideas" && <NotesBoard kind="idea" notes={labNotes} />}
 
                     {section === "design" && (
                         <DesignStudioBoard
@@ -372,14 +355,7 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                         />
                     )}
 
-                    {section === "trend-scanner" && (
-                        <TrendScannerBoard
-                            projects={projects}
-                            onSelectProject={(id) => { setSelectedProjectId(id); setSection("projects"); }}
-                            onAddTrendTopic={handleAddTrendTopic}
-                            onRemoveTrendTopic={handleRemoveTrendTopic}
-                        />
-                    )}
+                    {section === "trend-scanner" && <NotesBoard kind="trend" notes={labNotes} />}
 
                     {section === "guide" && (
                         <LaboratoryGuide
@@ -445,21 +421,9 @@ export default function Laboratory({ onBack, account, calendar, data, spotify, n
                         )
                     )}
 
-                    {section === "research" && (
-                        selectedResearch ? (
-                            <ResearchDetail entry={selectedResearch} onBack={() => setSelectedResearchId(null)} onChange={handleResearchChange} />
-                        ) : (
-                            <ResearchGrid entries={researchEntries} onSelectEntry={setSelectedResearchId} onCreateEntry={handleCreateResearchEntry} />
-                        )
-                    )}
+                    {section === "research" && <NotesBoard kind="research" notes={labNotes} />}
 
-                    {section === "notes" && (
-                        selectedNote ? (
-                            <NoteEditor note={selectedNote} onBack={() => setSelectedNoteId(null)} onChange={handleNoteChange} />
-                        ) : (
-                            <NotesGrid notes={notes} onSelectNote={setSelectedNoteId} onCreateNote={handleCreateNote} />
-                        )
-                    )}
+                    {section === "notes" && <NotesBoard kind="note" notes={labNotes} />}
                 </main>
             </div>
 

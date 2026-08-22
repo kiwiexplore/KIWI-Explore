@@ -149,14 +149,19 @@ export default function MarketTicker() {
         href: quoteHref("coin", coin.id),
     }));
 
-    const rates: Quote[] = (data?.rates.rates ?? []).map((rate) => ({
+    // `data?.rates.rates`, as this was, only guards `data` — the chain
+    // stops at the first `?.`, so a payload that arrives without its
+    // rates half throws instead of falling back to the empty list the
+    // `?? []` was there to provide.
+    const base = data?.rates?.base ?? "";
+    const rates: Quote[] = (data?.rates?.rates ?? []).map((rate) => ({
         id: rate.code,
         // Read as "one euro buys this much", which is what the number is.
-        label: `${data?.rates.base}/${rate.code}`,
+        label: `${base}/${rate.code}`,
         value: rate.rate.toFixed(3),
         change: null,
         series: [],
-        href: quoteHref("fx", `${data?.rates.base}${rate.code}`),
+        href: quoteHref("fx", `${base}${rate.code}`),
     }));
 
     const all = [...indices, ...commodities, ...stocks, ...coins, ...rates];

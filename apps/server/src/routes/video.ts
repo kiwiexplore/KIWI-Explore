@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
     deleteVideoProject, getContentItem, getVideoProject, insertContentItem, insertVideoProject,
     listContentItemsForVideo, listVideoProjects, saveVideoClips, updateVideoProject,
-    VIDEO_STAGES, type StoredVideoProject,
+    getLabNote, VIDEO_STAGES, type StoredVideoProject,
 } from "../db.js";
 import {
     checkTranscriptionAvailable, isTranscribing, readTranscriptSegments, readTranscriptText,
@@ -105,6 +105,8 @@ const updateBodySchema = z.object({
     // language nobody listed still works — whisper knows far more of
     // them than any list here would.
     language: z.string().trim().max(12).optional(),
+    // The idea or trend this video grew out of.
+    sourceNoteId: z.number().int().nullable().optional(),
 });
 
 videoRouter.patch("/:id", (req, res) => {
@@ -122,9 +124,16 @@ videoRouter.patch("/:id", (req, res) => {
         res.status(404).json({ error: "No video project with that id." });
         return;
     }
-    const { sourceContentId } = parsed.data;
+    const { sourceContentId, sourceNoteId } = parsed.data;
     if (sourceContentId != null && !getContentItem(sourceContentId)) {
         res.status(400).json({ error: "No content item with that id to link as the source." });
+        return;
+    }
+    // Checked rather than left to the foreign key: a constraint
+    // violation surfaces as an opaque SQLite error, where "that note
+    // doesn't exist" is something a person can act on.
+    if (sourceNoteId != null && !getLabNote(sourceNoteId)) {
+        res.status(400).json({ error: "No note with that id to link as the source." });
         return;
     }
     const updated = updateVideoProject(id, {

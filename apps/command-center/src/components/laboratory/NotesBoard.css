@@ -1,0 +1,201 @@
+/*
+ * The one board behind Ideas, Trends, Research and Notes. A flat list
+ * that expands in place: the title is always editable, the body opens
+ * when you want it. No grid, no detail page — these are things you jot
+ * down and come back to, not things you walk into.
+ */
+
+.notes-board-blurb {
+
+    margin: 0;
+
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-muted);
+
+}
+
+.notes-board-error {
+
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 79, 109, .45);
+    border-radius: 12px;
+    background: linear-gradient(rgba(255, 79, 109, .1), rgba(255, 79, 109, .1)), #0d1526;
+
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+
+}
+
+.notes-board-error svg {
+
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--danger);
+
+}
+
+.notes-board-add {
+
+    display: flex;
+    gap: 10px;
+
+}
+
+.notes-board-add-input {
+
+    flex: 1;
+    min-width: 0;
+
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(5, 8, 22, 0.74);
+
+    font: inherit;
+    font-size: 13.5px;
+    color: var(--text);
+
+    transition: border-color var(--transition);
+
+}
+
+.notes-board-add-input:focus {
+
+    outline: none;
+    border-color: var(--primary);
+
+}
+
+.notes-board-add-btn {
+
+    flex-shrink: 0;
+    padding: 0 22px;
+
+    border: 1px solid var(--primary);
+    border-radius: 12px;
+    background: linear-gradient(rgba(73, 199, 255, .14), rgba(73, 199, 255, .14)), #0d1526;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+
+}
+
+.notes-board-add-btn:disabled {
+
+    opacity: .4;
+    cursor: not-allowed;
+
+}
+
+.notes-board-list {
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+}
+
+.notes-board-item {
+
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(16, 25, 46, 0.9);
+    overflow: hidden;
+
+}
+
+.notes-board-item-head {
+
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 6px 10px 6px 6px;
+
+}
+
+.notes-board-toggle,
+.notes-board-remove {
+
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 7px;
+
+    border: none;
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+
+    color: var(--text-muted);
+    transition: color var(--transition), transform var(--transition);
+
+}
+
+.notes-board-toggle-open {
+
+    transform: rotate(180deg);
+
+}
+
+.notes-board-toggle:hover { color: var(--text); }
+.notes-board-remove:hover { color: var(--danger); }
+
+.notes-board-title {
+
+    flex: 1;
+    min-width: 0;
+
+    padding: 8px 6px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: none;
+
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+
+}
+
+.notes-board-title:focus {
+
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(5, 8, 22, 0.6);
+
+}
+
+.notes-board-body {
+
+    width: 100%;
+    box-sizing: border-box;
+
+    margin: 0;
+    padding: 12px 16px 16px;
+    border: none;
+    border-top: 1px solid var(--border);
+    background: rgba(5, 8, 22, 0.5);
+    resize: vertical;
+
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-muted);
+
+}
+
+.notes-board-body:focus {
+
+    outline: none;
+    color: var(--text);
+
+}

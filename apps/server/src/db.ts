@@ -95,6 +95,24 @@ db.exec(`
     -- polymorphic parent_id: SQLite cannot enforce an FK that might
     -- point at either table, so parent_id would be an unchecked integer
     -- and orphans would accumulate silently.
+    -- Ideas, tracked trends, findings and loose notes. One table with a
+    -- kind rather than four, because they are the same shape — a title
+    -- and some text you keep — and four tables would mean four routes
+    -- and four boards to say the same thing.
+    --
+    -- These used to be in-memory mock arrays hanging off a Laboratory
+    -- project, which meant a reload emptied them. They also sat under a
+    -- project, which stopped making sense once the Laboratory became a
+    -- video studio: a trend you're watching isn't part of one project.
+    CREATE TABLE IF NOT EXISTS lab_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT NOT NULL CHECK (kind IN ('idea', 'trend', 'research', 'note')),
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    );
+
     CREATE TABLE IF NOT EXISTS video_projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -104,6 +122,10 @@ db.exec(`
         -- generated youtube-script). ON DELETE SET NULL so removing the
         -- script doesn't take the whole video project with it.
         source_content_id INTEGER REFERENCES content_items(id) ON DELETE SET NULL,
+        -- The idea or tracked trend this video came out of. This is the
+        -- link the whole thing was specified around; it needed the notes
+        -- to exist server-side before it could point anywhere real.
+        source_note_id INTEGER REFERENCES lab_notes(id) ON DELETE SET NULL,
         -- An absolute path to a file on the machine running this server
         -- — personal mode, and a raw recording is far too large to be
         -- worth pushing through a browser upload to a local backend.
@@ -161,6 +183,9 @@ if (!contentItemsColumns.some((c) => c.name === "video_project_id")) {
 const videoColumns = db.prepare("PRAGMA table_info(video_projects)").all() as { name: string }[];
 if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "language")) {
     db.exec("ALTER TABLE video_projects ADD COLUMN language TEXT NOT NULL DEFAULT 'auto'");
+}
+if (videoColumns.length > 0 && !videoColumns.some((c) => c.name === "source_note_id")) {
+    db.exec("ALTER TABLE video_projects ADD COLUMN source_note_id INTEGER REFERENCES lab_notes(id) ON DELETE SET NULL");
 }
 
 const contentItemsDDL = (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'content_items'").get() as { sql?: string } | undefined)?.sql ?? "";
@@ -359,6 +384,7 @@ export interface StoredVideoProject {
     title: string;
     stage: VideoStage;
     source_content_id: number | null;
+    source_note_id: number | null;
     source_video_path: string | null;
     transcript_path: string | null;
     transcript_status: TranscriptStatus;
@@ -370,7 +396,7 @@ export interface StoredVideoProject {
 }
 
 const VIDEO_PROJECT_COLUMNS = `
-    id, title, stage, source_content_id, source_video_path,
+    id, title, stage, source_content_id, source_note_id, source_video_path,
     transcript_path, transcript_status, transcript_error, clips_json, language,
     created_at, updated_at
 `;
@@ -396,6 +422,7 @@ export interface VideoProjectUpdate {
     title?: string;
     stage?: VideoStage;
     sourceContentId?: number | null;
+    sourceNoteId?: number | null;
     sourceVideoPath?: string | null;
     language?: string;
 }
@@ -415,6 +442,9 @@ export function updateVideoProject(id: number, update: VideoProjectUpdate): Stor
     }
     if (update.sourceContentId !== undefined) {
         db.prepare(`UPDATE video_projects SET source_content_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.sourceContentId, id);
+    }
+    if (update.sourceNoteId !== undefined) {
+        db.prepare(`UPDATE video_projects SET source_note_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.sourceNoteId, id);
     }
     if (update.sourceVideoPath !== undefined) {
         db.prepare(`UPDATE video_projects SET source_video_path = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.sourceVideoPath, id);
@@ -502,4 +532,55 @@ export function failInterruptedTranscripts(): number {
         markTranscriptFailed(row.id, "Transcription was interrupted — the server restarted while it was running. Run it again.");
     }
     return stuck.length;
+}
+
+export type LabNoteKind = "idea" | "trend" | "research" | "note";
+
+export const LAB_NOTE_KINDS: LabNoteKind[] = ["idea", "trend", "research", "note"];
+
+export interface StoredLabNote {
+    id: number;
+    kind: LabNoteKind;
+    title: string;
+    body: string;
+    created_at: string;
+    updated_at: string;
+}
+
+const LAB_NOTE_COLUMNS = "id, kind, title, body, created_at, updated_at";
+
+export function listLabNotes(kind?: LabNoteKind): StoredLabNote[] {
+    const stmt = kind
+        ? db.prepare(`SELECT ${LAB_NOTE_COLUMNS} FROM lab_notes WHERE kind = ? ORDER BY id DESC`)
+        : db.prepare(`SELECT ${LAB_NOTE_COLUMNS} FROM lab_notes ORDER BY id DESC`);
+    return (kind ? stmt.all(kind) : stmt.all()) as unknown as StoredLabNote[];
+}
+
+export function getLabNote(id: number): StoredLabNote | null {
+    const stmt = db.prepare(`SELECT ${LAB_NOTE_COLUMNS} FROM lab_notes WHERE id = ?`);
+    return (stmt.get(id) as unknown as StoredLabNote) ?? null;
+}
+
+export function insertLabNote(kind: LabNoteKind, title: string, body = ""): StoredLabNote {
+    const stmt = db.prepare(`INSERT INTO lab_notes (kind, title, body) VALUES (?, ?, ?) RETURNING ${LAB_NOTE_COLUMNS}`);
+    return stmt.get(kind, title, body) as unknown as StoredLabNote;
+}
+
+export interface LabNoteUpdate {
+    title?: string;
+    body?: string;
+}
+
+export function updateLabNote(id: number, update: LabNoteUpdate): StoredLabNote | null {
+    if (update.title !== undefined) {
+        db.prepare(`UPDATE lab_notes SET title = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.title, id);
+    }
+    if (update.body !== undefined) {
+        db.prepare(`UPDATE lab_notes SET body = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.body, id);
+    }
+    return getLabNote(id);
+}
+
+export function deleteLabNote(id: number): void {
+    db.prepare("DELETE FROM lab_notes WHERE id = ?").run(id);
 }
