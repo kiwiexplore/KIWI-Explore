@@ -223,6 +223,54 @@ export async function fetchTranscript(id: number): Promise<{ text: string; segme
     return res.json();
 }
 
+/**
+ * Sends one imported file to the server so a render can use it.
+ *
+ * Raw body with the name in a header — the server writes the stream
+ * straight to disk, which is the whole transaction. Returns the id the
+ * timeline refers to it by from then on.
+ */
+export async function uploadMedia(projectId: number, file: File): Promise<string> {
+    const res = await fetch(`${API_URL}/api/video/${projectId}/media`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/octet-stream",
+            "x-file-name": encodeURIComponent(file.name).replace(/%20/g, " "),
+            ...(API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {}),
+        },
+        body: file,
+    });
+    if (!res.ok) await readError(res, "Could not upload that file");
+    return (await res.json()).file as string;
+}
+
+export interface ExportRequest {
+    clips: { file: string; start: number; duration: number; offset: number; kind: "video" | "audio" }[];
+    texts: { text: string; start: number; duration: number }[];
+    width: number;
+    height: number;
+    crossfade: number;
+}
+
+export interface ExportResult {
+    file: string;
+    bytes: number;
+    /** What the render could not do — shown, never swallowed. */
+    warnings: string[];
+}
+
+export async function exportTimeline(projectId: number, request: ExportRequest): Promise<ExportResult> {
+    const res = await fetch(`${API_URL}/api/video/${projectId}/export`, {
+        method: "POST", headers: headers(), body: JSON.stringify(request),
+    });
+    if (!res.ok) await readError(res, "Could not export");
+    return res.json();
+}
+
+export function exportFileUrl(projectId: number): string {
+    return `${API_URL}/api/video/${projectId}/export/file`;
+}
+
 export async function cutVideoClip(id: number, index: number): Promise<VideoProject> {
     const res = await fetch(`${API_URL}/api/video/${id}/clips/${index}/cut`, { method: "POST", headers: headers() });
     if (!res.ok) await readError(res, "Could not cut that clip");

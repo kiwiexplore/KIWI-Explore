@@ -4,7 +4,7 @@ import {
     Sparkles, Trash2, Type, Undo2, Upload, Volume2, ZoomIn, ZoomOut,
 } from "lucide-react";
 import { useStudioEditorState } from "../../state/studioEditor";
-import { fetchTranscript, type VideoProject } from "../../lib/videoApi";
+import { exportFileUrl, exportTimeline, fetchTranscript, uploadMedia, type VideoProject } from "../../lib/videoApi";
 import { analyseEdit, type Finding } from "../../lib/editAnalysis";
 import StudioTimeline from "./StudioTimeline";
 import { formatClock } from "../../lib/timecode";
@@ -41,6 +41,9 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     const [subtitleError, setSubtitleError] = useState<string | null>(null);
     const [loadingSubs, setLoadingSubs] = useState(false);
     const [findings, setFindings] = useState<Finding[] | null>(null);
+    const [exporting, setExporting] = useState<string | null>(null);
+    const [exportDone, setExportDone] = useState<{ bytes: number; warnings: string[] } | null>(null);
+    const [exportError, setExportError] = useState<string | null>(null);
 
     // Focus the editor on open so the shortcuts work without demanding
     // a click somewhere first.
@@ -143,6 +146,58 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
     // envelope, and where the first picture starts are all already here.
     const analyse = () => setFindings(analyseEdit(editor.clips, editor.assets));
 
+    /**
+     * Export sends the bytes first, then the edit.
+     *
+     * The editor's media are object URLs the server cannot see, so
+     * anything not already uploaded goes up now rather than at import —
+     * a file you imported and never used shouldn't cost an upload.
+     */
+    const runExport = async () => {
+        setExportError(null);
+        setExportDone(null);
+        const media = editor.clips.filter((c) => c.text === undefined);
+        if (media.length === 0) {
+            setExportError("Nothing on the timeline to export.");
+            return;
+        }
+        try {
+            const used = [...new Set(media.map((c) => c.assetId))];
+            const files = new Map<string, string>();
+            for (const [i, assetId] of used.entries()) {
+                const asset = editor.assets.find((a) => a.id === assetId);
+                if (!asset) continue;
+                if (asset.serverFile) { files.set(assetId, asset.serverFile); continue; }
+                setExporting(`Uploading ${i + 1}/${used.length}…`);
+                const serverFile = await uploadMedia(project.id, asset.file);
+                editor.setServerFile(assetId, serverFile);
+                files.set(assetId, serverFile);
+            }
+
+            setExporting("Rendering…");
+            const first = editor.assets.find((a) => a.id === media[0].assetId);
+            const result = await exportTimeline(project.id, {
+                clips: media.map((c) => ({
+                    file: files.get(c.assetId) ?? "",
+                    start: c.start,
+                    duration: c.duration,
+                    offset: c.offset,
+                    kind: editor.tracks.find((t) => t.id === c.trackId)?.kind ?? "video",
+                })).filter((c) => c.file),
+                texts: editor.clips.filter((c) => c.text !== undefined)
+                    .map((c) => ({ text: c.text ?? "", start: c.start, duration: c.duration })),
+                width: first?.width && first.width > 0 ? first.width : 1920,
+                height: first?.height && first.height > 0 ? first.height : 1080,
+                crossfade: 0,
+            });
+            setExportDone({ bytes: result.bytes, warnings: result.warnings });
+        } catch (e) {
+            setExportError(e instanceof Error ? e.message : "Could not export.");
+        } finally {
+            setExporting(null);
+        }
+    };
+
     return (
         <div className="studio-editor" tabIndex={-1} onKeyDown={onKeyDown} ref={rootRef}>
 
@@ -169,7 +224,14 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
                     </button>
                     <span className="studio-bar-divider" />
                     <button type="button" className="studio-bar-btn">Save</button>
-                    <button type="button" className="studio-bar-btn studio-bar-btn-export">EXPORT</button>
+                    <button
+                        type="button"
+                        className="studio-bar-btn studio-bar-btn-export"
+                        onClick={() => void runExport()}
+                        disabled={exporting !== null || editor.clips.length === 0}
+                    >
+                        {exporting ?? "EXPORT"}
+                    </button>
                 </div>
             </div>
 
@@ -379,6 +441,19 @@ export default function StudioEditor({ project, onBack }: StudioEditorProps) {
             )}
 
             {subtitleError && <p className="studio-subtitle-error">{subtitleError}</p>}
+            {exportError && <p className="studio-subtitle-error">{exportError}</p>}
+            {exportDone && (
+                <div className="studio-export-done">
+                    <span>
+                        Exported {(exportDone.bytes / 1_000_000).toFixed(1)} MB —{" "}
+                        <a href={exportFileUrl(project.id)} target="_blank" rel="noreferrer">open the file</a>
+                    </span>
+                    {/* A render that quietly dropped something is worse
+                        than one that failed: this says what it couldn't
+                        do, in the same breath as the success. */}
+                    {exportDone.warnings.map((w) => <span key={w} className="studio-export-warning">{w}</span>)}
+                </div>
+            )}
 
             <StudioTimeline editor={editor} pxPerSecond={pxPerSecond} />
         </div>

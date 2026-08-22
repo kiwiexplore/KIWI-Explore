@@ -38,6 +38,10 @@ export interface MediaAsset {
      */
     frames: string[];
     peaks: number[];
+    /** Kept so an export can send the bytes to the server. */
+    file: File;
+    /** The server's id for it, once uploaded. */
+    serverFile?: string;
 }
 
 export type TrackKind = "video" | "audio";
@@ -103,6 +107,8 @@ export interface StudioEditorState {
 
     importFiles: (files: FileList | File[]) => Promise<void>;
     removeAsset: (id: string) => void;
+    /** Records that an asset now exists on the server. */
+    setServerFile: (id: string, serverFile: string) => void;
     addClip: (assetId: string, trackId?: string, start?: number) => void;
     selectClip: (id: string | null) => void;
     moveClip: (id: string, start: number, snap?: boolean) => void;
@@ -213,6 +219,7 @@ export function useStudioEditorState(): StudioEditorState {
                 height: meta.height,
                 frames: [],
                 peaks: [],
+                file,
             });
         }
         if (imported.length === 0) return;
@@ -269,6 +276,9 @@ export function useStudioEditorState(): StudioEditorState {
         }));
         setSelectedClipId(null);
     };
+
+    const setServerFile = (id: string, serverFile: string) =>
+        setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, serverFile } : a)));
 
     const removeAsset = (id: string) => {
         setAssets((prev) => {
@@ -434,7 +444,7 @@ export function useStudioEditorState(): StudioEditorState {
         canUndo: edit.history.length > 0,
         canRedo: edit.future.length > 0,
         undo, redo, beginGesture,
-        importFiles, removeAsset, addClip,
+        importFiles, removeAsset, setServerFile, addClip,
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,
         addText, setSubtitles, updateText, textAt,

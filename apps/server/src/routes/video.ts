@@ -14,6 +14,13 @@ import {
     DERIVED_CONTENT_TYPES, type DerivedContentType, type VideoClip,
 } from "../videoGenerator.js";
 import { checkClippingAvailable, cutClip, ClippingUnavailableError } from "../videoClipper.js";
+import {
+    checkExportAvailable, renderExport, uploadsDir, exportsDir,
+    ExportUnavailableError, type ExportRequest,
+} from "../videoExport.js";
+import fs from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 /**
  * Video Studio's CRUD plus the three pipeline steps that do real work
@@ -351,6 +358,108 @@ videoRouter.post("/:id/clips/:index/cut", async (req, res) => {
     } catch (e) {
         fail(e, res, "Could not cut that clip");
     }
+});
+
+/**
+ * Media the editor imported, so the server can render with it.
+ *
+ * Raw body rather than multipart: one file per request, the name and
+ * type in headers, and nothing to parse. A multipart parser would be a
+ * dependency earning its keep only here.
+ */
+videoRouter.post("/:id/media", (req, res) => {
+    const id = parseId(req.params.id);
+    if (id === null || !getVideoProject(id)) {
+        res.status(404).json({ error: "No video project with that id." });
+        return;
+    }
+    const declared = String(req.header("x-file-name") ?? "media");
+    const extension = (path.extname(declared).match(/^\.[A-Za-z0-9]{1,5}$/) ?? [".bin"])[0];
+    const file = `${randomUUID()}${extension}`;
+
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    const target = path.join(uploadsDir, file);
+    const sink = fs.createWriteStream(target);
+
+    req.pipe(sink);
+    sink.on("finish", () => {
+        if (fs.statSync(target).size === 0) {
+            fs.rmSync(target, { force: true });
+            res.status(400).json({ error: "That upload arrived empty." });
+            return;
+        }
+        res.json({ file, name: declared });
+    });
+    // A half-written file is worse than none: it would render as a
+    // corrupt clip rather than as a failure.
+    sink.on("error", (e) => {
+        fs.rmSync(target, { force: true });
+        res.status(500).json({ error: `Could not store that file: ${e.message}` });
+    });
+});
+
+const exportClipSchema = z.object({
+    file: z.string().min(1).max(200),
+    start: z.number().min(0),
+    duration: z.number().positive(),
+    offset: z.number().min(0),
+    kind: z.enum(["video", "audio"]),
+});
+
+const exportBodySchema = z.object({
+    clips: z.array(exportClipSchema).min(1),
+    texts: z.array(z.object({
+        text: z.string().max(500),
+        start: z.number().min(0),
+        duration: z.number().positive(),
+    })).default([]),
+    width: z.number().int().min(16).max(7680).default(1920),
+    height: z.number().int().min(16).max(4320).default(1080),
+    crossfade: z.number().min(0).max(5).default(0),
+});
+
+videoRouter.post("/:id/export", async (req, res) => {
+    const id = parseId(req.params.id);
+    if (id === null || !getVideoProject(id)) {
+        res.status(404).json({ error: "No video project with that id." });
+        return;
+    }
+    const parsed = exportBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: "The timeline sent for export doesn't look right." });
+        return;
+    }
+    try {
+        await checkExportAvailable();
+    } catch (e) {
+        if (e instanceof ExportUnavailableError) {
+            res.status(503).json({ error: e.message });
+            return;
+        }
+        fail(e, res, "Could not export");
+        return;
+    }
+    try {
+        const result = await renderExport(id, parsed.data as ExportRequest);
+        res.json({ file: result.file, bytes: fs.statSync(result.file).size, warnings: result.warnings });
+    } catch (e) {
+        fail(e, res, "Could not export");
+    }
+});
+
+/** The rendered file itself, for playing back or saving. */
+videoRouter.get("/:id/export/file", (req, res) => {
+    const id = parseId(req.params.id);
+    if (id === null) {
+        res.status(400).json({ error: "Invalid id." });
+        return;
+    }
+    const file = path.join(exportsDir, `${id}.mp4`);
+    if (!fs.existsSync(file)) {
+        res.status(404).json({ error: "Nothing has been exported for this project yet." });
+        return;
+    }
+    res.sendFile(file);
 });
 
 const derivedBodySchema = z.object({
