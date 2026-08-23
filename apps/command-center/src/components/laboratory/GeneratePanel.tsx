@@ -4,7 +4,8 @@ import {
     cancelJob, enqueue, fetchEngines, fetchJobs, forgetJob,
     EngineUnavailableError, type Engine, type GenerationJob,
 } from "../../lib/generateApi";
-import { projectFileUrl } from "../../lib/projectsApi";
+import { projectFileUrl, type StudioProject } from "../../lib/projectsApi";
+import VideoPicker from "./VideoPicker";
 import "./GeneratePanel.css";
 
 /**
@@ -38,12 +39,18 @@ const SIZES = [
 const POLL_MS = 1500;
 
 interface GeneratePanelProps {
-    projectId: number;
+    project: StudioProject;
     /** Re-read the folder — a finished job put a file in it. */
     onFilesChanged: () => void;
 }
 
-export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePanelProps) {
+export default function GeneratePanel({ project, onFilesChanged }: GeneratePanelProps) {
+    const projectId = project.id;
+    // Which video the picture is for. A thumbnail belongs to one; a
+    // style test or a channel banner belongs to the project, and
+    // "Whole project" is the honest answer for those rather than
+    // filing them under whichever video happened to be first.
+    const [forVideo, setForVideo] = useState<number | null>(null);
     const [engines, setEngines] = useState<Engine[] | null>(null);
     const [engineId, setEngineId] = useState<string>("");
     const [prompt, setPrompt] = useState("");
@@ -100,6 +107,7 @@ export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePan
         setSending(true);
         void enqueue({
             projectId,
+            videoProjectId: forVideo,
             kind: "image",
             engine: engineId,
             prompt: prompt.trim(),
@@ -174,6 +182,8 @@ export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePan
                         </select>
                     </label>
 
+                    <VideoPicker project={project} value={forVideo} onChange={setForVideo} />
+
                     <button
                         type="submit"
                         className="gp-go"
@@ -198,7 +208,7 @@ export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePan
                         <JobRow
                             key={job.id}
                             job={job}
-                            projectId={projectId}
+                            projectId={project.id}
                             onCancel={() => act(cancelJob(job.id))}
                             onForget={() => act(forgetJob(job.id))}
                         />

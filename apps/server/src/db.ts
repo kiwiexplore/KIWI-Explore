@@ -243,6 +243,12 @@ if (!contentItemsColumns.some((c) => c.name === "scheduled_date")) {
 if (!contentItemsColumns.some((c) => c.name === "video_project_id")) {
     db.exec("ALTER TABLE content_items ADD COLUMN video_project_id INTEGER REFERENCES video_projects(id) ON DELETE SET NULL");
 }
+// Ticked off. A script that exists is work started; a script you have
+// ticked is work finished, and only the second one should turn a stage
+// green — otherwise drafting one empty script would call CREATE done.
+if (!contentItemsColumns.some((c) => c.name === "done")) {
+    db.exec("ALTER TABLE content_items ADD COLUMN done INTEGER NOT NULL DEFAULT 0");
+}
 
 // Widening the `type` CHECK to allow 'ad' can't be done with ALTER —
 // SQLite has no way to modify a constraint in place, so the only route
@@ -289,6 +295,12 @@ if (noteColumns.length > 0 && !noteColumns.some((c) => c.name === "project_id"))
 }
 if (noteColumns.length > 0 && !noteColumns.some((c) => c.name === "done")) {
     db.exec("ALTER TABLE lab_notes ADD COLUMN done INTEGER NOT NULL DEFAULT 0");
+}
+// Which video this idea is for, when it is for one. Null is the normal
+// state: an idea starts out belonging to the project and only later
+// turns out to be about a particular video.
+if (noteColumns.length > 0 && !noteColumns.some((c) => c.name === "video_project_id")) {
+    db.exec("ALTER TABLE lab_notes ADD COLUMN video_project_id INTEGER REFERENCES video_projects(id) ON DELETE SET NULL");
 }
 
 const contentItemsDDL = (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'content_items'").get() as { sql?: string } | undefined)?.sql ?? "";
@@ -424,10 +436,11 @@ export interface StoredContentItem {
     status: ContentStatus;
     scheduled_date: string | null;
     video_project_id: number | null;
+    done: number;
     created_at: string;
 }
 
-const CONTENT_ITEM_COLUMNS = "id, type, topic, content, status, scheduled_date, video_project_id, created_at";
+const CONTENT_ITEM_COLUMNS = "id, type, topic, content, status, scheduled_date, video_project_id, done, created_at";
 
 export function listContentItems(): StoredContentItem[] {
     const stmt = db.prepare(`SELECT ${CONTENT_ITEM_COLUMNS} FROM content_items ORDER BY id DESC`);
@@ -451,6 +464,21 @@ export function listContentItemsForVideo(videoProjectId: number): StoredContentI
     return stmt.all(videoProjectId) as unknown as StoredContentItem[];
 }
 
+/**
+ * Pieces written for a project but not yet filed under one of its
+ * videos.
+ *
+ * There is no project_id on content_items and there shouldn't be: a
+ * piece belongs to a VIDEO, and a project is reached through it. What
+ * this finds is the ones with no video yet — which are exactly the
+ * ones that would otherwise be invisible, since every screen reads
+ * them off the videos.
+ */
+export function listUnfiledContentItems(): StoredContentItem[] {
+    const stmt = db.prepare(`SELECT ${CONTENT_ITEM_COLUMNS} FROM content_items WHERE video_project_id IS NULL ORDER BY id DESC`);
+    return stmt.all() as unknown as StoredContentItem[];
+}
+
 export function getContentItem(id: number): StoredContentItem | null {
     const stmt = db.prepare(`SELECT ${CONTENT_ITEM_COLUMNS} FROM content_items WHERE id = ?`);
     return (stmt.get(id) as unknown as StoredContentItem) ?? null;
@@ -462,9 +490,19 @@ export interface ContentItemUpdate {
     /** The words themselves. A script you can't edit is a suggestion. */
     content?: string;
     topic?: string;
+    /** Ticked off. What turns a stage from in-progress to done. */
+    done?: boolean;
+    /** Which video it belongs to. null takes it out of one. */
+    videoProjectId?: number | null;
 }
 
 export function updateContentItem(id: number, update: ContentItemUpdate): StoredContentItem | null {
+    if (update.done !== undefined) {
+        db.prepare("UPDATE content_items SET done = ? WHERE id = ?").run(update.done ? 1 : 0, id);
+    }
+    if (update.videoProjectId !== undefined) {
+        db.prepare("UPDATE content_items SET video_project_id = ? WHERE id = ?").run(update.videoProjectId, id);
+    }
     if (update.content !== undefined) {
         db.prepare("UPDATE content_items SET content = ? WHERE id = ?").run(update.content, id);
     }
@@ -683,12 +721,13 @@ export interface StoredLabNote {
     title: string;
     body: string;
     project_id: number | null;
+    video_project_id: number | null;
     done: number;
     created_at: string;
     updated_at: string;
 }
 
-const LAB_NOTE_COLUMNS = "id, kind, title, body, project_id, done, created_at, updated_at";
+const LAB_NOTE_COLUMNS = "id, kind, title, body, project_id, video_project_id, done, created_at, updated_at";
 
 export function listLabNotes(kind?: LabNoteKind): StoredLabNote[] {
     const stmt = kind
@@ -716,6 +755,8 @@ export interface LabNoteUpdate {
     title?: string;
     body?: string;
     projectId?: number | null;
+    /** Which video it is for, when it is for one. */
+    videoProjectId?: number | null;
     done?: boolean;
 }
 
@@ -728,6 +769,9 @@ export function updateLabNote(id: number, update: LabNoteUpdate): StoredLabNote 
     }
     if (update.projectId !== undefined) {
         db.prepare(`UPDATE lab_notes SET project_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.projectId, id);
+    }
+    if (update.videoProjectId !== undefined) {
+        db.prepare(`UPDATE lab_notes SET video_project_id = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.videoProjectId, id);
     }
     if (update.done !== undefined) {
         db.prepare(`UPDATE lab_notes SET done = ?, ${TOUCH_UPDATED_AT} WHERE id = ?`).run(update.done ? 1 : 0, id);

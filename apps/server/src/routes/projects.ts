@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
     deleteStudioProject, getStudioProject, insertStudioProject, listStudioProjects,
     listLabNotesForProject, listVideoProjectsForProject, updateStudioProject,
-    listContentItemsForVideo,
+    listContentItemsForVideo, listUnfiledContentItems,
 } from "../db.js";
 import {
     createProjectFolder, listProjectFiles, resolveProjectFile, isMediaName, freeName,
@@ -45,10 +45,15 @@ function summarise(projectId: number) {
         }));
     const notes = listLabNotesForProject(projectId);
     const files = project ? listProjectFiles(project.folder) : [];
+    // Scripts written before they were filed under a video. Without
+    // these the Scripts panel would silently drop everything you
+    // started but hadn't assigned yet.
+    const scripts = listUnfiledContentItems().filter((i) => i.type === "youtube-script");
     return {
         videos,
         notes,
         files,
+        scripts,
         counts: {
             videos: videos.length,
             published: videos.filter((v) => v.stage === "published").length,

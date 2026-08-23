@@ -25,12 +25,22 @@ export interface ContentItem {
     content: string;
     status: ContentStatus;
     scheduledDate: string | null;
+    /**
+     * Ticked off. A piece that exists is work started; a piece you have
+     * ticked is work finished — and only the second turns a stage
+     * green, or drafting one empty script would call CREATE done.
+     */
+    done: boolean;
+    /** Which video it was written for, or null. */
+    videoProjectId: number | null;
     created_at: string;
 }
 
 interface RawContentItem {
     id: number;
     type: ContentType;
+    done?: number | boolean;
+    video_project_id?: number | null;
     topic: string;
     content: string;
     status: ContentStatus;
@@ -42,6 +52,8 @@ function toContentItem(raw: RawContentItem): ContentItem {
     return {
         id: raw.id, type: raw.type, topic: raw.topic, content: raw.content,
         status: raw.status, scheduledDate: raw.scheduled_date, created_at: raw.created_at,
+        done: raw.done === 1 || raw.done === true,
+        videoProjectId: raw.video_project_id ?? null,
     };
 }
 
@@ -94,6 +106,9 @@ export interface ContentItemUpdate {
     topic?: string;
     // null explicitly clears the scheduled date; omitted means "don't touch it".
     scheduledDate?: string | null;
+    done?: boolean;
+    /** null takes it off a video without deleting it. */
+    videoProjectId?: number | null;
 }
 
 export async function updateContentItem(id: number, update: ContentItemUpdate): Promise<ContentItem> {

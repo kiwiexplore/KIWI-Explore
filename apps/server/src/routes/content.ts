@@ -68,6 +68,8 @@ const updateBodySchema = z.object({
     scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     content: z.string().max(200_000).optional(),
     topic: z.string().trim().min(1).max(300).optional(),
+    done: z.boolean().optional(),
+    videoProjectId: z.number().int().nullable().optional(),
 });
 
 contentRouter.patch("/:id", (req, res) => {

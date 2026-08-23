@@ -120,6 +120,8 @@ interface RawVideoProject {
 
 interface RawContentItem {
     id: number;
+    done?: number | boolean;
+    video_project_id?: number | null;
     type: ContentItem["type"];
     topic: string;
     content: string;
@@ -132,6 +134,8 @@ function toContentItem(raw: RawContentItem): ContentItem {
     return {
         id: raw.id, type: raw.type, topic: raw.topic, content: raw.content,
         status: raw.status, scheduledDate: raw.scheduled_date, created_at: raw.created_at,
+        done: raw.done === 1 || raw.done === true,
+        videoProjectId: raw.video_project_id ?? null,
     };
 }
 

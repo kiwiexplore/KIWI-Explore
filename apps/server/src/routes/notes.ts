@@ -53,6 +53,7 @@ const updateSchema = z.object({
     title: z.string().trim().min(1).max(300).optional(),
     body: z.string().max(20000).optional(),
     projectId: z.number().int().nullable().optional(),
+    videoProjectId: z.number().int().nullable().optional(),
     done: z.boolean().optional(),
 });
 

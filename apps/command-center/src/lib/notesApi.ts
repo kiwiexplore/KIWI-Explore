@@ -14,6 +14,8 @@ export interface LabNote {
     body: string;
     /** Which project it belongs to, or null if it's loose. */
     projectId: number | null;
+    /** Which video it is for, when it is for one. */
+    videoProjectId: number | null;
     /** Ticked off. */
     done: boolean;
     createdAt: string;
@@ -21,6 +23,7 @@ export interface LabNote {
 }
 
 interface RawLabNote {
+    video_project_id?: number | null;
     id: number;
     kind: LabNoteKind;
     title: string;
@@ -34,7 +37,8 @@ interface RawLabNote {
 function toNote(raw: RawLabNote): LabNote {
     return {
         id: raw.id, kind: raw.kind, title: raw.title, body: raw.body,
-        projectId: raw.project_id ?? null, done: raw.done === 1,
+        projectId: raw.project_id ?? null, videoProjectId: raw.video_project_id ?? null,
+        done: raw.done === 1,
         createdAt: raw.created_at, updatedAt: raw.updated_at,
     };
 }
@@ -67,7 +71,13 @@ export async function createNote(kind: LabNoteKind, title: string, projectId?: n
     return toNote((await res.json()).note);
 }
 
-export async function updateNote(id: number, changes: { title?: string; body?: string; done?: boolean }): Promise<LabNote> {
+export async function updateNote(id: number, changes: {
+    title?: string;
+    body?: string;
+    done?: boolean;
+    /** Which video it is for. null puts it back on the project. */
+    videoProjectId?: number | null;
+}): Promise<LabNote> {
     const res = await fetch(`${API_URL}/api/notes/${id}`, {
         method: "PATCH", headers: headers(), body: JSON.stringify(changes),
     });

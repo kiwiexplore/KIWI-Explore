@@ -8,11 +8,13 @@ import type { StudioProject, ProjectFile } from "../../lib/projectsApi";
 import { deleteProjectFile, projectWeight, uploadProjectFile } from "../../lib/projectsApi";
 import type { VideoProject } from "../../lib/videoApi";
 import type { VideoStudioState } from "../../state/videoStudio";
-import { createNote, deleteNote, updateNote } from "../../lib/notesApi";
+import { createNote, deleteNote, updateNote, type LabNote } from "../../lib/notesApi";
 import { createVideoProject, deleteVideoProject } from "../../lib/videoApi";
 import { createContentItem, deleteContentItem, updateContentItem, type ContentItem } from "../../lib/contentApi";
 import { chainFor, chainSummary } from "../../state/studioChain";
 import GeneratePanel from "./GeneratePanel";
+import VideoPicker from "./VideoPicker";
+import "./VideoPicker.css";
 import "./GlobalBoard.css";
 import "./ProjectDetail.css";
 
@@ -146,9 +148,10 @@ export default function ProjectDetail({
             <FootagePanel project={project} projects={projects} />
             <ScriptsPanel project={project} busy={busy} after={after} />
             <IdeasPanel project={project} busy={busy} after={after} />
+            <EditPanel project={project} onEdit={onEdit} />
             {/* Lands a file in the same folder as the footage, so the
                 list above refreshes when one finishes. */}
-            <GeneratePanel projectId={project.id} onFilesChanged={projects.refresh} />
+            <GeneratePanel project={project} onFilesChanged={projects.refresh} />
             <PublishPanel project={project} videoStudio={videoStudio} after={after} />
         </div>
     );
@@ -170,6 +173,9 @@ function IdeasPanel({ project, busy, after }: {
         after(createNote("idea", idea.trim(), project.id));
         setIdea("");
     };
+
+    const forVideo = (note: { videoProjectId: number | null }) =>
+        project.videos.find((v) => v.id === note.videoProjectId)?.title ?? null;
 
     return (
         <section className="pd-panel">
@@ -199,7 +205,15 @@ function IdeasPanel({ project, busy, after }: {
                             >
                                 {note.done && <Check size={12} strokeWidth={3.5} />}
                             </button>
-                            <span className="pd-idea-title">{note.title}</span>
+                            <span className="pd-idea-title">
+                                {note.title}
+                                {forVideo(note) && <span className="pd-for">{forVideo(note)}</span>}
+                            </span>
+                            <VideoPicker
+                                project={project}
+                                value={note.videoProjectId}
+                                onChange={(videoProjectId) => after(updateNote(note.id, { videoProjectId }))}
+                            />
                             <button
                                 type="button"
                                 className="pd-idea-remove"
@@ -233,8 +247,14 @@ function ScriptsPanel({ project, busy, after }: {
 }) {
     const [title, setTitle] = useState("");
 
-    const scripts = project.videos.flatMap((v) =>
-        v.contentItems.filter((i) => i.type === "youtube-script").map((item) => ({ video: v.title, item })));
+    // Every script in the project, whichever video it is for — and the
+    // ones for none of them. Reading them off the videos alone lost
+    // exactly the scripts that hadn't been filed yet, which are the
+    // ones most likely to go missing.
+    const scripts = [
+        ...project.videos.flatMap((v) => v.contentItems.filter((i) => i.type === "youtube-script")),
+        ...project.scripts.filter((i) => i.videoProjectId === null),
+    ];
 
     const write = (event: FormEvent) => {
         event.preventDefault();
@@ -265,15 +285,15 @@ function ScriptsPanel({ project, busy, after }: {
                 </p>
             ) : (
                 <div className="pd-scripts">
-                    {scripts.map(({ video, item }) => <ScriptRow key={item.id} video={video} item={item} after={after} />)}
+                    {scripts.map((item) => <ScriptRow key={item.id} project={project} item={item} after={after} />)}
                 </div>
             )}
         </section>
     );
 }
 
-function ScriptRow({ video, item, after }: {
-    video: string;
+function ScriptRow({ project, item, after }: {
+    project: StudioProject;
     item: ContentItem;
     after: <T>(work: Promise<T>) => void;
 }) {
@@ -289,11 +309,26 @@ function ScriptRow({ video, item, after }: {
     return (
         <div className="pd-script">
             <div className="pd-script-head">
+                {/* The tick is what turns CREATE green. A script that
+                    exists is work started; a script you have ticked is
+                    work finished, and only you can say which. */}
+                <button
+                    type="button"
+                    className={`pd-tick${item.done ? " pd-tick-on" : ""}`}
+                    onClick={() => after(updateContentItem(item.id, { done: !item.done }))}
+                    aria-label={item.done ? "Mark as not done" : "Mark as done"}
+                >
+                    {item.done && <Check size={12} strokeWidth={3.5} />}
+                </button>
                 <button type="button" className="pd-script-open" onClick={() => setOpen((o) => !o)}>
                     <FileText size={13} strokeWidth={1.75} />
-                    <span className="pd-script-video">{item.topic}</span>
-                    <span className="pd-script-for">for {video}</span>
+                    <span className={`pd-script-video${item.done ? " pd-script-done" : ""}`}>{item.topic}</span>
                 </button>
+                <VideoPicker
+                    project={project}
+                    value={item.videoProjectId}
+                    onChange={(videoProjectId) => after(updateContentItem(item.id, { videoProjectId }))}
+                />
                 <button
                     type="button"
                     className="pd-icon-btn"
@@ -501,6 +536,7 @@ function VideosPanel({ project, busy, after, onEdit }: {
                         <VideoRow
                             key={video.id}
                             video={video}
+                            ideas={project.notes.filter((n) => n.videoProjectId === video.id)}
                             onEdit={() => onEdit(video.id)}
                             onDelete={() => {
                                 const ok = confirm(
@@ -525,13 +561,14 @@ function VideosPanel({ project, busy, after, onEdit }: {
  * label says what somebody set; the chain says what has been done —
  * and, on the step that hasn't, what is missing.
  */
-function VideoRow({ video, onEdit, onDelete }: {
+function VideoRow({ video, ideas, onEdit, onDelete }: {
     video: VideoProject;
+    ideas: LabNote[];
     onEdit: () => void;
     onDelete: () => void;
 }) {
     const failed = video.transcriptStatus === "failed";
-    const chain = chainFor(video);
+    const chain = chainFor({ video, ideas });
 
     return (
         <div className={`pd-video${failed ? " pd-video-failed" : ""}`}>
@@ -544,7 +581,7 @@ function VideoRow({ video, onEdit, onDelete }: {
                 </span>
                 <span className="pd-video-next">
                     {failed && <AlertTriangle size={11} strokeWidth={2.5} />}
-                    {chainSummary(video)}
+                    {chainSummary({ video, ideas })}
                 </span>
             </div>
 
@@ -553,13 +590,8 @@ function VideoRow({ video, onEdit, onDelete }: {
                     <span key={step.stage} className="pd-chain-cell">
                         {i > 0 && <span className="pd-chain-link" />}
                         <span
-                            className={
-                                "pd-chain-step" + (
-                                    step.done ? " pd-chain-done"
-                                        : step === chain.current ? " pd-chain-now" : ""
-                                )
-                            }
-                            title={step.blocker ?? `${step.label} — done`}
+                            className={`pd-chain-step pd-chain-${step.state}`}
+                            title={step.next ?? `${step.label} — done`}
                         >
                             {step.label}
                         </span>
@@ -574,6 +606,77 @@ function VideoRow({ video, onEdit, onDelete }: {
                 </button>
             </div>
         </div>
+    );
+}
+
+/* ── edit ───────────────────────────────────────────────────────────── */
+
+/**
+ * The cut, as a step on this page rather than only a button on a row.
+ *
+ * Its own section for the same reason Publish has one: CREATE, EDIT and
+ * PUBLISH are the three things you do to a video, and two of them being
+ * sections while the third was a button meant the middle of the job had
+ * no place of its own to stand.
+ *
+ * What it shows is what the editor would tell you before you open it —
+ * how much is on the timeline and whether it has been rendered — so
+ * "is this cut done" is answerable without going in.
+ */
+function EditPanel({ project, onEdit }: { project: StudioProject; onEdit: (id: number) => void }) {
+    const [openId, setOpenId] = useState<number | null>(null);
+    const video = project.videos.find((v) => v.id === openId) ?? project.videos[0] ?? null;
+
+    const stored = video?.timeline as { clips?: unknown[] } | null;
+    const clips = stored && Array.isArray(stored.clips) ? stored.clips.length : 0;
+
+    return (
+        <section className="pd-panel">
+            <div className="pd-panel-head">
+                <h2>Edit</h2>
+                <span className="pd-panel-note">the cut itself — the timeline opens full width</span>
+            </div>
+
+            {!video && (
+                <p className="pd-muted">
+                    Nothing to cut yet. Add a video at the top of the page and its timeline lands here.
+                </p>
+            )}
+
+            {video && project.videos.length > 1 && (
+                <div className="pd-pub-tabs">
+                    {project.videos.map((v) => (
+                        <button
+                            key={v.id}
+                            type="button"
+                            className={`pd-pub-tab${v.id === video.id ? " pd-pub-tab-on" : ""}`}
+                            onClick={() => setOpenId(v.id)}
+                        >
+                            {v.title}
+                            {v.exported && <Check size={11} strokeWidth={3} />}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {video && (
+                <div className="pd-pub-state">
+                    <span className={clips > 0 ? "pd-pub-ok" : "pd-pub-wait"}>
+                        {clips === 0
+                            ? "Timeline is empty"
+                            : `${clips} ${clips === 1 ? "clip" : "clips"} on the timeline`}
+                    </span>
+                    <span className={video.exported ? "pd-pub-ok" : "pd-pub-wait"}>
+                        {video.exported ? "· exported" : "· not exported yet"}
+                    </span>
+                    <span className="pd-pub-spacer" />
+                    <button type="button" className="pd-small-btn" onClick={() => onEdit(video.id)}>
+                        Open the editor
+                        <ArrowRight size={12} strokeWidth={2} />
+                    </button>
+                </div>
+            )}
+        </section>
     );
 }
 

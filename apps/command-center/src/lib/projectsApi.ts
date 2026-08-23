@@ -35,6 +35,9 @@ export interface StudioProject {
     videos: VideoProject[];
     notes: LabNote[];
     files: ProjectFile[];
+    /** Scripts written for this project but not yet filed under one of
+     *  its videos — the ones every other screen would miss. */
+    scripts: ContentItem[];
     counts: ProjectCounts;
     createdAt: string;
     updatedAt: string;
@@ -49,9 +52,26 @@ interface RawProject {
     videos: Record<string, unknown>[];
     notes: Record<string, unknown>[];
     files: ProjectFile[];
+    scripts: Record<string, unknown>[];
     counts: ProjectCounts;
     created_at: string;
     updated_at: string;
+}
+
+/** Raw rows arrive snake_cased. One mapper, so the two places that
+ *  build a ContentItem can't disagree about a field. */
+function toContentItem(i: Record<string, unknown>): ContentItem {
+    return {
+        id: Number(i.id),
+        type: i.type as ContentItem["type"],
+        topic: String(i.topic),
+        content: String(i.content ?? ""),
+        status: i.status as ContentItem["status"],
+        scheduledDate: (i.scheduled_date as string | null) ?? null,
+        done: i.done === 1 || i.done === true,
+        videoProjectId: (i.video_project_id as number | null) ?? null,
+        created_at: String(i.created_at ?? ""),
+    };
 }
 
 function toVideo(raw: Record<string, unknown>): VideoProject {
@@ -76,15 +96,7 @@ function toVideo(raw: Record<string, unknown>): VideoProject {
         timeline: typeof raw.timeline_json === "string" ? (() => { try { return JSON.parse(raw.timeline_json as string); } catch { return null; } })() : null,
         language: (raw.language as string) ?? "auto",
         transcribing: Boolean(raw.transcribing),
-        contentItems: ((raw.contentItems as Record<string, unknown>[]) ?? []).map((i) => ({
-            id: Number(i.id),
-            type: i.type as ContentItem["type"],
-            topic: String(i.topic),
-            content: String(i.content),
-            status: i.status as ContentItem["status"],
-            scheduledDate: (i.scheduled_date as string | null) ?? null,
-            created_at: String(i.created_at ?? ""),
-        })),
+        contentItems: ((raw.contentItems as Record<string, unknown>[]) ?? []).map(toContentItem),
         createdAt: String(raw.created_at ?? ""),
         updatedAt: String(raw.updated_at ?? ""),
     };
@@ -97,6 +109,7 @@ function toNote(raw: Record<string, unknown>): LabNote {
         title: String(raw.title),
         body: String(raw.body ?? ""),
         projectId: (raw.project_id as number | null) ?? null,
+        videoProjectId: (raw.video_project_id as number | null) ?? null,
         done: raw.done === 1 || raw.done === true,
         createdAt: String(raw.created_at ?? ""),
         updatedAt: String(raw.updated_at ?? ""),
@@ -111,6 +124,7 @@ function toProject(raw: RawProject): StudioProject {
         folder: raw.folder ?? "",
         videos: (raw.videos ?? []).map(toVideo),
         notes: (raw.notes ?? []).map(toNote),
+        scripts: (raw.scripts ?? []).map(toContentItem),
         files: raw.files ?? [],
         counts: raw.counts,
         createdAt: raw.created_at,

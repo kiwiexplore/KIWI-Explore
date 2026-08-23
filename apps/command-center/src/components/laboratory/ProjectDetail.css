@@ -316,20 +316,29 @@
 
 }
 
+/* Three states, three readings, and the middle one is the point:
+   nothing yet and a draft waiting to be ticked feel nothing alike, and
+   a two-colour chain made them look the same. */
+
+/* Nothing yet. Deliberately the quietest thing on the row. */
+.pd-chain-todo { color: var(--text-muted); opacity: .55; }
+
+/* Started, not ticked. Violet, which is the colour this studio has
+   always used for work in flight. */
+.pd-chain-doing {
+
+    border-color: rgba(117, 102, 255, .6);
+    background: linear-gradient(rgba(117, 102, 255, .16), rgba(117, 102, 255, .16)), #0d1526;
+    color: #cfc7ff;
+
+}
+
+/* Ticked, or a rendered file says so. */
 .pd-chain-done {
 
     border-color: rgba(110, 243, 165, .4);
     background: linear-gradient(rgba(110, 243, 165, .1), rgba(110, 243, 165, .1)), #0d1526;
     color: var(--secondary);
-
-}
-
-/* Where the work is. The only link that asks for attention. */
-.pd-chain-now {
-
-    border-color: rgba(117, 102, 255, .6);
-    background: linear-gradient(rgba(117, 102, 255, .16), rgba(117, 102, 255, .16)), #0d1526;
-    color: #cfc7ff;
 
 }
 
@@ -777,3 +786,24 @@
 }
 
 .pd-piece-hint { font-size: 11px; }
+
+/* --- what a thing is for --------------------------------------------- */
+
+.pd-for {
+
+    margin-left: 8px;
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+
+    font-size: 9.5px;
+    color: var(--text-muted);
+
+}
+
+.pd-script-done { color: var(--text-muted); text-decoration: line-through; }
+
+.pd-tick-on { background: var(--secondary); border-color: var(--secondary); color: var(--space); }
+
+.pd-idea .vp,
+.pd-script-head .vp { margin-left: auto; }
