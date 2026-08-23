@@ -12,6 +12,7 @@ import {
 import { assetsFromFolder } from "../../lib/projectMedia";
 import type { StudioProject } from "../../lib/projectsApi";
 import { analyseEdit, type Finding } from "../../lib/editAnalysis";
+import { cutSilence, findSilence } from "../../lib/silenceCut";
 import { renderCaption } from "../../lib/captionImage";
 import StudioTimeline from "./StudioTimeline";
 import { formatClock } from "../../lib/timecode";
@@ -97,6 +98,7 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const [subFile, setSubFile] = useState("");
     const [subLanguage, setSubLanguage] = useState(project.language);
     const [findings, setFindings] = useState<Finding[] | null>(null);
+    const [cutReport, setCutReport] = useState<string | null>(null);
     const [exporting, setExporting] = useState<string | null>(null);
     const [exportDone, setExportDone] = useState<{ bytes: number; warnings: string[] } | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
@@ -350,6 +352,33 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const analyse = () => setFindings(analyseEdit(editor.clips, editor.assets));
 
     /**
+     * The dead air, taken out.
+     *
+     * The same measurement ANALYZE has been reporting since Sprint 097,
+     * finally performed. One undoable step, because it moves every clip
+     * on every track and a hundred history entries describing one action
+     * would make undo a slow rewind rather than a way back.
+     */
+    const removeSilence = () => {
+        const result = cutSilence(editor.clips, editor.assets);
+        if (result.gaps === 0) {
+            setCutReport("Nothing to take out — no gap long enough, or something is audible the whole way through.");
+            return;
+        }
+        editor.replaceClips(result.clips);
+        setCutReport(
+            `Took out ${result.removed.toFixed(1)} s across ${result.gaps} ${result.gaps === 1 ? "gap" : "gaps"}. `
+            + "Cmd-Z puts it back.",
+        );
+    };
+
+    // What it WOULD take out, so the button can say so before you press
+    // it. Cheap enough to work out on every render: it walks the peak
+    // arrays that are already in memory.
+    const silence = findSilence(editor.clips, editor.assets);
+    const silentSeconds = silence.reduce((n, r) => n + (r.end - r.start), 0);
+
+    /**
      * Export sends the bytes first, then the edit.
      *
      * The editor's media are object URLs the server cannot see, so
@@ -584,6 +613,25 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     <button type="button" className="studio-ai-analyze" onClick={analyse} disabled={editor.clips.length === 0}>
                         ANALYZE VIDEO
                     </button>
+
+                    {/* The one finding that can be acted on rather than
+                        read. It says how much it will take before you
+                        press it, because a cut you can't predict is one
+                        you undo. */}
+                    <button
+                        type="button"
+                        className="studio-ai-cut"
+                        onClick={removeSilence}
+                        disabled={silence.length === 0}
+                    >
+                        <Scissors size={13} strokeWidth={2} />
+                        {silence.length === 0
+                            ? "No dead air to cut"
+                            : `Cut ${silentSeconds.toFixed(1)} s of dead air`}
+                    </button>
+
+                    {cutReport && <p className="studio-ai-reason">{cutReport}</p>}
+
                     {editor.clips.length === 0 && (
                         <p className="studio-ai-reason">Nothing on the timeline to look at yet.</p>
                     )}

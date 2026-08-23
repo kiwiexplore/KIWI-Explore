@@ -897,3 +897,34 @@
     color: var(--text-muted);
 
 }
+
+/* --- cut the dead air ------------------------------------------------
+
+   Under ANALYZE and quieter than it. Analysis is the thing you reach
+   for; this is one of its findings that happens to be actionable, and
+   it should not look like a second headline. */
+
+.studio-ai-cut {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+
+    margin-top: 8px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .6);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 620;
+    color: var(--text-muted);
+
+}
+
+.studio-ai-cut:hover:not(:disabled) { color: var(--secondary); border-color: rgba(110, 243, 165, .5); }
+.studio-ai-cut:disabled { opacity: .4; cursor: not-allowed; }

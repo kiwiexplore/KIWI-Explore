@@ -109,6 +109,14 @@ export interface StudioEditorState {
 
     /** Replaces the media bin with what's in the project's folder. */
     setAssets: (assets: MediaAsset[]) => void;
+    /**
+     * Swaps the whole edit for another one, in a single undoable step.
+     *
+     * For changes that touch every track at once — taking a range out
+     * and rippling what follows — where doing it clip by clip would
+     * fill the history with a hundred entries describing one action.
+     */
+    replaceClips: (clips: Clip[]) => void;
     removeAsset: (id: string) => void;
     addClip: (assetId: string, trackId?: string, start?: number) => void;
     selectClip: (id: string | null) => void;
@@ -286,6 +294,8 @@ export function useStudioEditorState(initialClips: Clip[] = []): StudioEditorSta
         }
     }, []);
 
+    const replaceClips = (next: Clip[]) => commit(() => next);
+
     const removeAsset = (id: string) => {
         setAssetsState((prev) => {
             const gone = prev.find((a) => a.id === id);
@@ -450,7 +460,7 @@ export function useStudioEditorState(initialClips: Clip[] = []): StudioEditorSta
         canUndo: edit.history.length > 0,
         canRedo: edit.future.length > 0,
         undo, redo, beginGesture,
-        setAssets, removeAsset, addClip,
+        setAssets, replaceClips, removeAsset, addClip,
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,
         addText, setSubtitles, updateText, textAt,
