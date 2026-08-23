@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawn } from "node:child_process";
 
 /**
  * A project's folder on this machine.
@@ -123,6 +124,59 @@ export function resolveProjectFile(folder: string, name: string): string | null 
     if (full !== root && !full.startsWith(root + path.sep)) return null;
     if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return null;
     return full;
+}
+
+/** Everything in the folder, including Exports and anything the studio
+ *  doesn't recognise — this is what deleting it would actually take. */
+export function folderWeight(folder: string): { files: number; bytes: number } {
+    if (!folder || !fs.existsSync(folder)) return { files: 0, bytes: 0 };
+    let files = 0;
+    let bytes = 0;
+    const walk = (dir: string) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else if (entry.isFile()) { files += 1; bytes += fs.statSync(full).size; }
+        }
+    };
+    walk(folder);
+    return { files, bytes };
+}
+
+/**
+ * Moves the project's folder to the Trash.
+ *
+ * Through Finder rather than fs.rmSync, and that is the whole point:
+ * this is the only act in the studio that touches footage somebody had
+ * to go outside and film, and it has to be the kind of mistake you can
+ * take back. rm would be one keystroke away from losing a shoot.
+ *
+ * Refuses to touch anything that isn't inside the media root, so a
+ * project whose folder was pointed somewhere strange can't take a home
+ * directory with it.
+ */
+export async function trashProjectFolder(folder: string): Promise<void> {
+    if (!folder || !fs.existsSync(folder)) return;
+
+    const full = path.resolve(folder);
+    const root = path.resolve(ROOT);
+    if (full === root || !full.startsWith(root + path.sep)) {
+        throw new Error(`Refusing to delete ${full}: it isn't inside ${root}.`);
+    }
+
+    await new Promise<void>((resolve, reject) => {
+        // POSIX file, not an alias or a path string: Finder resolves
+        // the others differently and would silently do nothing.
+        const child = spawn("osascript", [
+            "-e", `tell application "Finder" to delete POSIX file ${JSON.stringify(full)}`,
+        ]);
+        let stderr = "";
+        child.stderr.on("data", (chunk) => { stderr += String(chunk); });
+        child.on("error", reject);
+        child.on("close", (code) => (code === 0
+            ? resolve()
+            : reject(new Error(`Could not move the folder to the Trash. ${stderr.trim()}`))));
+    });
 }
 
 export { ROOT as MEDIA_ROOT };

@@ -189,6 +189,25 @@ export async function deleteProjectFile(id: number, name: string): Promise<Proje
     return (await res.json()).files as ProjectFile[];
 }
 
-export async function deleteProject(id: number): Promise<void> {
-    await fetch(`${API_URL}/api/projects/${id}`, { method: "DELETE", headers: headers() });
+/** What deleting the folder would take — everything in it, not only
+ *  the media the studio lists. */
+export async function projectWeight(id: number): Promise<{ folder: string; files: number; bytes: number }> {
+    const res = await fetch(`${API_URL}/api/projects/${id}/weight`, { headers: headers() });
+    if (!res.ok) await readError(res, "Could not read the folder");
+    return res.json();
+}
+
+/**
+ * `withFolder` moves the project's folder to the Trash — recoverable
+ * from Finder, which is the only reason this is offered at all. Without
+ * it the folder is left exactly where it is and only the record goes.
+ *
+ * It throws now. Deleting used to be fire-and-forget, which is fine for
+ * a row and not fine for somebody's footage: a failure nobody is told
+ * about would leave the screen claiming the project is gone.
+ */
+export async function deleteProject(id: number, withFolder = false): Promise<void> {
+    const query = withFolder ? "?folder=trash" : "";
+    const res = await fetch(`${API_URL}/api/projects/${id}${query}`, { method: "DELETE", headers: headers() });
+    if (!res.ok) await readError(res, "Could not delete that project");
 }

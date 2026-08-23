@@ -7,6 +7,7 @@ import {
 } from "../db.js";
 import {
     createProjectFolder, listProjectFiles, resolveProjectFile, isMediaName, freeName,
+    folderWeight, trashProjectFolder,
 } from "../projectFolder.js";
 import { hasExport } from "../videoExport.js";
 import fs from "node:fs";
@@ -227,12 +228,42 @@ projectsRouter.get("/:id/files", (req, res) => {
     res.json({ folder: project.folder, files: listProjectFiles(project.folder), exists: fs.existsSync(project.folder) });
 });
 
-projectsRouter.delete("/:id", (req, res) => {
+/** What deleting this project's folder would actually take with it —
+ *  everything in it, not just the media the studio recognises. */
+projectsRouter.get("/:id/weight", (req, res) => {
+    const id = parseId(req.params.id);
+    const project = id === null ? null : getStudioProject(id);
+    if (!project) {
+        res.status(404).json({ error: "No project with that id." });
+        return;
+    }
+    res.json({ folder: project.folder, ...folderWeight(project.folder) });
+});
+
+projectsRouter.delete("/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (id === null) {
         res.status(400).json({ error: "Invalid id." });
         return;
     }
+    const project = getStudioProject(id);
+
+    // The folder goes only when asked, and only to the Trash. Deleting
+    // the row is a database change; deleting the folder is somebody's
+    // footage, and the two should never be the same keystroke by
+    // accident.
+    if (req.query.folder === "trash" && project?.folder) {
+        try {
+            await trashProjectFolder(project.folder);
+        } catch (e) {
+            // The row stays if the folder couldn't go: a project whose
+            // files are still there but whose record is gone is the one
+            // outcome nobody could recover from inside the app.
+            res.status(502).json({ error: e instanceof Error ? e.message : "Could not move the folder to the Trash." });
+            return;
+        }
+    }
+
     // Videos and notes survive with project_id null — see db.ts.
     deleteStudioProject(id);
     res.status(204).end();

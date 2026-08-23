@@ -11,7 +11,7 @@ export interface StudioProjectsState {
     refresh: () => void;
     create: (title: string) => Promise<StudioProject | null>;
     update: (id: number, changes: { title?: string; description?: string }) => void;
-    remove: (id: number) => void;
+    remove: (id: number, withFolder?: boolean) => Promise<void>;
 }
 
 /**
@@ -70,9 +70,19 @@ export function useStudioProjectsState(): StudioProjectsState {
                 .then((project) => setProjects((prev) => prev.map((p) => (p.id === project.id ? project : p))))
                 .catch((e) => report(e, "Could not save that change."));
         },
-        remove: (id) => {
-            setProjects((prev) => prev.filter((p) => p.id !== id));
-            deleteProject(id).catch(() => { /* local state already reflects it */ });
+        remove: async (id, withFolder = false) => {
+            // Awaited rather than optimistic: moving a folder to the
+            // Trash can fail, and a project that vanished from the
+            // screen while its files stayed would be a lie the app
+            // could not take back.
+            setError(null);
+            try {
+                await deleteProject(id, withFolder);
+                setProjects((prev) => prev.filter((p) => p.id !== id));
+            } catch (e) {
+                report(e, "Could not delete that project.");
+                throw e;
+            }
         },
     };
 }

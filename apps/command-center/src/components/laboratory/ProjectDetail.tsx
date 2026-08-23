@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import type { StudioProjectsState } from "../../state/studioProjects";
 import type { StudioProject, ProjectFile } from "../../lib/projectsApi";
-import { deleteProjectFile, uploadProjectFile } from "../../lib/projectsApi";
+import { deleteProjectFile, projectWeight, uploadProjectFile } from "../../lib/projectsApi";
 import type { VideoProject } from "../../lib/videoApi";
 import type { VideoStudioState } from "../../state/videoStudio";
 import { createNote, deleteNote, updateNote } from "../../lib/notesApi";
@@ -60,19 +60,51 @@ export default function ProjectDetail({
             .finally(() => setBusy(false));
     };
 
-    const removeProject = () => {
-        // The one act on this page that can't be undone from inside the
-        // app, so it asks first. Its videos and notes survive with no
-        // project — losing a finished film because the folder it was in
-        // went away would be indefensible.
-        const ok = confirm(
-            `Delete the project "${project.title}"?\n\n`
-            + "Its videos and ideas stay — they just stop belonging to a project. "
-            + "The folder on your disk is left exactly as it is.",
+    /**
+     * Deleting the project, and optionally its folder.
+     *
+     * The folder goes to the TRASH, never straight to nothing. This is
+     * the only act in the studio that touches footage somebody had to
+     * go outside and film, and it has to be the kind of mistake you can
+     * take back from Finder.
+     *
+     * The weight is read from disk first, so the question names what is
+     * actually at stake — everything in the folder, Exports included,
+     * not the media list on this page.
+     */
+    const removeProject = async () => {
+        // A folder the server can't read still gets offered, just
+        // without a size — refusing to let you delete because we
+        // couldn't count would be the wrong way round.
+        const weight = await projectWeight(project.id).catch(() => null);
+
+        const size = weight && weight.bytes > 0
+            ? `${weight.files} ${weight.files === 1 ? "file" : "files"}, ${(weight.bytes / 1_000_000_000).toFixed(2)} GB`
+            : "no files";
+
+        const withFolder = confirm(
+            `Delete "${project.title}" AND move its folder to the Trash?\n\n`
+            + `${project.folder}\n${size}\n\n`
+            + "OK — the folder goes to the Trash, where you can put it back from Finder.\n"
+            + "Cancel — you'll be asked whether to delete just the project instead.",
         );
-        if (!ok) return;
-        projects.remove(project.id);
-        onBack();
+
+        if (!withFolder) {
+            const rowOnly = confirm(
+                `Delete just the project "${project.title}"?\n\n`
+                + "The folder and everything in it stays exactly where it is. "
+                + "Its videos and ideas survive too — they simply stop belonging to a project.",
+            );
+            if (!rowOnly) return;
+        }
+
+        try {
+            await projects.remove(project.id, withFolder);
+            onBack();
+        } catch {
+            // studioProjects already reported it; staying on the page
+            // is the point — the project is still here.
+        }
     };
 
     return (
@@ -92,7 +124,7 @@ export default function ProjectDetail({
                         <span className="pd-progress-label">{percent}% done</span>
                         <div className="pd-progress-bar"><span style={{ width: `${percent}%` }} /></div>
                     </div>
-                    <button type="button" className="pd-delete-project" onClick={removeProject}>
+                    <button type="button" className="pd-delete-project" onClick={() => void removeProject()}>
                         <Trash2 size={13} strokeWidth={2} />
                         Delete project
                     </button>
