@@ -24,6 +24,8 @@ export interface ProjectFile {
     bytes: number;
     kind: "video" | "audio" | "image";
     modifiedAt: string;
+    /** Which video it is footage for, or null for the whole project. */
+    videoProjectId: number | null;
 }
 
 export interface StudioProject {
@@ -191,6 +193,18 @@ export async function uploadProjectFile(id: number, file: File): Promise<Project
         body: file,
     });
     if (!res.ok) await readError(res, `Could not add ${file.name}`);
+    return (await res.json()).files as ProjectFile[];
+}
+
+/** Files a piece of footage under a video. null puts it back on the
+ *  project. Returns the folder as it now stands. */
+export async function assignProjectFile(
+    id: number, name: string, videoProjectId: number | null,
+): Promise<ProjectFile[]> {
+    const res = await fetch(`${API_URL}/api/projects/${id}/files/${encodeURIComponent(name)}/video`, {
+        method: "PUT", headers: headers(), body: JSON.stringify({ videoProjectId }),
+    });
+    if (!res.ok) await readError(res, "Could not file that");
     return (await res.json()).files as ProjectFile[];
 }
 

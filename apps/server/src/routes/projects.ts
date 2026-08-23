@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
     deleteStudioProject, getStudioProject, insertStudioProject, listStudioProjects,
     listLabNotesForProject, listVideoProjectsForProject, updateStudioProject,
-    listContentItemsForVideo, listUnfiledContentItems,
+    listContentItemsForVideo, listUnfiledContentItems, listFileAssignments, assignFile, forgetFile,
 } from "../db.js";
 import {
     createProjectFolder, listProjectFiles, resolveProjectFile, isMediaName, freeName,
@@ -49,10 +49,14 @@ function summarise(projectId: number) {
     // these the Scripts panel would silently drop everything you
     // started but hadn't assigned yet.
     const scripts = listUnfiledContentItems().filter((i) => i.type === "youtube-script");
+    // Which video each file is for, folded onto the listing rather than
+    // handed over separately — every screen that wants the files wants
+    // this with them.
+    const assigned = listFileAssignments(projectId);
     return {
         videos,
         notes,
-        files,
+        files: files.map((f) => ({ ...f, videoProjectId: assigned[f.name] ?? null })),
         scripts,
         counts: {
             videos: videos.length,
@@ -205,6 +209,30 @@ projectsRouter.post("/:id/files", (req, res) => {
     });
 });
 
+/** Which video a file is for. null puts it back on the project. */
+projectsRouter.put("/:id/files/:name/video", (req, res) => {
+    const id = parseId(req.params.id);
+    const project = id === null ? null : getStudioProject(id);
+    if (!project) {
+        res.status(404).json({ error: "No project with that id." });
+        return;
+    }
+    if (!resolveProjectFile(project.folder, req.params.name)) {
+        res.status(404).json({ error: "That file isn't in this project's folder." });
+        return;
+    }
+    const parsed = z.object({ videoProjectId: z.number().int().nullable() }).safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: "videoProjectId must be a number or null." });
+        return;
+    }
+    assignFile(project.id, req.params.name, parsed.data.videoProjectId);
+    const assigned = listFileAssignments(project.id);
+    res.json({
+        files: listProjectFiles(project.folder).map((f) => ({ ...f, videoProjectId: assigned[f.name] ?? null })),
+    });
+});
+
 /** Takes a file out of the project's folder, for real. */
 projectsRouter.delete("/:id/files/:name", (req, res) => {
     const id = parseId(req.params.id);
@@ -219,7 +247,11 @@ projectsRouter.delete("/:id/files/:name", (req, res) => {
         return;
     }
     fs.rmSync(file, { force: true });
-    res.json({ files: listProjectFiles(project.folder) });
+    // The note about it goes too, or a file dropped in later under the
+    // same name would inherit an assignment nobody made.
+    forgetFile(project.id, req.params.name);
+    const assigned = listFileAssignments(project.id);
+    res.json({ files: listProjectFiles(project.folder).map((f) => ({ ...f, videoProjectId: assigned[f.name] ?? null })) });
 });
 
 /** Re-reads the folder. Drop a file in from Finder and press refresh. */

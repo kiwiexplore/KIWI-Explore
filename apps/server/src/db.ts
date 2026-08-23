@@ -183,6 +183,21 @@ db.exec(`
         finished_at TEXT
     );
 
+    -- Which video a file in the project's folder belongs to.
+    --
+    -- Keyed on the NAME, because that is what a file is identified by
+    -- everywhere else in the studio: the bin lists it, the browser
+    -- plays it, the timeline points at it and the export renders from
+    -- it, all by name. A row here is a note ABOUT a file rather than a
+    -- record OF one — the folder is still the truth, and a name with no
+    -- file behind it simply never matches anything.
+    CREATE TABLE IF NOT EXISTS file_assignments (
+        project_id INTEGER NOT NULL REFERENCES studio_projects(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        video_project_id INTEGER REFERENCES video_projects(id) ON DELETE CASCADE,
+        PRIMARY KEY (project_id, name)
+    );
+
     CREATE TABLE IF NOT EXISTS video_projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -823,12 +838,57 @@ export function updateStudioProject(id: number, update: { title?: string; descri
 }
 
 /**
- * Deleting a project keeps its videos and notes, with their project_id
- * set to null. Losing a finished film because the folder it was in went
- * away would be indefensible.
+ * Deleting a project takes everything in it.
+ *
+ * This reverses the call made in Sprint 102, where videos survived with
+ * project_id set to null so a finished film couldn't be lost with the
+ * folder it was in. The reasoning was sound and the result was not: the
+ * survivors had nowhere to appear, because a project is the only way
+ * into anything, so Sprint 108 had to build a whole band on the front
+ * page for videos that existed and belonged nowhere. Everything living
+ * inside a project is the simpler rule, and the safety it gives up is
+ * bought back by the delete going through the Trash.
+ *
+ * Written out rather than left to ON DELETE CASCADE, because SQLite
+ * cannot alter a constraint in place and rebuilding four tables to
+ * change one word would be a migration with far more ways to go wrong
+ * than this.
  */
 export function deleteStudioProject(id: number): void {
+    const videos = db.prepare("SELECT id FROM video_projects WHERE project_id = ?").all(id) as { id: number }[];
+
+    // Innermost first: a content item points at a video, a video points
+    // at the project. Removing the project first would leave the middle
+    // rows pointing at nothing for as long as the transaction takes.
+    for (const video of videos) {
+        db.prepare("DELETE FROM content_items WHERE video_project_id = ?").run(video.id);
+        db.prepare("DELETE FROM generation_jobs WHERE video_project_id = ?").run(video.id);
+    }
+    db.prepare("DELETE FROM file_assignments WHERE project_id = ?").run(id);
+    db.prepare("DELETE FROM generation_jobs WHERE project_id = ?").run(id);
+    db.prepare("DELETE FROM video_projects WHERE project_id = ?").run(id);
+    db.prepare("DELETE FROM lab_notes WHERE project_id = ?").run(id);
     db.prepare("DELETE FROM studio_projects WHERE id = ?").run(id);
+}
+
+/* ── which file belongs to which video ─────────────────────────────── */
+
+export function listFileAssignments(projectId: number): Record<string, number | null> {
+    const rows = db.prepare("SELECT name, video_project_id FROM file_assignments WHERE project_id = ?")
+        .all(projectId) as { name: string; video_project_id: number | null }[];
+    return Object.fromEntries(rows.map((r) => [r.name, r.video_project_id]));
+}
+
+/** null takes a file off a video without touching the file itself. */
+export function assignFile(projectId: number, name: string, videoProjectId: number | null): void {
+    db.prepare(`
+        INSERT INTO file_assignments (project_id, name, video_project_id) VALUES (?, ?, ?)
+        ON CONFLICT (project_id, name) DO UPDATE SET video_project_id = excluded.video_project_id
+    `).run(projectId, name, videoProjectId);
+}
+
+export function forgetFile(projectId: number, name: string): void {
+    db.prepare("DELETE FROM file_assignments WHERE project_id = ? AND name = ?").run(projectId, name);
 }
 
 export function listVideoProjectsForProject(projectId: number): StoredVideoProject[] {

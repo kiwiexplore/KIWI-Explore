@@ -1,8 +1,8 @@
-import type { LabNote } from "../lib/notesApi";
+import type { GenerationJob } from "../lib/generateApi";
 import type { VideoProject } from "../lib/videoApi";
 
 /**
- * The three phases a video goes through, and how far each one has got.
+ * The four phases a video goes through, and how far each one has got.
  *
  * This is NOT a second opinion about video_projects.stage — that column
  * still records where a video says it is, and state/videoPipeline.ts
@@ -28,7 +28,7 @@ import type { VideoProject } from "../lib/videoApi";
  * makes it better than a tick rather than worse.
  */
 
-export type ChainStage = "create" | "edit" | "publish";
+export type ChainStage = "create" | "edit" | "thumbnail" | "publish";
 export type ChainState = "todo" | "doing" | "done";
 
 export interface ChainStep {
@@ -49,20 +49,19 @@ export interface Chain {
 
 export interface ChainInput {
     video: VideoProject;
-    /** The ideas written for THIS video, not the whole project. */
-    ideas: LabNote[];
+    /** Generation jobs for THIS video. */
+    jobs: GenerationJob[];
 }
 
 function createState(input: ChainInput): { state: ChainState; next: string | null } {
     const scripts = input.video.contentItems.filter((i) => i.type === "youtube-script");
-    const started = [...scripts, ...input.ideas];
 
-    if (started.length === 0) return { state: "todo", next: "write an idea or a script" };
+    if (scripts.length === 0) return { state: "todo", next: "write the script" };
 
-    // Every piece of writing for this video has to be ticked. Half a
-    // script and three loose ideas is not a finished brief, and calling
-    // it one is how the chain stops meaning anything.
-    const left = started.filter((i) => !i.done).length;
+    // Every script for this video has to be ticked. One finished and
+    // one half-written is not a finished brief, and calling it one is
+    // how the chain stops meaning anything.
+    const left = scripts.filter((i) => !i.done).length;
     if (left > 0) return { state: "doing", next: `${left} still to tick off` };
 
     return { state: "done", next: null };
@@ -76,6 +75,23 @@ function editState(video: VideoProject): { state: ChainState; next: string | nul
     if (clips > 0) return { state: "doing", next: "export it" };
 
     return { state: "todo", next: "put something on the timeline" };
+}
+
+/**
+ * A thumbnail is its own step because it is its own job — the one part
+ * of putting a video out that is a picture rather than words, and the
+ * one most often noticed missing at the last minute.
+ *
+ * Done means an image exists, which is a fact rather than a tick, for
+ * the same reason EDIT is: you cannot claim it without having made one.
+ */
+function thumbnailState(jobs: GenerationJob[]): { state: ChainState; next: string | null } {
+    if (jobs.some((j) => j.status === "done")) return { state: "done", next: null };
+    if (jobs.some((j) => j.status === "queued" || j.status === "running")) {
+        return { state: "doing", next: "waiting on the render" };
+    }
+    if (jobs.length > 0) return { state: "doing", next: "the last one failed — try again" };
+    return { state: "todo", next: "make a thumbnail" };
 }
 
 function publishState(video: VideoProject): { state: ChainState; next: string | null } {
@@ -94,6 +110,7 @@ export function chainFor(input: ChainInput): Chain {
     const steps: ChainStep[] = [
         { stage: "create", label: "Create", ...createState(input) },
         { stage: "edit", label: "Edit", ...editState(input.video) },
+        { stage: "thumbnail", label: "Thumbnail", ...thumbnailState(input.jobs) },
         { stage: "publish", label: "Publish", ...publishState(input.video) },
     ];
 

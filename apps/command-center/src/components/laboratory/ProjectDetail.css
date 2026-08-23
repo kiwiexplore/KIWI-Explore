@@ -807,3 +807,55 @@
 
 .pd-idea .vp,
 .pd-script-head .vp { margin-left: auto; }
+
+/* --- header: the name and what the project is ------------------------ */
+
+.pd-head { display: flex; align-items: flex-start; gap: 20px; }
+.pd-head-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pd-head-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+
+.et {
+
+    display: block;
+    width: 100%;
+    text-align: left;
+
+    padding: 4px 8px;
+    margin-left: -8px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: none;
+
+    font: inherit;
+    color: inherit;
+
+}
+
+.et:hover { border-color: var(--border); background: rgba(16, 25, 46, .5); }
+.et-empty { color: var(--text-muted); font-style: italic; }
+.et-field { border-color: var(--primary); background: rgba(5, 8, 22, .7); }
+.et-field:focus { outline: none; }
+
+.pd-title { font-size: 27px; font-weight: 700; letter-spacing: -.4px; }
+.pd-desc { font-size: 13px; line-height: 1.55; color: var(--text-muted); resize: vertical; }
+
+/* --- a video that opens ---------------------------------------------- */
+
+.pd-video-block + .pd-video-block { margin-top: 6px; }
+.pd-video-block-open > .pd-video { border-color: var(--primary); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+.pd-video-open {
+
+    display: inline-flex;
+    flex-shrink: 0;
+
+    padding: 5px;
+    border: none;
+    border-radius: 7px;
+    background: none;
+    cursor: pointer;
+    color: var(--text-muted);
+
+}
+
+.pd-video-open:hover { color: var(--primary); }

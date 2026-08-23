@@ -1,20 +1,16 @@
-import { useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
-    AlertTriangle, ArrowRight, Check, ChevronLeft, Clapperboard, Copy, FileText, Film,
-    FolderOpen, Image as ImageIcon, Music2, Plus, RefreshCw, Sparkles, Trash2, Upload,
+    AlertTriangle, ChevronDown, ChevronLeft, ChevronRight, Plus, Trash2,
 } from "lucide-react";
 import type { StudioProjectsState } from "../../state/studioProjects";
-import type { StudioProject, ProjectFile } from "../../lib/projectsApi";
-import { deleteProjectFile, projectWeight, uploadProjectFile } from "../../lib/projectsApi";
+import type { StudioProject } from "../../lib/projectsApi";
+import { projectWeight } from "../../lib/projectsApi";
 import type { VideoProject } from "../../lib/videoApi";
-import type { VideoStudioState } from "../../state/videoStudio";
-import { createNote, deleteNote, updateNote, type LabNote } from "../../lib/notesApi";
 import { createVideoProject, deleteVideoProject } from "../../lib/videoApi";
-import { createContentItem, deleteContentItem, updateContentItem, type ContentItem } from "../../lib/contentApi";
+import type { VideoStudioState } from "../../state/videoStudio";
 import { chainFor, chainSummary } from "../../state/studioChain";
-import GeneratePanel from "./GeneratePanel";
-import VideoPicker from "./VideoPicker";
-import "./VideoPicker.css";
+import VideoWorkspace from "./VideoWorkspace";
+import EditableText from "./EditableText";
 import "./GlobalBoard.css";
 import "./ProjectDetail.css";
 
@@ -29,27 +25,29 @@ interface ProjectDetailProps {
 }
 
 /**
- * One project, top to bottom, in the order the work happens.
+ * One project: what it is, and the videos in it.
  *
- * The videos first, because that is the project: what you are making
- * and where each one has got to. Then the material they are made from,
- * and last the text that goes out with them.
+ * The page used to be seven sections side by side — ideas, scripts,
+ * footage, videos, thumbnails, publish — which read as seven equal
+ * things when only one of them is what a project actually contains.
+ * Everything else is about A VIDEO, so everything else now lives
+ * inside one: click a video open and its footage, script, cut,
+ * thumbnails and posts unfold under it.
  *
- * Every step is a section on this page rather than a screen you get
- * switched into: the whole point of a project is seeing the work
- * together, and publishing was the one part that took the window away
- * to show you a corner of it.
+ * That also settles a question the flat page kept asking and never
+ * answering: what belongs to what. Nothing can be filed under the wrong
+ * video when the only way to reach it is through the right one.
  */
 export default function ProjectDetail({
     project, projects, videoStudio, onVideosChanged, onBack, onEdit,
 }: ProjectDetailProps) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [videoTitle, setVideoTitle] = useState("");
+    const [openId, setOpenId] = useState<number | null>(null);
 
     const { counts } = project;
-    const percent = counts.videos === 0
-        ? (counts.ideas === 0 ? 0 : Math.round((counts.ideasDone / counts.ideas) * 25))
-        : Math.round((counts.published / counts.videos) * 100);
+    const percent = counts.videos === 0 ? 0 : Math.round((counts.published / counts.videos) * 100);
 
     /** Everything here writes then re-reads: the project carries its own
      *  children, so a change to one has to come back through it. */
@@ -62,40 +60,45 @@ export default function ProjectDetail({
             .finally(() => setBusy(false));
     };
 
+    const addVideo = (event: FormEvent) => {
+        event.preventDefault();
+        if (!videoTitle.trim()) return;
+        after(createVideoProject(videoTitle.trim(), undefined, project.id));
+        setVideoTitle("");
+    };
+
     /**
-     * Deleting the project, and optionally its folder.
+     * Deleting the project, and everything in it.
      *
-     * The folder goes to the TRASH, never straight to nothing. This is
-     * the only act in the studio that touches footage somebody had to
-     * go outside and film, and it has to be the kind of mistake you can
-     * take back from Finder.
-     *
-     * The weight is read from disk first, so the question names what is
-     * actually at stake — everything in the folder, Exports included,
-     * not the media list on this page.
+     * Everything now means everything: its videos, their cuts, their
+     * scripts and posts go with it, because a video that outlived its
+     * project had nowhere to appear. The folder goes to the TRASH, never
+     * straight to nothing — this is the only act in the studio that
+     * touches footage somebody had to go outside and film, and it has to
+     * be the kind of mistake you can take back from Finder.
      */
     const removeProject = async () => {
-        // A folder the server can't read still gets offered, just
-        // without a size — refusing to let you delete because we
-        // couldn't count would be the wrong way round.
+        // A folder the server can't count is still offered, just without
+        // a size. Refusing to delete because we couldn't measure would
+        // be the wrong way round.
         const weight = await projectWeight(project.id).catch(() => null);
-
         const size = weight && weight.bytes > 0
             ? `${weight.files} ${weight.files === 1 ? "file" : "files"}, ${(weight.bytes / 1_000_000_000).toFixed(2)} GB`
             : "no files";
+        const videos = counts.videos === 1 ? "1 video" : `${counts.videos} videos`;
 
         const withFolder = confirm(
             `Delete "${project.title}" AND move its folder to the Trash?\n\n`
             + `${project.folder}\n${size}\n\n`
+            + `${videos} go with it, along with their cuts, scripts and posts.\n\n`
             + "OK — the folder goes to the Trash, where you can put it back from Finder.\n"
             + "Cancel — you'll be asked whether to delete just the project instead.",
         );
 
         if (!withFolder) {
             const rowOnly = confirm(
-                `Delete just the project "${project.title}"?\n\n`
-                + "The folder and everything in it stays exactly where it is. "
-                + "Its videos and ideas survive too — they simply stop belonging to a project.",
+                `Delete "${project.title}" but leave the folder alone?\n\n`
+                + `${videos} and everything written for them go. The footage in\n${project.folder}\nstays exactly where it is.`,
             );
             if (!rowOnly) return;
         }
@@ -104,8 +107,8 @@ export default function ProjectDetail({
             await projects.remove(project.id, withFolder);
             onBack();
         } catch {
-            // studioProjects already reported it; staying on the page
-            // is the point — the project is still here.
+            // studioProjects already reported it; staying put is the
+            // point — the project is still here.
         }
     };
 
@@ -116,12 +119,28 @@ export default function ProjectDetail({
                 All projects
             </button>
 
-            <div className="global-board-header">
-                <div>
+            <div className="pd-head">
+                <div className="pd-head-main">
                     <span className="global-board-eyebrow">Project</span>
-                    <h1>{project.title}</h1>
+                    {/* The name is editable in place. A project called
+                        "asdasd" because you were in a hurry is the
+                        normal case, and having to delete and remake it
+                        to fix that is absurd. */}
+                    <EditableText
+                        className="pd-title"
+                        value={project.title}
+                        placeholder="Name this project"
+                        onSave={(title) => projects.update(project.id, { title })}
+                    />
+                    <EditableText
+                        className="pd-desc"
+                        value={project.description}
+                        placeholder="What is this project about? — a series, a channel run, one film…"
+                        multiline
+                        onSave={(description) => projects.update(project.id, { description })}
+                    />
                 </div>
-                <div className="pd-header-right">
+                <div className="pd-head-right">
                     <div className="pd-progress">
                         <span className="pd-progress-label">{percent}% done</span>
                         <div className="pd-progress-bar"><span style={{ width: `${percent}%` }} /></div>
@@ -140,722 +159,131 @@ export default function ProjectDetail({
                 </div>
             )}
 
-            {/* First, because it is the answer to "how is this project
-                going" — the list of what you are making and where each
-                one has got to. Everything below it is material for
-                these, and reads as such once they are at the top. */}
-            <VideosPanel project={project} busy={busy} after={after} onEdit={onEdit} />
-            <FootagePanel project={project} projects={projects} />
-            <ScriptsPanel project={project} busy={busy} after={after} />
-            <IdeasPanel project={project} busy={busy} after={after} />
-            <EditPanel project={project} onEdit={onEdit} />
-            {/* Lands a file in the same folder as the footage, so the
-                list above refreshes when one finishes. */}
-            <GeneratePanel project={project} onFilesChanged={projects.refresh} />
-            <PublishPanel project={project} videoStudio={videoStudio} after={after} />
-        </div>
-    );
-}
-
-/* ── ideas ──────────────────────────────────────────────────────────── */
-
-function IdeasPanel({ project, busy, after }: {
-    project: StudioProject;
-    busy: boolean;
-    after: <T>(work: Promise<T>) => void;
-}) {
-    const [idea, setIdea] = useState("");
-    const { counts } = project;
-
-    const addIdea = (event: FormEvent) => {
-        event.preventDefault();
-        if (!idea.trim()) return;
-        after(createNote("idea", idea.trim(), project.id));
-        setIdea("");
-    };
-
-    const forVideo = (note: { videoProjectId: number | null }) =>
-        project.videos.find((v) => v.id === note.videoProjectId)?.title ?? null;
-
-    return (
-        <section className="pd-panel">
-            <div className="pd-panel-head">
-                <h2>Ideas</h2>
-                <span className="pd-count">{counts.ideasDone}/{counts.ideas}</span>
-            </div>
-
-            <form className="pd-add" onSubmit={addIdea}>
-                <input value={idea} onChange={(e) => setIdea(e.target.value)} placeholder="Something this project could be…" />
-                <button type="submit" disabled={!idea.trim() || busy}><Plus size={14} strokeWidth={2} /></button>
-            </form>
-
-            {project.notes.length === 0 ? (
-                <p className="pd-muted">Nothing written down yet.</p>
-            ) : (
-                <div className="pd-ideas">
-                    {project.notes.map((note) => (
-                        <div key={note.id} className={`pd-idea${note.done ? " pd-idea-done" : ""}`}>
-                            {/* The tick is the point: an idea list you
-                                can't work through is just a list. */}
-                            <button
-                                type="button"
-                                className="pd-tick"
-                                onClick={() => after(updateNote(note.id, { done: !note.done }))}
-                                aria-label={note.done ? "Mark as not done" : "Mark as done"}
-                            >
-                                {note.done && <Check size={12} strokeWidth={3.5} />}
-                            </button>
-                            <span className="pd-idea-title">
-                                {note.title}
-                                {forVideo(note) && <span className="pd-for">{forVideo(note)}</span>}
-                            </span>
-                            <VideoPicker
-                                project={project}
-                                value={note.videoProjectId}
-                                onChange={(videoProjectId) => after(updateNote(note.id, { videoProjectId }))}
-                            />
-                            <button
-                                type="button"
-                                className="pd-idea-remove"
-                                onClick={() => after(deleteNote(note.id))}
-                                aria-label="Remove"
-                            >
-                                <Trash2 size={13} strokeWidth={1.75} />
-                            </button>
-                        </div>
-                    ))}
+            <section className="pd-panel">
+                <div className="pd-panel-head">
+                    <h2>Videos</h2>
+                    <span className="pd-count">{counts.published}/{counts.videos} published</span>
+                    <span className="pd-panel-note">open one to work on it</span>
                 </div>
-            )}
-        </section>
-    );
-}
 
-/* ── scripts ────────────────────────────────────────────────────────── */
-
-/**
- * Scripts, written by either of you.
- *
- * They used to be read-only: the only way to get one was to ask KIWI,
- * and the only thing you could do with the answer was look at it. A
- * draft is a starting point, not a delivery — so this is a text box you
- * can type in, and you can start one from nothing.
- */
-function ScriptsPanel({ project, busy, after }: {
-    project: StudioProject;
-    busy: boolean;
-    after: <T>(work: Promise<T>) => void;
-}) {
-    const [title, setTitle] = useState("");
-
-    // Every script in the project, whichever video it is for — and the
-    // ones for none of them. Reading them off the videos alone lost
-    // exactly the scripts that hadn't been filed yet, which are the
-    // ones most likely to go missing.
-    const scripts = [
-        ...project.videos.flatMap((v) => v.contentItems.filter((i) => i.type === "youtube-script")),
-        ...project.scripts.filter((i) => i.videoProjectId === null),
-    ];
-
-    const write = (event: FormEvent) => {
-        event.preventDefault();
-        if (!title.trim()) return;
-        // Attached to a video only when there is exactly one obvious
-        // owner. Guessing between three would file it under the wrong
-        // one, and a script under the wrong video is a script you lose.
-        const only = project.videos.length === 1 ? project.videos[0].id : undefined;
-        after(createContentItem("youtube-script", title.trim(), "", only));
-        setTitle("");
-    };
-
-    return (
-        <section className="pd-panel">
-            <div className="pd-panel-head">
-                <h2>Scripts</h2>
-                <span className="pd-count">{scripts.length}</span>
-            </div>
-
-            <form className="pd-add" onSubmit={write}>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Start a script — what is it about?" />
-                <button type="submit" disabled={!title.trim() || busy}><Plus size={14} strokeWidth={2} /></button>
-            </form>
-
-            {scripts.length === 0 ? (
-                <p className="pd-muted">
-                    Nothing written yet. Start one above, or open a video and ask KIWI to draft it.
-                </p>
-            ) : (
-                <div className="pd-scripts">
-                    {scripts.map((item) => <ScriptRow key={item.id} project={project} item={item} after={after} />)}
-                </div>
-            )}
-        </section>
-    );
-}
-
-function ScriptRow({ project, item, after }: {
-    project: StudioProject;
-    item: ContentItem;
-    after: <T>(work: Promise<T>) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const [text, setText] = useState(item.content);
-    const [saved, setSaved] = useState(true);
-
-    const save = () => {
-        setSaved(true);
-        after(updateContentItem(item.id, { content: text }));
-    };
-
-    return (
-        <div className="pd-script">
-            <div className="pd-script-head">
-                {/* The tick is what turns CREATE green. A script that
-                    exists is work started; a script you have ticked is
-                    work finished, and only you can say which. */}
-                <button
-                    type="button"
-                    className={`pd-tick${item.done ? " pd-tick-on" : ""}`}
-                    onClick={() => after(updateContentItem(item.id, { done: !item.done }))}
-                    aria-label={item.done ? "Mark as not done" : "Mark as done"}
-                >
-                    {item.done && <Check size={12} strokeWidth={3.5} />}
-                </button>
-                <button type="button" className="pd-script-open" onClick={() => setOpen((o) => !o)}>
-                    <FileText size={13} strokeWidth={1.75} />
-                    <span className={`pd-script-video${item.done ? " pd-script-done" : ""}`}>{item.topic}</span>
-                </button>
-                <VideoPicker
-                    project={project}
-                    value={item.videoProjectId}
-                    onChange={(videoProjectId) => after(updateContentItem(item.id, { videoProjectId }))}
-                />
-                <button
-                    type="button"
-                    className="pd-icon-btn"
-                    onClick={() => { if (confirm(`Delete the script "${item.topic}"?`)) after(deleteContentItem(item.id)); }}
-                    aria-label="Delete this script"
-                >
-                    <Trash2 size={13} strokeWidth={1.75} />
-                </button>
-            </div>
-
-            {open && (
-                <div className="pd-script-body">
-                    <textarea
-                        value={text}
-                        onChange={(e) => { setText(e.target.value); setSaved(false); }}
-                        onBlur={() => { if (!saved) save(); }}
-                        placeholder="Write it here, or ask KIWI to draft one from the video."
-                        rows={12}
+                <form className="pd-add" onSubmit={addVideo}>
+                    <input
+                        value={videoTitle}
+                        onChange={(e) => setVideoTitle(e.target.value)}
+                        placeholder="What are you making? — e.g. Episode 3, the sump"
                     />
-                    <div className="pd-script-foot">
-                        <span className="pd-muted">{saved ? "Saved" : "Unsaved — click away, or press Save"}</span>
-                        <button type="button" className="pd-small-btn" onClick={save} disabled={saved}>Save</button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
+                    <button type="submit" disabled={!videoTitle.trim() || busy}><Plus size={14} strokeWidth={2} /></button>
+                </form>
 
-/* ── footage ────────────────────────────────────────────────────────── */
-
-const KIND_ICON = { video: Film, audio: Music2, image: ImageIcon };
-
-/**
- * The material, and the only place it comes from.
- *
- * This was called Media and sat apart from the videos, which made it
- * read as a separate feature rather than the input to one. It is the
- * project's folder on disk: drop a file here or copy it in from Finder
- * and it is the same file, under the same name, in the same place. The
- * editor's bin IS this list.
- */
-function FootagePanel({ project, projects }: { project: StudioProject; projects: StudioProjectsState }) {
-    const [over, setOver] = useState(false);
-    const [uploading, setUploading] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const picker = useRef<HTMLInputElement>(null);
-
-    const send = async (files: FileList | File[]) => {
-        setError(null);
-        // One at a time rather than all at once: these are whole video
-        // files, and a dozen concurrent uploads of a gigabyte each is
-        // how a local server starts refusing connections.
-        for (const file of Array.from(files)) {
-            setUploading(file.name);
-            try {
-                await uploadProjectFile(project.id, file);
-            } catch (e) {
-                setError(e instanceof Error ? e.message : `Could not add ${file.name}`);
-            }
-        }
-        setUploading(null);
-        projects.refresh();
-    };
-
-    const onDrop = (event: DragEvent) => {
-        event.preventDefault();
-        setOver(false);
-        if (event.dataTransfer.files.length > 0) void send(event.dataTransfer.files);
-    };
-
-    const remove = (file: ProjectFile) => {
-        const ok = confirm(
-            `Delete ${file.name} from the project's folder?\n\n`
-            + "This removes the file from your disk. Any cut that uses it will stop finding it.",
-        );
-        if (!ok) return;
-        void deleteProjectFile(project.id, file.name)
-            .then(() => projects.refresh())
-            .catch((e) => setError(e instanceof Error ? e.message : "Could not delete that file."));
-    };
-
-    return (
-        <section className="pd-panel">
-            <div className="pd-panel-head">
-                <h2>Footage</h2>
-                <span className="pd-count">{project.files.length}</span>
-                <span className="pd-panel-note">video, music and stills you cut from</span>
-                <button type="button" className="pd-refresh" onClick={() => projects.refresh()} aria-label="Re-read the folder">
-                    <RefreshCw size={13} strokeWidth={2} />
-                </button>
-            </div>
-
-            <div
-                className={`pd-drop${over ? " pd-drop-over" : ""}`}
-                onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-                onDragLeave={() => setOver(false)}
-                onDrop={onDrop}
-                onClick={() => picker.current?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") picker.current?.click(); }}
-            >
-                <Upload size={17} strokeWidth={1.75} />
-                <span className="pd-drop-main">
-                    {uploading ? `Adding ${uploading}…` : "Drop video, music or stills here"}
-                </span>
-                <span className="pd-drop-sub">or click to pick them — they land in this project's folder</span>
-                <input
-                    ref={picker}
-                    type="file"
-                    multiple
-                    accept="video/*,audio/*,image/*"
-                    onChange={(e) => { if (e.target.files) void send(e.target.files); e.target.value = ""; }}
-                    hidden
-                />
-            </div>
-
-            {error && <p className="pd-file-error">{error}</p>}
-
-            {/* The folder is the point: a real place on your disk, and
-                nothing here is copied into the app. */}
-            <div className="pd-folder">
-                <FolderOpen size={14} strokeWidth={1.75} />
-                <code>{project.folder || "No folder yet"}</code>
-            </div>
-
-            {project.files.length === 0 ? (
-                <p className="pd-muted">Empty. Drop something above and it's in the project.</p>
-            ) : (
-                <div className="pd-files">
-                    {project.files.map((file) => {
-                        const Icon = KIND_ICON[file.kind];
-                        return (
-                            <div key={file.name} className="pd-file">
-                                <Icon size={13} strokeWidth={1.75} />
-                                <span className="pd-file-name">{file.name}</span>
-                                <span className="pd-file-size">{(file.bytes / 1_000_000).toFixed(1)} MB</span>
-                                <button
-                                    type="button"
-                                    className="pd-icon-btn"
-                                    onClick={() => remove(file)}
-                                    aria-label={`Delete ${file.name}`}
-                                >
-                                    <Trash2 size={12} strokeWidth={1.75} />
-                                </button>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </section>
-    );
-}
-
-/* ── videos ─────────────────────────────────────────────────────────── */
-
-/**
- * The videos you are making — which is not the same list as the footage
- * below, and that difference is what was confusing.
- *
- * A file is material. A video here is one finished thing you are
- * working towards: it has its own cut, its own transcript and its own
- * posts. Several can be cut out of the same footage, which is exactly
- * why the two lists cannot be one.
- */
-function VideosPanel({ project, busy, after, onEdit }: {
-    project: StudioProject;
-    busy: boolean;
-    after: <T>(work: Promise<T>) => void;
-    onEdit: (id: number) => void;
-}) {
-    const [videoTitle, setVideoTitle] = useState("");
-    const { counts } = project;
-
-    const addVideo = (event: FormEvent) => {
-        event.preventDefault();
-        if (!videoTitle.trim()) return;
-        after(createVideoProject(videoTitle.trim(), undefined, project.id));
-        setVideoTitle("");
-    };
-
-    return (
-        <section className="pd-panel">
-            <div className="pd-panel-head">
-                <h2>Videos</h2>
-                <span className="pd-count">{counts.published}/{counts.videos} published</span>
-                <span className="pd-panel-note">what you're making, and where each one has got to</span>
-            </div>
-
-            <form className="pd-add" onSubmit={addVideo}>
-                <input
-                    value={videoTitle}
-                    onChange={(e) => setVideoTitle(e.target.value)}
-                    placeholder="What are you making? — e.g. Episode 3, the sump"
-                />
-                <button type="submit" disabled={!videoTitle.trim() || busy}><Plus size={14} strokeWidth={2} /></button>
-            </form>
-
-            {project.videos.length === 0 ? (
-                <p className="pd-muted">Nothing being made yet.</p>
-            ) : (
-                <div className="pd-videos">
-                    {project.videos.map((video) => (
-                        <VideoRow
-                            key={video.id}
-                            video={video}
-                            ideas={project.notes.filter((n) => n.videoProjectId === video.id)}
-                            onEdit={() => onEdit(video.id)}
-                            onDelete={() => {
-                                const ok = confirm(
-                                    `Delete "${video.title}"?\n\n`
-                                    + "The footage in the project's folder stays. The cut, the transcript and the "
-                                    + "text written for it go.",
-                                );
-                                if (ok) after(deleteVideoProject(video.id));
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
-        </section>
-    );
-}
-
-/**
- * One video and where it actually is.
- *
- * The chain replaces the single stage label that used to sit here. A
- * label says what somebody set; the chain says what has been done —
- * and, on the step that hasn't, what is missing.
- */
-function VideoRow({ video, ideas, onEdit, onDelete }: {
-    video: VideoProject;
-    ideas: LabNote[];
-    onEdit: () => void;
-    onDelete: () => void;
-}) {
-    const failed = video.transcriptStatus === "failed";
-    const chain = chainFor({ video, ideas });
-
-    return (
-        <div className={`pd-video${failed ? " pd-video-failed" : ""}`}>
-            <div className="pd-video-mark pd-video-mark-shot">
-                <Clapperboard size={15} strokeWidth={1.75} />
-            </div>
-            <div className="pd-video-body">
-                <span className="pd-video-title">
-                    <span className="pd-video-name">{video.title}</span>
-                </span>
-                <span className="pd-video-next">
-                    {failed && <AlertTriangle size={11} strokeWidth={2.5} />}
-                    {chainSummary({ video, ideas })}
-                </span>
-            </div>
-
-            <div className="pd-chain" aria-label={`${chain.done} of ${chain.total} done`}>
-                {chain.steps.map((step, i) => (
-                    <span key={step.stage} className="pd-chain-cell">
-                        {i > 0 && <span className="pd-chain-link" />}
-                        <span
-                            className={`pd-chain-step pd-chain-${step.state}`}
-                            title={step.next ?? `${step.label} — done`}
-                        >
-                            {step.label}
-                        </span>
-                    </span>
-                ))}
-            </div>
-
-            <div className="pd-video-actions">
-                <button type="button" onClick={onEdit}>Edit<ArrowRight size={12} strokeWidth={2} /></button>
-                <button type="button" className="pd-icon-btn" onClick={onDelete} aria-label={`Delete ${video.title}`}>
-                    <Trash2 size={13} strokeWidth={1.75} />
-                </button>
-            </div>
-        </div>
-    );
-}
-
-/* ── edit ───────────────────────────────────────────────────────────── */
-
-/**
- * The cut, as a step on this page rather than only a button on a row.
- *
- * Its own section for the same reason Publish has one: CREATE, EDIT and
- * PUBLISH are the three things you do to a video, and two of them being
- * sections while the third was a button meant the middle of the job had
- * no place of its own to stand.
- *
- * What it shows is what the editor would tell you before you open it —
- * how much is on the timeline and whether it has been rendered — so
- * "is this cut done" is answerable without going in.
- */
-function EditPanel({ project, onEdit }: { project: StudioProject; onEdit: (id: number) => void }) {
-    const [openId, setOpenId] = useState<number | null>(null);
-    const video = project.videos.find((v) => v.id === openId) ?? project.videos[0] ?? null;
-
-    const stored = video?.timeline as { clips?: unknown[] } | null;
-    const clips = stored && Array.isArray(stored.clips) ? stored.clips.length : 0;
-
-    return (
-        <section className="pd-panel">
-            <div className="pd-panel-head">
-                <h2>Edit</h2>
-                <span className="pd-panel-note">the cut itself — the timeline opens full width</span>
-            </div>
-
-            {!video && (
-                <p className="pd-muted">
-                    Nothing to cut yet. Add a video at the top of the page and its timeline lands here.
-                </p>
-            )}
-
-            {video && project.videos.length > 1 && (
-                <div className="pd-pub-tabs">
-                    {project.videos.map((v) => (
-                        <button
-                            key={v.id}
-                            type="button"
-                            className={`pd-pub-tab${v.id === video.id ? " pd-pub-tab-on" : ""}`}
-                            onClick={() => setOpenId(v.id)}
-                        >
-                            {v.title}
-                            {v.exported && <Check size={11} strokeWidth={3} />}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {video && (
-                <div className="pd-pub-state">
-                    <span className={clips > 0 ? "pd-pub-ok" : "pd-pub-wait"}>
-                        {clips === 0
-                            ? "Timeline is empty"
-                            : `${clips} ${clips === 1 ? "clip" : "clips"} on the timeline`}
-                    </span>
-                    <span className={video.exported ? "pd-pub-ok" : "pd-pub-wait"}>
-                        {video.exported ? "· exported" : "· not exported yet"}
-                    </span>
-                    <span className="pd-pub-spacer" />
-                    <button type="button" className="pd-small-btn" onClick={() => onEdit(video.id)}>
-                        Open the editor
-                        <ArrowRight size={12} strokeWidth={2} />
-                    </button>
-                </div>
-            )}
-        </section>
-    );
-}
-
-/* ── publish ────────────────────────────────────────────────────────── */
-
-const PIECES: { type: ContentItem["type"]; label: string; placeholder: string }[] = [
-    { type: "youtube-script", label: "YouTube", placeholder: "Title, description, chapters…" },
-    { type: "instagram-post", label: "Instagram", placeholder: "Caption and hashtags…" },
-    { type: "tiktok-post", label: "TikTok", placeholder: "Caption…" },
-    { type: "ad", label: "Ad", placeholder: "The paid version of the pitch…" },
-];
-
-/**
- * What goes out with the video, on the same page as the video.
- *
- * This used to be a screen you were switched into, which took the whole
- * project away to show you one corner of it. It is a section now, at
- * the bottom, where the work ends up.
- *
- * Nothing is posted anywhere. KIWI writes, you edit it, you copy it,
- * and you upload it yourself — which is also why this needs no account,
- * no token and no permission from anybody.
- */
-function PublishPanel({ project, videoStudio, after }: {
-    project: StudioProject;
-    videoStudio: VideoStudioState;
-    after: <T>(work: Promise<T>) => void;
-}) {
-    const [openId, setOpenId] = useState<number | null>(null);
-    // Falls back to the first video rather than storing it, so deleting
-    // the selected one can't leave this pointing at nothing.
-    const video = project.videos.find((v) => v.id === openId) ?? project.videos[0] ?? null;
-
-    return (
-        <section className="pd-panel">
-            <div className="pd-panel-head">
-                <h2>Publish</h2>
-                <span className="pd-panel-note">written here, posted by you — nothing leaves this machine on its own</span>
-            </div>
-
-            {/* An empty project used to make this section disappear
-                entirely, which reads as a missing feature rather than as
-                nothing to show. The text here is written FOR a video, so
-                with no videos there is genuinely nothing to write — and
-                saying that is the whole job. */}
-            {!video && (
-                <p className="pd-muted">
-                    Nothing to write yet. These texts are written for one video — add one at the top of the page
-                    and its titles, description and posts appear here.
-                </p>
-            )}
-
-            {video && project.videos.length > 1 && (
-                <div className="pd-pub-tabs">
-                    {project.videos.map((v) => (
-                        <button
-                            key={v.id}
-                            type="button"
-                            className={`pd-pub-tab${v.id === video.id ? " pd-pub-tab-on" : ""}`}
-                            onClick={() => setOpenId(v.id)}
-                        >
-                            {v.title}
-                            {v.stage === "published" && <Check size={11} strokeWidth={3} />}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {video && (
-                <>
-                    <div className="pd-pub-state">
-                        <span className={video.exported ? "pd-pub-ok" : "pd-pub-wait"}>
-                            {video.exported ? "Export is on disk, in Exports/" : "Nothing exported yet — cut it first"}
-                        </span>
-                        <span className="pd-pub-spacer" />
-                        <button
-                            type="button"
-                            className={`pd-small-btn${video.stage === "published" ? " pd-small-btn-on" : ""}`}
-                            onClick={() => {
-                                void videoStudio
-                                    .update(video.id, { stage: video.stage === "published" ? "editing" : "published" })
-                                    .then(() => after(Promise.resolve()));
-                            }}
-                        >
-                            {video.stage === "published" ? "Published ✓" : "Mark as published"}
-                        </button>
-                    </div>
-
-                    <div className="pd-pieces">
-                        {PIECES.map((piece) => (
-                            <PieceCard
-                                key={`${video.id}-${piece.type}`}
-                                piece={piece}
+                {project.videos.length === 0 ? (
+                    <p className="pd-muted">Nothing being made yet.</p>
+                ) : (
+                    <div className="pd-videos">
+                        {project.videos.map((video) => (
+                            <VideoBlock
+                                key={video.id}
                                 video={video}
-                                busy={videoStudio.busy[video.id] === "content" || videoStudio.busy[video.id] === "script"}
-                                onGenerate={() => {
-                                    if (piece.type === "youtube-script") videoStudio.draftScript(video.id, "");
-                                    else videoStudio.generateContent(video.id, piece.type as "ad" | "instagram-post" | "tiktok-post");
-                                }}
+                                project={project}
+                                projects={projects}
+                                videoStudio={videoStudio}
+                                open={openId === video.id}
+                                onToggle={() => setOpenId((was) => (was === video.id ? null : video.id))}
+                                onEdit={() => onEdit(video.id)}
                                 after={after}
+                                onDelete={() => {
+                                    const ok = confirm(
+                                        `Delete "${video.title}"?\n\n`
+                                        + "Its cut, transcript and everything written for it go. The footage in "
+                                        + "the project's folder stays.",
+                                    );
+                                    if (ok) after(deleteVideoProject(video.id));
+                                }}
                             />
                         ))}
                     </div>
-                </>
-            )}
-        </section>
+                )}
+            </section>
+        </div>
     );
 }
 
-function PieceCard({ piece, video, busy, onGenerate, after }: {
-    piece: (typeof PIECES)[number];
+/**
+ * One video: the row you scan, and everything about it underneath.
+ *
+ * Collapsed it is a title, where the work has got to, and the chain.
+ * Open it is the whole job. Only one is open at a time — a project with
+ * four videos all unfolded is the flat page again with extra steps.
+ */
+function VideoBlock({ video, project, projects, videoStudio, open, onToggle, onEdit, onDelete, after }: {
     video: VideoProject;
-    busy: boolean;
-    onGenerate: () => void;
+    project: StudioProject;
+    projects: StudioProjectsState;
+    videoStudio: VideoStudioState;
+    open: boolean;
+    onToggle: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
     after: <T>(work: Promise<T>) => void;
 }) {
-    const existing = video.contentItems.find((i) => i.type === piece.type) ?? null;
-    const [text, setText] = useState("");
-    const [dirty, setDirty] = useState(false);
-    const [copied, setCopied] = useState(false);
-
-    // A piece that arrives while this card is open replaces what is in
-    // the box — unless you have typed into it, in which case yours wins.
-    // Generation you asked for before you started typing must not throw
-    // away what you wrote after.
-    const shown = dirty ? text : (existing?.content ?? "");
-
-    const save = () => {
-        setDirty(false);
-        if (existing) after(updateContentItem(existing.id, { content: text }));
-        else after(createContentItem(piece.type, video.title, text, video.id));
-    };
-
-    const copy = () => {
-        void navigator.clipboard.writeText(shown).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1400);
-        });
-    };
+    // The jobs are read inside the workspace, which is where they are
+    // polled. Until it has been opened the chain reads an empty list —
+    // it says "make a thumbnail", which is right for a video nobody has
+    // opened yet.
+    const [jobs, setJobs] = useState<Parameters<typeof chainFor>[0]["jobs"]>([]);
+    const chain = chainFor({ video, jobs });
+    const failed = video.transcriptStatus === "failed";
 
     return (
-        <div className="pd-piece">
-            <div className="pd-piece-head">
-                <h3>{piece.label}</h3>
-                <span className="pd-pub-spacer" />
-                <button type="button" className="pd-small-btn" onClick={onGenerate} disabled={busy}>
-                    <Sparkles size={11} strokeWidth={2} />
-                    {busy ? "Writing…" : existing ? "Rewrite" : "Generate"}
+        <div className={`pd-video-block${open ? " pd-video-block-open" : ""}`}>
+            <div className={`pd-video${failed ? " pd-video-failed" : ""}`}>
+                <button type="button" className="pd-video-open" onClick={onToggle} aria-expanded={open}>
+                    {open
+                        ? <ChevronDown size={15} strokeWidth={2} />
+                        : <ChevronRight size={15} strokeWidth={2} />}
                 </button>
-                <button
-                    type="button"
-                    className="pd-icon-btn"
-                    onClick={copy}
-                    disabled={!shown}
-                    aria-label={`Copy the ${piece.label} text`}
-                >
-                    {copied ? <Check size={12} strokeWidth={3} /> : <Copy size={12} strokeWidth={1.75} />}
-                </button>
-                {existing && (
-                    <button
-                        type="button"
-                        className="pd-icon-btn"
-                        onClick={() => { if (confirm(`Delete the ${piece.label} text?`)) after(deleteContentItem(existing.id)); }}
-                        aria-label={`Delete the ${piece.label} text`}
-                    >
-                        <Trash2 size={12} strokeWidth={1.75} />
+
+                <div className="pd-video-body">
+                    <span className="pd-video-title">
+                        <span className="pd-video-name">{video.title}</span>
+                    </span>
+                    <span className="pd-video-next">
+                        {failed && <AlertTriangle size={11} strokeWidth={2.5} />}
+                        {chainSummary({ video, jobs })}
+                    </span>
+                </div>
+
+                <div className="pd-chain" aria-label={`${chain.done} of ${chain.total} done`}>
+                    {chain.steps.map((step, i) => (
+                        <span key={step.stage} className="pd-chain-cell">
+                            {i > 0 && <span className="pd-chain-link" />}
+                            <span
+                                className={`pd-chain-step pd-chain-${step.state}`}
+                                title={step.next ?? `${step.label} — done`}
+                            >
+                                {step.label}
+                            </span>
+                        </span>
+                    ))}
+                </div>
+
+                <div className="pd-video-actions">
+                    <button type="button" className="pd-icon-btn" onClick={onDelete} aria-label={`Delete ${video.title}`}>
+                        <Trash2 size={13} strokeWidth={1.75} />
                     </button>
-                )}
+                </div>
             </div>
 
-            <textarea
-                value={shown}
-                onChange={(e) => { setText(e.target.value); setDirty(true); }}
-                onBlur={() => { if (dirty) save(); }}
-                placeholder={piece.placeholder}
-                rows={7}
-            />
-
-            {dirty && <span className="pd-muted pd-piece-hint">Unsaved — click away to keep it</span>}
+            {open && (
+                <VideoWorkspace
+                    video={video}
+                    project={project}
+                    projects={projects}
+                    videoStudio={videoStudio}
+                    onEdit={onEdit}
+                    onJobs={setJobs}
+                    after={after}
+                />
+            )}
         </div>
     );
 }

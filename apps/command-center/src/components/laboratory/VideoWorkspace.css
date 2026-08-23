@@ -1,0 +1,370 @@
+/* Everything about one video, unfolded under it.
+
+   Indented and quieter than the row above it, so an open video reads
+   as a thing you went into rather than as five more sections of the
+   project. */
+
+.vw {
+
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    margin: 0 0 4px 34px;
+    border-left: 2px solid var(--border);
+    background: var(--border);
+
+}
+
+.vw-section { padding: 13px 15px; background: rgba(5, 8, 22, .62); }
+
+.vw-head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 9px; }
+
+.vw-head h3 {
+
+    margin: 0;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.7px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.vw-count {
+
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+
+}
+
+.vw-note { font-size: 11px; color: var(--text-muted); }
+
+.vw-muted { margin: 0; font-size: 11.5px; color: var(--text-muted); }
+.vw-ok { font-size: 11.5px; color: var(--secondary); }
+.vw-error { margin: 0; font-size: 11.5px; color: var(--danger); }
+.vw-done { color: var(--text-muted); text-decoration: line-through; }
+
+.vw-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vw-spacer { margin-left: auto; }
+
+/* ---- small controls ------------------------------------------------- */
+
+.vw-mini {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .6);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 620;
+    color: var(--text-muted);
+
+}
+
+.vw-mini:hover:not(:disabled) { color: var(--text); border-color: var(--primary); }
+.vw-mini:disabled { opacity: .4; cursor: not-allowed; }
+.vw-mini-go { border-color: rgba(73, 199, 255, .5); color: var(--primary); }
+.vw-mini-on { border-color: rgba(110, 243, 165, .5); color: var(--secondary); }
+
+.vw-ai {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 5px 13px;
+    border: 1px solid rgba(117, 102, 255, .6);
+    border-radius: 8px;
+    background: linear-gradient(rgba(117, 102, 255, .2), rgba(117, 102, 255, .12)), #0d1526;
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 650;
+    color: #dcd7ff;
+
+}
+
+.vw-ai:disabled { opacity: .4; cursor: not-allowed; }
+
+.vw-icon {
+
+    display: inline-flex;
+    flex-shrink: 0;
+
+    padding: 3px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    color: var(--text-muted);
+
+}
+
+.vw-icon:hover:not(:disabled) { color: var(--danger); border-color: rgba(255, 79, 109, .4); }
+.vw-icon:disabled { opacity: .3; cursor: not-allowed; }
+
+.vw-tick {
+
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+
+    width: 15px;
+    height: 15px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+    color: var(--space);
+
+}
+
+.vw-tick-on { background: var(--secondary); border-color: var(--secondary); }
+
+.vw-select {
+
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: rgba(16, 25, 46, .92);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 10.5px;
+    color: var(--text);
+
+}
+
+.vw-select:focus { outline: none; border-color: var(--primary); }
+
+/* ---- footage --------------------------------------------------------- */
+
+.vw-drop {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 14px;
+    margin-bottom: 9px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .4);
+    cursor: pointer;
+
+    font-size: 11.5px;
+    color: var(--text-muted);
+
+}
+
+.vw-drop:hover, .vw-drop:focus-visible { border-color: var(--primary); color: var(--text); }
+.vw-drop-over { border-color: var(--primary); background: rgba(73, 199, 255, .1); color: var(--text); }
+.vw-drop svg { color: var(--primary); }
+
+.vw-files { display: flex; flex-direction: column; gap: 3px; }
+
+.vw-file {
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    padding: 6px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(16, 25, 46, .55);
+
+    font-size: 11.5px;
+
+}
+
+.vw-file > svg { flex-shrink: 0; color: var(--text-muted); }
+
+.vw-file-name {
+
+    flex: 1;
+    min-width: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.vw-file-size { font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.vw-loose-head {
+
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    margin-top: 11px;
+    font-size: 10.5px;
+
+}
+
+/* ---- script and prompts ---------------------------------------------- */
+
+.vw-brief { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+
+.vw-brief textarea,
+.vw-script-body textarea,
+.vw-piece textarea {
+
+    width: 100%;
+    resize: vertical;
+
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(5, 8, 22, .6);
+
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text);
+
+}
+
+.vw-brief textarea:focus,
+.vw-script-body textarea:focus,
+.vw-piece textarea:focus { outline: none; border-color: var(--primary); }
+
+.vw-brief-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+
+.vw-script + .vw-script { margin-top: 4px; }
+
+.vw-script-head { display: flex; align-items: center; gap: 8px; }
+
+.vw-script-open {
+
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+
+    padding: 6px 9px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+
+    font: inherit;
+    font-size: 12px;
+    color: var(--text);
+
+}
+
+.vw-script-open:hover { background: rgba(22, 35, 64, .6); }
+.vw-script-open svg { flex-shrink: 0; color: var(--text-muted); }
+
+.vw-script-body { display: flex; flex-direction: column; gap: 6px; padding: 6px 9px 4px; }
+
+/* ---- generation queue ------------------------------------------------ */
+
+.vw-jobs { display: flex; flex-direction: column; gap: 4px; margin-top: 9px; }
+
+.vw-job {
+
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    gap: 9px;
+    align-items: center;
+
+    padding: 6px 9px;
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .5);
+
+}
+
+.vw-job-queued { border-left-color: var(--border); }
+.vw-job-running { border-left-color: var(--accent); }
+.vw-job-done { border-left-color: var(--secondary); }
+.vw-job-failed { border-left-color: var(--danger); }
+.vw-job-cancelled { border-left-color: var(--border); opacity: .6; }
+
+.vw-job-thumb {
+
+    display: grid;
+    place-items: center;
+
+    width: 34px;
+    aspect-ratio: 16 / 10;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: rgba(16, 25, 46, .9);
+    overflow: hidden;
+    color: var(--text-muted);
+
+}
+
+.vw-job-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.vw-job-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.vw-job-prompt {
+
+    font-size: 11.5px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+/* ---- publish --------------------------------------------------------- */
+
+.vw-pieces {
+
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 9px;
+    margin-top: 10px;
+
+}
+
+.vw-piece {
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(5, 8, 22, .45);
+
+}
+
+.vw-piece-head { display: flex; align-items: center; gap: 6px; }
+
+.vw-piece-head h4 {
+
+    margin: 0;
+
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
