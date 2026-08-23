@@ -15,6 +15,7 @@ import SpaceBackdrop from "./SpaceBackdrop";
 import { MOON_POSITION, MOON_RADIUS } from "./moonPlacement";
 import TopBar from "./TopBar";
 import VoiceBar from "./VoiceBar";
+import LiberecCamera from "./LiberecCamera";
 import DetailDrawer, { type DetailDrawerContent } from "../ui/DetailDrawer";
 import InfoPanel from "../ui/InfoPanel";
 import { findBrainRegion, regionAtLocalDirection, type BrainRegionDefinition } from "../../state/brainRegions";
@@ -1009,6 +1010,11 @@ export default function BrainScene3D({
             <div className="brain-voice-bar-row">
                 <VoiceBar onListeningChange={setKiwiListening} />
             </div>
+
+            {/* Bottom right, which is the one corner of the dashboard
+                with nothing in it — the map is top left, the minimap
+                bottom left, Hey Kiwi across the middle. */}
+            <LiberecCamera />
 
             <DetailDrawer content={detail} onClose={() => setDetail(null)} />
 

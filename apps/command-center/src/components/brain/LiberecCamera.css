@@ -1,0 +1,109 @@
+/* The live camera, bottom right of the brain.
+
+   Small on purpose. It is a glance, not a screen — the corner it sits
+   in is the only part of the dashboard with nothing in it, and it
+   should stay that way for anything that isn't this. */
+
+.libcam {
+
+    position: absolute;
+    right: 22px;
+    bottom: 22px;
+    z-index: 6;
+
+    width: 300px;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(16, 25, 46, .9);
+    overflow: hidden;
+
+    backdrop-filter: blur(6px);
+    box-shadow: 0 20px 44px -26px rgba(0, 0, 0, .9);
+
+}
+
+.libcam-closed { width: auto; }
+
+.libcam-head {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 8px 9px 8px 12px;
+
+}
+
+.libcam-live {
+
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+
+    border-radius: 50%;
+    background: var(--danger);
+    box-shadow: 0 0 8px rgba(255, 79, 109, .9);
+
+    animation: libcam-pulse 2.4s ease-in-out infinite;
+
+}
+
+@keyframes libcam-pulse { 50% { opacity: .35; } }
+
+.libcam-title {
+
+    flex: 1;
+    min-width: 0;
+
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.libcam-source,
+.libcam-toggle {
+
+    display: inline-flex;
+    flex-shrink: 0;
+
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: none;
+    cursor: pointer;
+
+    color: var(--text-muted);
+
+}
+
+.libcam-source:hover,
+.libcam-toggle:hover { color: var(--primary); border-color: var(--border); }
+
+.libcam-frame {
+
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border-top: 1px solid var(--border);
+
+}
+
+.libcam-frame iframe {
+
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .libcam-live { animation: none; }
+}
