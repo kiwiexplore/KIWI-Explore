@@ -575,8 +575,6 @@ function PublishPanel({ project, videoStudio, after }: {
     // the selected one can't leave this pointing at nothing.
     const video = project.videos.find((v) => v.id === openId) ?? project.videos[0] ?? null;
 
-    if (!video) return null;
-
     return (
         <section className="pd-panel">
             <div className="pd-panel-head">
@@ -584,7 +582,19 @@ function PublishPanel({ project, videoStudio, after }: {
                 <span className="pd-panel-note">written here, posted by you — nothing leaves this machine on its own</span>
             </div>
 
-            {project.videos.length > 1 && (
+            {/* An empty project used to make this section disappear
+                entirely, which reads as a missing feature rather than as
+                nothing to show. The text here is written FOR a video, so
+                with no videos there is genuinely nothing to write — and
+                saying that is the whole job. */}
+            {!video && (
+                <p className="pd-muted">
+                    Nothing to write yet. These texts are written for one video — add one at the top of the page
+                    and its titles, description and posts appear here.
+                </p>
+            )}
+
+            {video && project.videos.length > 1 && (
                 <div className="pd-pub-tabs">
                     {project.videos.map((v) => (
                         <button
@@ -600,39 +610,43 @@ function PublishPanel({ project, videoStudio, after }: {
                 </div>
             )}
 
-            <div className="pd-pub-state">
-                <span className={video.exported ? "pd-pub-ok" : "pd-pub-wait"}>
-                    {video.exported ? "Export is on disk, in Exports/" : "Nothing exported yet — cut it first"}
-                </span>
-                <span className="pd-pub-spacer" />
-                <button
-                    type="button"
-                    className={`pd-small-btn${video.stage === "published" ? " pd-small-btn-on" : ""}`}
-                    onClick={() => {
-                        void videoStudio
-                            .update(video.id, { stage: video.stage === "published" ? "editing" : "published" })
-                            .then(() => after(Promise.resolve()));
-                    }}
-                >
-                    {video.stage === "published" ? "Published ✓" : "Mark as published"}
-                </button>
-            </div>
+            {video && (
+                <>
+                    <div className="pd-pub-state">
+                        <span className={video.exported ? "pd-pub-ok" : "pd-pub-wait"}>
+                            {video.exported ? "Export is on disk, in Exports/" : "Nothing exported yet — cut it first"}
+                        </span>
+                        <span className="pd-pub-spacer" />
+                        <button
+                            type="button"
+                            className={`pd-small-btn${video.stage === "published" ? " pd-small-btn-on" : ""}`}
+                            onClick={() => {
+                                void videoStudio
+                                    .update(video.id, { stage: video.stage === "published" ? "editing" : "published" })
+                                    .then(() => after(Promise.resolve()));
+                            }}
+                        >
+                            {video.stage === "published" ? "Published ✓" : "Mark as published"}
+                        </button>
+                    </div>
 
-            <div className="pd-pieces">
-                {PIECES.map((piece) => (
-                    <PieceCard
-                        key={`${video.id}-${piece.type}`}
-                        piece={piece}
-                        video={video}
-                        busy={videoStudio.busy[video.id] === "content" || videoStudio.busy[video.id] === "script"}
-                        onGenerate={() => {
-                            if (piece.type === "youtube-script") videoStudio.draftScript(video.id, "");
-                            else videoStudio.generateContent(video.id, piece.type as "ad" | "instagram-post" | "tiktok-post");
-                        }}
-                        after={after}
-                    />
-                ))}
-            </div>
+                    <div className="pd-pieces">
+                        {PIECES.map((piece) => (
+                            <PieceCard
+                                key={`${video.id}-${piece.type}`}
+                                piece={piece}
+                                video={video}
+                                busy={videoStudio.busy[video.id] === "content" || videoStudio.busy[video.id] === "script"}
+                                onGenerate={() => {
+                                    if (piece.type === "youtube-script") videoStudio.draftScript(video.id, "");
+                                    else videoStudio.generateContent(video.id, piece.type as "ad" | "instagram-post" | "tiktok-post");
+                                }}
+                                after={after}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
         </section>
     );
 }
