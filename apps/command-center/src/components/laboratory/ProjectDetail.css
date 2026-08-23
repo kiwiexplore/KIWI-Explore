@@ -811,6 +811,8 @@
 /* --- header: the name and what the project is ------------------------ */
 
 .pd-head { display: flex; align-items: flex-start; gap: 20px; }
+/* Full width, on its own line — see ProjectDetail.tsx. */
+.pd-desc { width: 100%; min-height: 3.2em; }
 .pd-head-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .pd-head-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 

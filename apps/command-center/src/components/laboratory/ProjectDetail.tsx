@@ -132,13 +132,6 @@ export default function ProjectDetail({
                         placeholder="Name this project"
                         onSave={(title) => projects.update(project.id, { title })}
                     />
-                    <EditableText
-                        className="pd-desc"
-                        value={project.description}
-                        placeholder="What is this project about? — a series, a channel run, one film…"
-                        multiline
-                        onSave={(description) => projects.update(project.id, { description })}
-                    />
                 </div>
                 <div className="pd-head-right">
                     <div className="pd-progress">
@@ -151,6 +144,17 @@ export default function ProjectDetail({
                     </button>
                 </div>
             </div>
+
+            {/* On its own row, full width. Beside the progress bar it
+                had a third of the page to say what a whole series is
+                about, which is not enough room to write in. */}
+            <EditableText
+                className="pd-desc"
+                value={project.description}
+                placeholder="What is this project about? — a series, a channel run, one film…"
+                multiline
+                onSave={(description) => projects.update(project.id, { description })}
+            />
 
             {error && (
                 <div className="pd-error">

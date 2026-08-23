@@ -701,3 +701,38 @@
     line-height: 1.45;
 
 }
+
+/* --- keeping an instrument in the bar --------------------------------
+
+   A pin rather than a drag: the bar has room for three and there are
+   fifty instruments, so "which three" is a choice you make once from
+   the full list, not an arrangement you maintain. */
+
+.market-rows li { display: flex; align-items: center; gap: 4px; }
+
+.market-pin {
+
+    display: inline-flex;
+    flex-shrink: 0;
+
+    padding: 4px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+
+    color: var(--text-muted);
+    opacity: .35;
+
+}
+
+.market-rows li:hover .market-pin { opacity: 1; }
+
+.market-pin-on {
+
+    opacity: 1;
+    color: var(--primary);
+    border-color: rgba(73, 199, 255, .45);
+    background: rgba(73, 199, 255, .12);
+
+}

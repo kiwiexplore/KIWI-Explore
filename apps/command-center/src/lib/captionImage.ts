@@ -1,3 +1,5 @@
+import { DEFAULT_TEXT_STYLE, type TextStyle } from "../state/studioEditor";
+
 /**
  * Captions, drawn by the browser and handed to the render as pictures.
  *
@@ -15,11 +17,8 @@
  * What you were looking at is what lands in the file.
  */
 
-/** Matches .studio-caption: 8% inset, 7% up from the bottom. */
+/** Matches .studio-caption's 8% side inset. */
 const SIDE_INSET = 0.08;
-const BOTTOM_INSET = 0.07;
-/** 2.6% of the frame's width, the same figure the preview's cqw is. */
-const FONT_SCALE = 0.026;
 const LINE_HEIGHT = 1.35;
 
 export interface CaptionImage {
@@ -34,9 +33,9 @@ export interface CaptionImage {
 
 /** The font the preview is using, read off the page so the two cannot
  *  drift apart by editing one of them. */
-function captionFont(size: number): string {
+function captionFont(size: number, weight = 650): string {
     const family = getComputedStyle(document.body).fontFamily || "system-ui, sans-serif";
-    return `650 ${size}px ${family}`;
+    return `${weight} ${size}px ${family}`;
 }
 
 /** Greedy wrap at the box width — the same result CSS gives for text
@@ -70,13 +69,18 @@ export function renderCaption(
     duration: number,
     frameWidth: number,
     frameHeight: number,
+    style: TextStyle = DEFAULT_TEXT_STYLE,
 ): CaptionImage | null {
-    const fontSize = Math.max(12, Math.round(frameWidth * FONT_SCALE));
+    // Every figure in a style is a fraction of the frame, so the same
+    // caption lands in the same place whether this is rendering 1920
+    // wide or 1080 (Sprint 120). A size in pixels would be twice as big
+    // in one of them.
+    const fontSize = Math.max(10, Math.round(frameWidth * style.size));
     const boxWidth = Math.round(frameWidth * (1 - SIDE_INSET * 2));
 
     const measure = document.createElement("canvas").getContext("2d");
     if (!measure) return null;
-    measure.font = captionFont(fontSize);
+    measure.font = captionFont(fontSize, style.weight);
     const lines = wrap(measure, text, boxWidth);
 
     const lineHeight = Math.round(fontSize * LINE_HEIGHT);
@@ -91,10 +95,18 @@ export function renderCaption(
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
 
-    ctx.font = captionFont(fontSize);
-    ctx.textAlign = "center";
+    // The band goes down first, under everything, so the words and
+    // their shadow sit on it rather than under it.
+    if (style.band) {
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0, 0, boxWidth, boxHeight);
+    }
+
+    ctx.font = captionFont(fontSize, style.weight);
+    ctx.textAlign = style.align;
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = style.color;
+    const x = style.align === "left" ? pad : style.align === "right" ? boxWidth - pad : boxWidth / 2;
 
     // The preview's two text-shadows, in proportion to the type rather
     // than at the fixed pixel sizes the CSS names — those were written
@@ -108,7 +120,7 @@ export function renderCaption(
         ctx.shadowBlur = pass.blur;
         ctx.shadowOffsetY = pass.offset;
         lines.forEach((line, i) => {
-            ctx.fillText(line, boxWidth / 2, pad + i * lineHeight + lineHeight / 2);
+            ctx.fillText(line, x, pad + i * lineHeight + lineHeight / 2);
         });
     }
 
@@ -120,6 +132,9 @@ export function renderCaption(
         duration,
         png,
         x: Math.round(frameWidth * SIDE_INSET),
-        y: Math.round(frameHeight * (1 - BOTTOM_INSET) - boxHeight),
+        // `y` in a style is the MIDDLE of the text, which is what the
+        // preview positions by — so the box is placed half its height
+        // above it.
+        y: Math.max(0, Math.round(frameHeight * style.y - boxHeight / 2)),
     };
 }

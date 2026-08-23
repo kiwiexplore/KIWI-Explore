@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
-    Captions, ChevronLeft, Clapperboard, Film, Music2, Redo2, Scissors, SkipBack, SkipForward,
-    Sparkles, Trash2, Type, Undo2, Upload, Volume2, ZoomIn, ZoomOut,
+    Captions, ChevronLeft, Clapperboard, Film, Maximize2, Minimize2, Music2, Redo2, Scissors,
+    SkipBack, SkipForward, Sparkles, Trash2, Type, Undo2, Volume2, ZoomIn, ZoomOut,
 } from "lucide-react";
-import { useStudioEditorState, type Clip } from "../../state/studioEditor";
+import { useStudioEditorState, DEFAULT_TEXT_STYLE, type Clip } from "../../state/studioEditor";
 import {
     exportFileUrl, exportTimeline, fetchTranscript, fetchVideoProject, saveTimeline,
     saveTimelineOnUnload, sendToResolve, startTranscription, VideoStepBlockedError, VIDEO_LANGUAGES,
@@ -87,6 +87,9 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const editor = useStudioEditorState(storedClips(project.timeline));
     const videoRef = useRef<HTMLVideoElement>(null);
     const [zoom, setZoom] = useState(2);
+    // How much room the picture gets. The timeline is what gives it up,
+    // so this is one control rather than a drag handle nobody finds.
+    const [big, setBig] = useState(false);
     const [volume, setVolume] = useState(1);
     const rootRef = useRef<HTMLDivElement>(null);
     const [subtitleError, setSubtitleError] = useState<string | null>(null);
@@ -116,17 +119,23 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     // a click somewhere first.
     useEffect(() => { rootRef.current?.focus(); }, []);
 
-    // The bin IS the project's folder. Nothing is imported into the app
-    // — the files are already where they belong, and this reads them.
+    // The bin is THIS VIDEO'S footage, not the whole folder. Files are
+    // filed under a video on the project page, and a bin showing every
+    // file in the project was the editor disagreeing with the page you
+    // came from about what this video is made of.
     const { setAssets } = editor;
+    const files = owner?.files.filter((f) => f.videoProjectId === project.id) ?? [];
+    const fileKey = files.map((f) => f.name).join("|");
     useEffect(() => {
         if (!owner) return;
         let cancelled = false;
-        void assetsFromFolder(owner.id, owner.files).then((assets) => {
-            if (!cancelled) setAssets(assets);
-        });
+        void assetsFromFolder(owner.id, owner.files.filter((f) => f.videoProjectId === project.id))
+            .then((assets) => { if (!cancelled) setAssets(assets); });
         return () => { cancelled = true; };
-    }, [owner, setAssets]);
+        // Keyed on the NAMES rather than the array, which is rebuilt on
+        // every refresh and would re-decode an hour of footage each time.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [owner?.id, fileKey, project.id, setAssets]);
 
     /**
      * Every change to the edit is written, not just the ones somebody
@@ -256,7 +265,7 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
         }
     };
 
-    const step = (seconds: number) => editor.setPlayhead(editor.playhead + seconds);
+    const step = (seconds: number) => editor.nudgePlayhead(seconds);
 
     /** Video files in the project's folder — what can be transcribed. */
     const videoAssets = editor.assets.filter((a) => a.kind === "video");
@@ -449,6 +458,26 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
         }
     };
 
+    /**
+     * The copy that goes where you want it.
+     *
+     * Called from a click of its own, because the picker needs a live
+     * user gesture — one that has not been spent waiting several
+     * seconds for ffmpeg.
+     */
+    const saveCopy = async (variant: string, label: string) => {
+        setExportError(null);
+        const name = `${project.title.replace(/[/\\:]/g, "-")}${variant ? `-${variant}` : ""}.mp4`;
+        try {
+            const outcome = await saveRenderAs(exportFileUrl(project.id, variant), name);
+            if (outcome === "cancelled") return;
+            setSavedTo(`${label} ${outcome === "saved" ? "saved" : "downloaded"}. `
+                + "The render stays in the project's Exports folder either way.");
+        } catch (e) {
+            setExportError(e instanceof Error ? e.message : "Could not save that copy.");
+        }
+    };
+
     const runExport = async () => {
         setExportError(null);
         setExportDone(null);
@@ -503,7 +532,10 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                 const texts = editor.clips
                     .filter((c) => c.text !== undefined)
                     .map((c) => {
-                        const drawn = renderCaption(c.text ?? "", c.start, c.duration, width, height);
+                        const drawn = renderCaption(
+                            c.text ?? "", c.start, c.duration, width, height,
+                            { ...DEFAULT_TEXT_STYLE, ...c.style },
+                        );
                         return drawn
                             ? { text: c.text ?? "", ...drawn }
                             : { text: c.text ?? "", start: c.start, duration: c.duration };
@@ -519,21 +551,6 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                 done.push({ variant: preset.variant, label: preset.label, bytes: result.bytes, warnings: result.warnings });
             }
             setExportDone(done);
-
-            // Then ask where it goes. The render is already safe in the
-            // project's Exports folder — this is the copy that lands
-            // where you actually want it, one dialog per shape.
-            const saved: string[] = [];
-            for (const d of done) {
-                setExporting(`${d.label} — saving…`);
-                const name = `${project.title.replace(/[/\\:]/g, "-")}${d.variant ? `-${d.variant}` : ""}.mp4`;
-                const outcome = await saveRenderAs(exportFileUrl(project.id, d.variant), name);
-                if (outcome === "cancelled") break;
-                saved.push(`${d.label} ${outcome === "saved" ? "saved" : "downloaded"}`);
-            }
-            setSavedTo(saved.length > 0
-                ? `${saved.join(", ")}. A copy stays in the project's Exports folder either way.`
-                : "Not saved anywhere else — the render is in the project's Exports folder.");
         } catch (e) {
             setExportError(e instanceof Error ? e.message : "Could not export.");
         } finally {
@@ -542,7 +559,7 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     };
 
     return (
-        <div className="studio-editor" tabIndex={-1} onKeyDown={onKeyDown} ref={rootRef}>
+        <div className={`studio-editor${big ? " studio-editor-big" : ""}`} tabIndex={-1} onKeyDown={onKeyDown} ref={rootRef}>
 
             {/* Project bar — what you're working on, and what you do to
                 the whole of it. Thin on purpose: it must not compete
@@ -627,22 +644,24 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
 
                 {/* LEFT · media */}
                 <aside className="studio-media">
-                    <div className="studio-folder">
-                        <Upload size={13} strokeWidth={2} />
-                        <span>{owner ? "Project folder" : "No project folder"}</span>
+                    {/* No folder header any more. Footage is pinned to
+                        the video on the project page, so "which folder"
+                        stopped being a question you ask in here — this
+                        is simply what this video is cut from. */}
+                    <div className="studio-bin-head">
+                        <Film size={13} strokeWidth={2} />
+                        <span>Footage</span>
+                        <span className="studio-bin-count">{editor.assets.length}</span>
                     </div>
-                    {/* The files are already on disk. Putting one in the
-                        folder from Finder is the import. */}
-                    <p className="studio-import-hint">
-                        {owner ? "Drop footage into the project's folder in Finder." : "This video isn't in a project yet."}
-                    </p>
                     {editor.assets.length > 0 && (
                         <p className="studio-import-hint studio-import-hint-drag">Drag a clip onto a track, or use Add.</p>
                     )}
 
                     <div className="studio-asset-list">
                         {editor.assets.length === 0 ? (
-                            <p className="studio-empty">Nothing imported yet.</p>
+                            <p className="studio-empty">
+                                Nothing filed under this video. Add footage to it on the project page.
+                            </p>
                         ) : editor.assets.map((asset) => (
                             <div
                                 key={asset.id}
@@ -704,9 +723,28 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                             a subtitle you have to look somewhere else to
                             read tells you nothing about how it sits on
                             the frame. */}
-                        {editor.textAt(editor.playhead).map((clip) => (
-                            <div key={clip.id} className="studio-caption">{clip.text}</div>
-                        ))}
+                        {/* Drawn at the size and place it will really
+                            have: everything in a style is a fraction of
+                            the frame, so the preview and the render can't
+                            disagree about it. */}
+                        {editor.textAt(editor.playhead).map((clip) => {
+                            const s = { ...DEFAULT_TEXT_STYLE, ...clip.style };
+                            return (
+                                <div
+                                    key={clip.id}
+                                    className={`studio-caption${s.band ? " studio-caption-band" : ""}`}
+                                    style={{
+                                        top: `${s.y * 100}%`,
+                                        fontSize: `${s.size * 100}cqw`,
+                                        fontWeight: s.weight,
+                                        textAlign: s.align,
+                                        color: s.color,
+                                    }}
+                                >
+                                    <span>{clip.text}</span>
+                                </div>
+                            );
+                        })}
                     </div>
 
                     <div className="studio-transport">
@@ -736,6 +774,16 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                             onChange={(e) => setVolume(Number(e.target.value))}
                             className="studio-volume" aria-label="Volume"
                         />
+                        <button
+                            type="button"
+                            className="studio-transport-btn"
+                            onClick={() => setBig((b) => !b)}
+                            aria-pressed={big}
+                            aria-label={big ? "Shrink the preview" : "Enlarge the preview"}
+                            title={big ? "Give the timeline its room back" : "Give the picture more room"}
+                        >
+                            {big ? <Minimize2 size={15} strokeWidth={2} /> : <Maximize2 size={15} strokeWidth={2} />}
+                        </button>
                     </div>
                 </section>
 
@@ -876,20 +924,78 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                 </div>
             )}
 
-            {selectedText && (
-                <div className="studio-text-edit">
-                    <Type size={14} strokeWidth={2} />
-                    <input
-                        value={selectedText.text ?? ""}
-                        onChange={(e) => editor.updateText(selectedText.id, e.target.value)}
-                        placeholder="What it says…"
-                        aria-label="Text"
-                    />
-                    <span className="studio-text-edit-time">
-                        {formatClock(selectedText.start)} – {formatClock(selectedText.start + selectedText.duration)}
-                    </span>
-                </div>
-            )}
+            {selectedText && (() => {
+                const s = { ...DEFAULT_TEXT_STYLE, ...selectedText.style };
+                const style = (change: Partial<typeof s>) => editor.styleText(selectedText.id, change);
+                return (
+                    <div className="studio-text-edit">
+                        <Type size={14} strokeWidth={2} />
+                        <input
+                            value={selectedText.text ?? ""}
+                            onChange={(e) => editor.updateText(selectedText.id, e.target.value)}
+                            placeholder="What it says…"
+                            aria-label="Text"
+                        />
+
+                        <span className="studio-text-tools">
+                            <button type="button" onClick={() => style({ size: Math.max(0.012, s.size - 0.004) })} aria-label="Smaller">A−</button>
+                            <span className="studio-text-value">{Math.round(s.size * 1000)}</span>
+                            <button type="button" onClick={() => style({ size: Math.min(0.14, s.size + 0.004) })} aria-label="Bigger">A+</button>
+
+                            <span className="studio-bar-divider" />
+
+                            {(["left", "center", "right"] as const).map((a) => (
+                                <button
+                                    key={a}
+                                    type="button"
+                                    className={s.align === a ? "studio-text-on" : ""}
+                                    onClick={() => style({ align: a })}
+                                    aria-pressed={s.align === a}
+                                >
+                                    {a === "left" ? "⇤" : a === "center" ? "↔" : "⇥"}
+                                </button>
+                            ))}
+
+                            <span className="studio-bar-divider" />
+
+                            <button type="button" onClick={() => style({ y: Math.max(0.05, s.y - 0.04) })} aria-label="Move up">↑</button>
+                            <span className="studio-text-value">{Math.round(s.y * 100)}%</span>
+                            <button type="button" onClick={() => style({ y: Math.min(0.97, s.y + 0.04) })} aria-label="Move down">↓</button>
+
+                            <span className="studio-bar-divider" />
+
+                            <button
+                                type="button"
+                                className={s.weight >= 800 ? "studio-text-on" : ""}
+                                onClick={() => style({ weight: s.weight >= 800 ? 650 : 900 })}
+                                aria-pressed={s.weight >= 800}
+                            >
+                                <strong>B</strong>
+                            </button>
+                            <button
+                                type="button"
+                                className={s.band ? "studio-text-on" : ""}
+                                onClick={() => style({ band: !s.band })}
+                                aria-pressed={s.band}
+                                title="A dark band behind the words"
+                            >
+                                ▬
+                            </button>
+                            <input
+                                type="color"
+                                className="studio-text-colour"
+                                value={s.color}
+                                onChange={(e) => style({ color: e.target.value })}
+                                aria-label="Colour"
+                            />
+                        </span>
+
+                        <span className="studio-text-edit-time">
+                            {formatClock(selectedText.start)} – {formatClock(selectedText.start + selectedText.duration)}
+                        </span>
+                    </div>
+                );
+            })()}
 
             {resolveDone && (
                 <div className="studio-export-done">
@@ -915,10 +1021,29 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     {/* A render that quietly dropped something is worse
                         than one that failed: this says what it couldn't
                         do, in the same breath as the success. */}
+                    {/* A button, not something that happens on its own.
+                        showSaveFilePicker needs a live user gesture and a
+                        render takes seconds, so opening it when the
+                        render finished threw "must be handling a user
+                        gesture" every time — the file was made and the
+                        screen said it had failed. Your click on this is
+                        the gesture. */}
+                    <span className="studio-export-actions">
+                        {exportDone.map((d) => (
+                            <button
+                                key={d.variant}
+                                type="button"
+                                className="studio-bar-btn"
+                                onClick={() => void saveCopy(d.variant, d.label)}
+                            >
+                                Save {d.label} as…
+                            </button>
+                        ))}
+                    </span>
                     {savedTo && <span className="studio-export-saved">{savedTo}</span>}
                     {!canPickFolder() && (
                         <span className="studio-export-warning">
-                            This browser has no Save As dialog, so the copy went to your Downloads folder.
+                            This browser has no Save As dialog, so Save as… puts it in your Downloads folder.
                         </span>
                     )}
                     {[...new Set(exportDone.flatMap((d) => d.warnings))]

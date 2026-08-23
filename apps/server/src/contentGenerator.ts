@@ -1,8 +1,8 @@
 import { getClient, AnthropicNotConfiguredError } from "./anthropic.js";
 
-export type ContentType = "youtube-script" | "instagram-post" | "tiktok-post";
+export type ContentType = "youtube-script" | "instagram-post" | "tiktok-post" | "facebook-post";
 
-export const CONTENT_TYPES: ContentType[] = ["youtube-script", "instagram-post", "tiktok-post"];
+export const CONTENT_TYPES: ContentType[] = ["youtube-script", "instagram-post", "tiktok-post", "facebook-post"];
 
 // One-shot generation, deliberately separate from Kiwi's own chat
 // (askKiwi in anthropic.ts) — no conversation history, no memory, just
@@ -26,6 +26,9 @@ Keep it engaging and concise (under ~150 words), end with a short call to action
     "tiktok-post": (topic) => `Write a TikTok video script/caption about: "${topic}".
 
 Hook viewers in the first 3 seconds. Keep it punchy, high-energy, and short (30-60 seconds spoken). Include a short on-screen-text style caption and 3-5 relevant hashtags at the end.`,
+    "facebook-post": (topic) => `Write a Facebook post about: "${topic}".
+
+Facebook reads longer and slower than the others: open with the thing worth stopping for, give two or three sentences of real substance, and close with a clear next step. One or two hashtags at most — more reads as spam there.`,
 };
 
 export async function generateContent(type: ContentType, topic: string): Promise<string> {

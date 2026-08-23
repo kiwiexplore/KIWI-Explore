@@ -10,7 +10,7 @@ const API_TOKEN = import.meta.env.VITE_KIWI_API_TOKEN ?? "";
 // 'ad' pieces are produced by Video Studio (POST /api/video/:id/content),
 // not by this file's own generate call — but they land in the same
 // content_items table, so anything listing content has to render them.
-export type ContentType = "youtube-script" | "instagram-post" | "tiktok-post" | "ad";
+export type ContentType = "youtube-script" | "instagram-post" | "tiktok-post" | "facebook-post" | "ad";
 
 // What Content Hub's own Generate form can ask for. Narrower than
 // ContentType on purpose: the server's /api/content/generate only knows

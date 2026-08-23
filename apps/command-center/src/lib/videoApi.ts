@@ -43,7 +43,7 @@ export const VIDEO_LANGUAGES: { value: string; label: string }[] = [
 ];
 
 /** Follow-up pieces a finished video can spawn (its own script aside). */
-export type DerivedContentType = "ad" | "instagram-post" | "tiktok-post";
+export type DerivedContentType = "ad" | "instagram-post" | "tiktok-post" | "facebook-post";
 
 export interface VideoClip {
     start: number; // seconds into the video

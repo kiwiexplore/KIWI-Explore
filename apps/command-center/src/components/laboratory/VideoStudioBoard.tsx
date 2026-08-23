@@ -1,7 +1,7 @@
 import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
     AlertTriangle, ArrowLeft, Check, Clapperboard, FileText, Info, Instagram, Loader2, Megaphone,
-    Film, Music2, Plus, RotateCcw, Scissors, SlidersHorizontal, Trash2, Wand2,
+    Film, MessageSquare, Music2, Plus, RotateCcw, Scissors, SlidersHorizontal, Trash2, Wand2,
 } from "lucide-react";
 import type { VideoBusyAction, VideoStudioState } from "../../state/videoStudio";
 import type { DerivedContentType, TranscriptStatus, VideoProject, VideoStage } from "../../lib/videoApi";
@@ -30,14 +30,16 @@ const DERIVED_META: Record<DerivedContentType, { label: string; icon: typeof Meg
     ad: { label: "Ad", icon: Megaphone },
     "instagram-post": { label: "Instagram post", icon: Instagram },
     "tiktok-post": { label: "TikTok post", icon: Music2 },
+    "facebook-post": { label: "Facebook post", icon: MessageSquare },
 };
 
-const DERIVED_ORDER: DerivedContentType[] = ["ad", "instagram-post", "tiktok-post"];
+const DERIVED_ORDER: DerivedContentType[] = ["ad", "instagram-post", "tiktok-post", "facebook-post"];
 
 const CONTENT_TYPE_LABEL: Record<ContentItem["type"], string> = {
     "youtube-script": "Script",
     "instagram-post": "Instagram post",
     "tiktok-post": "TikTok post",
+    "facebook-post": "Facebook post",
     ad: "Ad",
 };
 

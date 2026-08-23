@@ -48,6 +48,36 @@ export interface MediaAsset {
 
 export type TrackKind = "video" | "audio";
 
+/**
+ * How a caption is drawn.
+ *
+ * Sizes are a fraction of the FRAME WIDTH rather than pixels, because
+ * the same edit renders at 1920 and at 1080 wide (Sprint 120) and a
+ * caption measured in pixels would be twice the size in one of them.
+ * Position is the same: a fraction from the top, so it sits in the
+ * same place whatever shape the frame is.
+ */
+export interface TextStyle {
+    /** Fraction of the frame's width. 0.026 is the old fixed size. */
+    size: number;
+    /** Fraction of the frame's height, to the middle of the text. */
+    y: number;
+    align: "left" | "center" | "right";
+    weight: number;
+    color: string;
+    /** A dark band behind the words, for footage they'd disappear on. */
+    band: boolean;
+}
+
+export const DEFAULT_TEXT_STYLE: TextStyle = {
+    size: 0.026,
+    y: 0.88,
+    align: "center",
+    weight: 650,
+    color: "#ffffff",
+    band: false,
+};
+
 export interface Track {
     id: string;
     label: string;
@@ -66,6 +96,12 @@ export interface Clip {
     assetId: string;
     /** Set on a text clip; what gets drawn over the picture. */
     text?: string;
+    /**
+     * How that text looks. Only on text clips, and every field is
+     * optional so a caption written before any of this existed still
+     * draws — the defaults ARE what it used to look like.
+     */
+    style?: TextStyle;
     /** Where the clip sits on the timeline. */
     start: number;
     /** How long it plays for. */
@@ -129,10 +165,21 @@ export interface StudioEditorState {
     /** Replaces every text clip on the subtitle track. */
     setSubtitles: (segments: { start: number; end: number; text: string }[]) => void;
     updateText: (id: string, text: string) => void;
+    /** Changes how one caption looks, leaving the rest alone. */
+    styleText: (id: string, style: Partial<TextStyle>) => void;
     /** Text clips covering this moment, topmost track last. */
     textAt: (time: number) => Clip[];
     deleteSelected: () => void;
     setPlayhead: (time: number) => void;
+    /**
+     * Moves the playhead BY an amount rather than TO a position.
+     *
+     * Frame-stepping used to read the current playhead out of the
+     * render that drew the button, so ten quick clicks all computed
+     * "0 + one frame" and the playhead moved one frame in total. Reading
+     * it inside the updater is the only way a burst of clicks adds up.
+     */
+    nudgePlayhead: (delta: number) => void;
     setPlaying: (playing: boolean) => void;
 
     /** Which clip covers the playhead on the topmost video track. */
@@ -406,6 +453,12 @@ export function useStudioEditorState(initialClips: Clip[] = []): StudioEditorSta
         commit((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
     };
 
+    const styleText = (id: string, style: Partial<TextStyle>) => {
+        commit((prev) => prev.map((c) => (
+            c.id === id ? { ...c, style: { ...DEFAULT_TEXT_STYLE, ...c.style, ...style } } : c
+        )));
+    };
+
     const textAt = (time: number): Clip[] =>
         clips.filter((c) => c.text !== undefined && time >= c.start && time < c.start + c.duration);
 
@@ -439,6 +492,8 @@ export function useStudioEditorState(initialClips: Clip[] = []): StudioEditorSta
 
     const setPlayhead = (time: number) => setPlayheadState(Math.max(0, time));
 
+    const nudgePlayhead = (delta: number) => setPlayheadState((at) => Math.max(0, at + delta));
+
     /**
      * The topmost video track wins, the way it does in every editor —
      * V1 is the base and anything above it covers.
@@ -463,8 +518,8 @@ export function useStudioEditorState(initialClips: Clip[] = []): StudioEditorSta
         setAssets, replaceClips, removeAsset, addClip,
         selectClip: setSelectedClipId,
         moveClip, trimClip, splitAt, deleteSelected,
-        addText, setSubtitles, updateText, textAt,
-        setPlayhead, setPlaying,
+        addText, setSubtitles, updateText, styleText, textAt,
+        setPlayhead, nudgePlayhead, setPlaying,
         snapPoints,
         clipAt,
     };

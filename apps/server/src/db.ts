@@ -71,7 +71,7 @@ db.exec(`
     -- planned onto a publishing calendar without a separate table.
     CREATE TABLE IF NOT EXISTS content_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL CHECK (type IN ('youtube-script', 'instagram-post', 'tiktok-post', 'ad')),
+        type TEXT NOT NULL CHECK (type IN ('youtube-script', 'instagram-post', 'tiktok-post', 'facebook-post', 'ad')),
         topic TEXT NOT NULL,
         content TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'idea' CHECK (status IN ('idea', 'scheduled', 'published')),
@@ -318,23 +318,32 @@ if (noteColumns.length > 0 && !noteColumns.some((c) => c.name === "video_project
     db.exec("ALTER TABLE lab_notes ADD COLUMN video_project_id INTEGER REFERENCES video_projects(id) ON DELETE SET NULL");
 }
 
+// Widening the `type` CHECK can't be done with ALTER — SQLite has no
+// way to modify a constraint in place, so the only route is a new table
+// and a copy. Keyed on what the CHECK currently allows, so this runs
+// once per widening and never again.
 const contentItemsDDL = (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'content_items'").get() as { sql?: string } | undefined)?.sql ?? "";
-if (contentItemsDDL && !contentItemsDDL.includes("'ad'")) {
+if (contentItemsDDL && !contentItemsDDL.includes("'facebook-post'")) {
+    // `done` arrived as a plain ALTER and may or may not be there yet;
+    // the copy has to know which, or it selects a column that doesn't
+    // exist and takes the table with it.
+    const hadDone = contentItemsDDL.includes("done");
     db.exec("PRAGMA foreign_keys = OFF");
     db.exec(`
         BEGIN;
         CREATE TABLE content_items_new (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT NOT NULL CHECK (type IN ('youtube-script', 'instagram-post', 'tiktok-post', 'ad')),
+            type TEXT NOT NULL CHECK (type IN ('youtube-script', 'instagram-post', 'tiktok-post', 'facebook-post', 'ad')),
             topic TEXT NOT NULL,
             content TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'idea' CHECK (status IN ('idea', 'scheduled', 'published')),
             scheduled_date TEXT,
             video_project_id INTEGER REFERENCES video_projects(id) ON DELETE SET NULL,
+            done INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
-        INSERT INTO content_items_new (id, type, topic, content, status, scheduled_date, video_project_id, created_at)
-            SELECT id, type, topic, content, status, scheduled_date, video_project_id, created_at FROM content_items;
+        INSERT INTO content_items_new (id, type, topic, content, status, scheduled_date, video_project_id, done, created_at)
+            SELECT id, type, topic, content, status, scheduled_date, video_project_id, ${hadDone ? "done" : "0"}, created_at FROM content_items;
         DROP TABLE content_items;
         ALTER TABLE content_items_new RENAME TO content_items;
         COMMIT;
@@ -445,7 +454,7 @@ export type ContentStatus = "idea" | "scheduled" | "published";
 
 export interface StoredContentItem {
     id: number;
-    type: "youtube-script" | "instagram-post" | "tiktok-post" | "ad";
+    type: "youtube-script" | "instagram-post" | "tiktok-post" | "facebook-post" | "ad";
     topic: string;
     content: string;
     status: ContentStatus;

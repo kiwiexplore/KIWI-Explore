@@ -16,9 +16,9 @@ export { AnthropicNotConfiguredError };
 // The kinds of follow-up piece a finished video can spawn. Matches the
 // widened content_items type enum minus 'youtube-script', which is the
 // video's own script rather than something derived from it.
-export type DerivedContentType = "ad" | "instagram-post" | "tiktok-post";
+export type DerivedContentType = "ad" | "instagram-post" | "tiktok-post" | "facebook-post";
 
-export const DERIVED_CONTENT_TYPES: DerivedContentType[] = ["ad", "instagram-post", "tiktok-post"];
+export const DERIVED_CONTENT_TYPES: DerivedContentType[] = ["ad", "instagram-post", "tiktok-post", "facebook-post"];
 
 const LANGUAGE_NAMES: Record<string, string> = {
     cs: "Czech", sk: "Slovak", en: "English", de: "German", pl: "Polish",
@@ -152,6 +152,14 @@ What the video actually contains:
 ${material}
 
 Hook in the first 3 seconds, keep it punchy, and finish with 3-5 hashtags.`,
+    "facebook-post": (title, material) => `Write a Facebook post promoting a video titled "${title}".
+
+What the video actually contains:
+${material}
+
+Facebook reads longer and slower than the others: open with the thing worth stopping for, give two
+or three sentences of real substance, and close by pointing at the full video. One or two hashtags
+at most — more reads as spam there.`,
 };
 
 /**

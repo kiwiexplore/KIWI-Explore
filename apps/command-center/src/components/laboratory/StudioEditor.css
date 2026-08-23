@@ -966,3 +966,120 @@
 .studio-export-done strong { color: var(--text); font-weight: 700; }
 
 .studio-export-saved { color: var(--secondary); font-size: 11.5px; }
+
+/* --- the bin is this video's footage --------------------------------- */
+
+.studio-bin-head {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 12px 14px 10px;
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+
+}
+
+.studio-bin-head svg { color: var(--primary); }
+
+.studio-bin-count {
+
+    margin-left: auto;
+
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+
+}
+
+/* --- more room for the picture ---------------------------------------
+
+   One control rather than a drag handle, because the only thing that
+   can give the picture room is the timeline, and a handle between two
+   panes is a thing nobody finds. */
+
+.studio-editor-big .studio-timeline { max-height: 132px; }
+.studio-editor-big .studio-body { flex: 1 1 auto; }
+
+/* --- captions carry their own look ----------------------------------- */
+
+.studio-caption {
+
+    /* Positioned by its MIDDLE, which is what a style's `y` means, so
+       the preview and the render place it identically. */
+    top: auto;
+    transform: translateY(-50%);
+
+}
+
+.studio-caption > span { display: inline; }
+
+.studio-caption-band > span {
+
+    padding: .15em .5em;
+    border-radius: .12em;
+    background: rgba(0, 0, 0, .55);
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+
+}
+
+/* --- text tools ------------------------------------------------------- */
+
+.studio-text-tools {
+
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+
+}
+
+.studio-text-tools button {
+
+    min-width: 26px;
+    padding: 5px 7px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: rgba(5, 8, 22, .6);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--text-muted);
+
+}
+
+.studio-text-tools button:hover { color: var(--text); border-color: var(--primary); }
+.studio-text-on { color: var(--secondary) !important; border-color: rgba(110, 243, 165, .5) !important; }
+
+.studio-text-value {
+
+    min-width: 30px;
+    text-align: center;
+
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+
+}
+
+.studio-text-colour {
+
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: none;
+    cursor: pointer;
+
+}
+
+.studio-export-actions { display: flex; gap: 6px; flex-wrap: wrap; }

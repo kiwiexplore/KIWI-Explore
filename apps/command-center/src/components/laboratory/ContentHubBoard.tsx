@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { FileText, Instagram, Megaphone, Music2, Trash2, Youtube } from "lucide-react";
+import { FileText, Instagram, Megaphone, MessageSquare, Music2, Trash2, Youtube } from "lucide-react";
 import type { ContentHubState } from "../../state/contentHub";
 import type { ContentItem, ContentStatus, ContentType, GeneratableContentType } from "../../lib/contentApi";
 import "./GlobalBoard.css";
@@ -14,24 +14,26 @@ const TYPE_META: Record<ContentType, { label: string; icon: typeof Youtube }> = 
     "youtube-script": { label: "YouTube Script", icon: Youtube },
     "instagram-post": { label: "Instagram Post", icon: Instagram },
     "tiktok-post": { label: "TikTok Post", icon: Music2 },
+    "facebook-post": { label: "Facebook Post", icon: MessageSquare },
     ad: { label: "Ad", icon: Megaphone },
 };
 
 // Every type this board might have to RENDER — ads included, since
 // Video Studio writes them into the same table and they come back from
 // GET /api/content like anything else.
-const TYPE_ORDER: ContentType[] = ["youtube-script", "instagram-post", "tiktok-post", "ad"];
+const TYPE_ORDER: ContentType[] = ["youtube-script", "instagram-post", "tiktok-post", "facebook-post", "ad"];
 
 // What the Generate form offers. Ads are missing on purpose: one is
 // written to promote a specific video, so it's generated from Video
 // Studio with that video's script/transcript in hand, not from a bare
 // topic here.
-const GENERATE_TYPE_ORDER: GeneratableContentType[] = ["youtube-script", "instagram-post", "tiktok-post"];
+const GENERATE_TYPE_ORDER: GeneratableContentType[] = ["youtube-script", "instagram-post", "tiktok-post", "facebook-post"];
 
 const TYPE_COLOR: Record<ContentType, string> = {
     "youtube-script": "#FF0000",
     "instagram-post": "#E1306C",
     "tiktok-post": "#25F4EE",
+    "facebook-post": "#1877F2",
     ad: "#7566FF",
 };
 

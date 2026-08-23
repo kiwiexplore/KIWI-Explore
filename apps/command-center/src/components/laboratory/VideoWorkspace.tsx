@@ -40,6 +40,7 @@ const SIZES = [
 ];
 
 const PIECES: { type: ContentItem["type"]; label: string; placeholder: string }[] = [
+    { type: "facebook-post", label: "Facebook", placeholder: "The longer version — Facebook reads slower…" },
     { type: "instagram-post", label: "Instagram", placeholder: "Caption and hashtags…" },
     { type: "tiktok-post", label: "TikTok", placeholder: "Caption…" },
     { type: "ad", label: "Ad", placeholder: "The paid version of the pitch…" },
@@ -268,7 +269,13 @@ function ScriptSection({ video, videoStudio, after }: {
                     <button
                         type="button"
                         className="vw-mini"
-                        onClick={() => after(createContentItem("youtube-script", video.title, "", video.id))}
+                        onClick={() => after(createContentItem(
+                            // What you typed in the brief names it, not
+                            // the video — every script in a video was
+                            // called the same thing, which is no name
+                            // at all. Nothing typed yet just says so.
+                            "youtube-script", brief.trim() || "Untitled script", "", video.id,
+                        ))}
                     >
                         Write it myself
                     </button>
@@ -555,7 +562,7 @@ function PublishSection({ video, videoStudio, after }: {
                         video={video}
                         busy={videoStudio.busy[video.id] === "content"}
                         onGenerate={() => videoStudio.generateContent(
-                            video.id, piece.type as "ad" | "instagram-post" | "tiktok-post",
+                            video.id, piece.type as "ad" | "instagram-post" | "tiktok-post" | "facebook-post",
                         )}
                         after={after}
                     />
