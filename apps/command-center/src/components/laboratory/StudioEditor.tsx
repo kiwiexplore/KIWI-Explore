@@ -14,6 +14,7 @@ import type { StudioProject } from "../../lib/projectsApi";
 import { analyseEdit, type Finding } from "../../lib/editAnalysis";
 import { cutSilence, findSilence } from "../../lib/silenceCut";
 import { renderCaption } from "../../lib/captionImage";
+import { canPickFolder, saveRenderAs } from "../../lib/saveAs";
 import StudioTimeline from "./StudioTimeline";
 import { formatClock } from "../../lib/timecode";
 import "./StudioEditor.css";
@@ -101,6 +102,7 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const [cutReport, setCutReport] = useState<string | null>(null);
     const [exporting, setExporting] = useState<string | null>(null);
     const [exportDone, setExportDone] = useState<{ variant: string; label: string; bytes: number; warnings: string[] }[] | null>(null);
+    const [savedTo, setSavedTo] = useState<string | null>(null);
     // Which shapes to render. The native one on its own by default —
     // a vertical cut is a deliberate act, not something to produce
     // every time on the chance somebody wants one.
@@ -450,6 +452,7 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const runExport = async () => {
         setExportError(null);
         setExportDone(null);
+        setSavedTo(null);
         const media = editor.clips.filter((c) => c.text === undefined);
         if (media.length === 0) {
             setExportError("Nothing on the timeline to export.");
@@ -516,6 +519,21 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                 done.push({ variant: preset.variant, label: preset.label, bytes: result.bytes, warnings: result.warnings });
             }
             setExportDone(done);
+
+            // Then ask where it goes. The render is already safe in the
+            // project's Exports folder — this is the copy that lands
+            // where you actually want it, one dialog per shape.
+            const saved: string[] = [];
+            for (const d of done) {
+                setExporting(`${d.label} — saving…`);
+                const name = `${project.title.replace(/[/\\:]/g, "-")}${d.variant ? `-${d.variant}` : ""}.mp4`;
+                const outcome = await saveRenderAs(exportFileUrl(project.id, d.variant), name);
+                if (outcome === "cancelled") break;
+                saved.push(`${d.label} ${outcome === "saved" ? "saved" : "downloaded"}`);
+            }
+            setSavedTo(saved.length > 0
+                ? `${saved.join(", ")}. A copy stays in the project's Exports folder either way.`
+                : "Not saved anywhere else — the render is in the project's Exports folder.");
         } catch (e) {
             setExportError(e instanceof Error ? e.message : "Could not export.");
         } finally {
@@ -897,6 +915,12 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     {/* A render that quietly dropped something is worse
                         than one that failed: this says what it couldn't
                         do, in the same breath as the success. */}
+                    {savedTo && <span className="studio-export-saved">{savedTo}</span>}
+                    {!canPickFolder() && (
+                        <span className="studio-export-warning">
+                            This browser has no Save As dialog, so the copy went to your Downloads folder.
+                        </span>
+                    )}
                     {[...new Set(exportDone.flatMap((d) => d.warnings))]
                         .map((w) => <span key={w} className="studio-export-warning">{w}</span>)}
                 </div>

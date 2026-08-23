@@ -964,3 +964,5 @@
 }
 
 .studio-export-done strong { color: var(--text); font-weight: 700; }
+
+.studio-export-saved { color: var(--secondary); font-size: 11.5px; }
