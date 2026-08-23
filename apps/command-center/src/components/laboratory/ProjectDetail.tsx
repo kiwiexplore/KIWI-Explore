@@ -1,12 +1,12 @@
 import { useRef, useState, type DragEvent, type FormEvent } from "react";
 import {
     AlertTriangle, ArrowRight, Check, ChevronLeft, Clapperboard, Copy, FileText, Film,
-    FolderOpen, Image as ImageIcon, Music2, Plus, RefreshCw, Sparkles, Trash2, Upload, Video,
+    FolderOpen, Image as ImageIcon, Music2, Plus, RefreshCw, Sparkles, Trash2, Upload,
 } from "lucide-react";
 import type { StudioProjectsState } from "../../state/studioProjects";
 import type { StudioProject, ProjectFile } from "../../lib/projectsApi";
 import { deleteProjectFile, uploadProjectFile } from "../../lib/projectsApi";
-import type { VideoProject, VideoTrack } from "../../lib/videoApi";
+import type { VideoProject } from "../../lib/videoApi";
 import type { VideoStudioState } from "../../state/videoStudio";
 import { createNote, deleteNote, updateNote } from "../../lib/notesApi";
 import { createVideoProject, deleteVideoProject } from "../../lib/videoApi";
@@ -29,11 +29,14 @@ interface ProjectDetailProps {
 /**
  * One project, top to bottom, in the order the work happens.
  *
- * Ideas → scripts → footage → the videos you cut from it → the text
- * that goes out with them. Every step is a section on this page rather
- * than a screen you get switched into: the whole point of a project is
- * seeing the work together, and publishing was the one part that took
- * the window away to show you a corner of it.
+ * The videos first, because that is the project: what you are making
+ * and where each one has got to. Then the material they are made from,
+ * and last the text that goes out with them.
+ *
+ * Every step is a section on this page rather than a screen you get
+ * switched into: the whole point of a project is seeing the work
+ * together, and publishing was the one part that took the window away
+ * to show you a corner of it.
  */
 export default function ProjectDetail({
     project, projects, videoStudio, onVideosChanged, onBack, onEdit,
@@ -103,14 +106,17 @@ export default function ProjectDetail({
                 </div>
             )}
 
-            <IdeasPanel project={project} busy={busy} after={after} />
-            <ScriptsPanel project={project} busy={busy} after={after} />
-            {/* Above the footage, because what comes out of it IS
-                footage — the file lands in the same folder and the list
-                below refreshes when it does. */}
-            <GeneratePanel projectId={project.id} onFilesChanged={projects.refresh} />
-            <FootagePanel project={project} projects={projects} />
+            {/* First, because it is the answer to "how is this project
+                going" — the list of what you are making and where each
+                one has got to. Everything below it is material for
+                these, and reads as such once they are at the top. */}
             <VideosPanel project={project} busy={busy} after={after} onEdit={onEdit} />
+            <FootagePanel project={project} projects={projects} />
+            <ScriptsPanel project={project} busy={busy} after={after} />
+            <IdeasPanel project={project} busy={busy} after={after} />
+            {/* Lands a file in the same folder as the footage, so the
+                list above refreshes when one finishes. */}
+            <GeneratePanel projectId={project.id} onFilesChanged={projects.refresh} />
             <PublishPanel project={project} videoStudio={videoStudio} after={after} />
         </div>
     );
@@ -415,7 +421,7 @@ function FootagePanel({ project, projects }: { project: StudioProject; projects:
 
 /**
  * The videos you are making — which is not the same list as the footage
- * above, and that difference is what was confusing.
+ * below, and that difference is what was confusing.
  *
  * A file is material. A video here is one finished thing you are
  * working towards: it has its own cut, its own transcript and its own
@@ -429,13 +435,12 @@ function VideosPanel({ project, busy, after, onEdit }: {
     onEdit: (id: number) => void;
 }) {
     const [videoTitle, setVideoTitle] = useState("");
-    const [track, setTrack] = useState<VideoTrack>("shot");
     const { counts } = project;
 
     const addVideo = (event: FormEvent) => {
         event.preventDefault();
         if (!videoTitle.trim()) return;
-        after(createVideoProject(videoTitle.trim(), undefined, project.id, track));
+        after(createVideoProject(videoTitle.trim(), undefined, project.id));
         setVideoTitle("");
     };
 
@@ -444,35 +449,7 @@ function VideosPanel({ project, busy, after, onEdit }: {
             <div className="pd-panel-head">
                 <h2>Videos</h2>
                 <span className="pd-count">{counts.published}/{counts.videos} published</span>
-                <span className="pd-panel-note">what you're making from that footage — each has its own cut</span>
-            </div>
-
-            {/* Which track BEFORE the title, because it is the one thing
-                that can't change later without the chain underneath the
-                video changing with it. */}
-            <div className="pd-track-pick" role="radiogroup" aria-label="How this video gets made">
-                <button
-                    type="button"
-                    role="radio"
-                    aria-checked={track === "ai"}
-                    className={`pd-track-opt pd-track-opt-ai${track === "ai" ? " pd-track-opt-on" : ""}`}
-                    onClick={() => setTrack("ai")}
-                >
-                    <Sparkles size={14} strokeWidth={2} />
-                    <span className="pd-track-name">Generate it with AI</span>
-                    <span className="pd-track-why">Script first, then the pictures come from it.</span>
-                </button>
-                <button
-                    type="button"
-                    role="radio"
-                    aria-checked={track === "shot"}
-                    className={`pd-track-opt pd-track-opt-shot${track === "shot" ? " pd-track-opt-on" : ""}`}
-                    onClick={() => setTrack("shot")}
-                >
-                    <Video size={14} strokeWidth={2} />
-                    <span className="pd-track-name">Cut it from the footage</span>
-                    <span className="pd-track-why">The material is already in this project.</span>
-                </button>
+                <span className="pd-panel-note">what you're making, and where each one has got to</span>
             </div>
 
             <form className="pd-add" onSubmit={addVideo}>
@@ -492,7 +469,6 @@ function VideosPanel({ project, busy, after, onEdit }: {
                         <VideoRow
                             key={video.id}
                             video={video}
-                            owner={project}
                             onEdit={() => onEdit(video.id)}
                             onDelete={() => {
                                 const ok = confirm(
@@ -517,30 +493,26 @@ function VideosPanel({ project, busy, after, onEdit }: {
  * label says what somebody set; the chain says what has been done —
  * and, on the step that hasn't, what is missing.
  */
-function VideoRow({ video, owner, onEdit, onDelete }: {
+function VideoRow({ video, onEdit, onDelete }: {
     video: VideoProject;
-    owner: StudioProject;
     onEdit: () => void;
     onDelete: () => void;
 }) {
     const failed = video.transcriptStatus === "failed";
-    const chain = chainFor(video, owner);
+    const chain = chainFor(video);
 
     return (
         <div className={`pd-video${failed ? " pd-video-failed" : ""}`}>
-            <div className={`pd-video-mark pd-video-mark-${video.track}`}>
-                {video.track === "ai"
-                    ? <Sparkles size={15} strokeWidth={1.75} />
-                    : <Clapperboard size={15} strokeWidth={1.75} />}
+            <div className="pd-video-mark pd-video-mark-shot">
+                <Clapperboard size={15} strokeWidth={1.75} />
             </div>
             <div className="pd-video-body">
                 <span className="pd-video-title">
                     <span className="pd-video-name">{video.title}</span>
-                    <span className={`pd-track pd-track-${video.track}`}>{video.track === "ai" ? "AI" : "Cut"}</span>
                 </span>
                 <span className="pd-video-next">
                     {failed && <AlertTriangle size={11} strokeWidth={2.5} />}
-                    {chainSummary(video, owner)}
+                    {chainSummary(video)}
                 </span>
             </div>
 
@@ -550,18 +522,12 @@ function VideoRow({ video, owner, onEdit, onDelete }: {
                         {i > 0 && <span className="pd-chain-link" />}
                         <span
                             className={
-                                // A step that doesn't apply is only ever
-                                // struck through. It counts as satisfied
-                                // so the chain can move past it, but
-                                // painting it green would claim work
-                                // nobody did.
                                 "pd-chain-step" + (
-                                    !step.applies ? " pd-chain-na"
-                                        : step.done ? " pd-chain-done"
-                                            : step === chain.current ? " pd-chain-now" : ""
+                                    step.done ? " pd-chain-done"
+                                        : step === chain.current ? " pd-chain-now" : ""
                                 )
                             }
-                            title={step.applies ? (step.blocker ?? `${step.label} — done`) : `${step.label} — not needed when you shot it`}
+                            title={step.blocker ?? `${step.label} — done`}
                         >
                             {step.label}
                         </span>

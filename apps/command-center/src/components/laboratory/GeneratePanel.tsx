@@ -2,26 +2,33 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { AlertTriangle, Check, Sparkles, Trash2, X } from "lucide-react";
 import {
     cancelJob, enqueue, fetchEngines, fetchJobs, forgetJob,
-    EngineUnavailableError, type Engine, type GenerationJob, type JobKind,
+    EngineUnavailableError, type Engine, type GenerationJob,
 } from "../../lib/generateApi";
 import { projectFileUrl } from "../../lib/projectsApi";
 import "./GeneratePanel.css";
 
 /**
- * Making pictures, and the queue that makes them.
+ * Thumbnails and graphics, and the queue that makes them.
  *
- * Sits between the scripts and the footage, which is where it belongs:
- * what comes out of here IS footage. The file lands in the project's
- * folder under its own name, so a finished generation needs no import
- * step — the bin already lists that folder and the timeline already
- * refers to files by name.
+ * STILLS ONLY, deliberately. Generating the video itself was here and
+ * is gone: the footage in this studio comes from a camera, and the one
+ * thing in the whole chain that can't be bought or copied is having
+ * gone out and filmed it. Paying an API to invent a cave is the wrong
+ * end of the work — and the same clip bought through somebody's API
+ * costs more than buying it on their own site, so wrapping one would
+ * have been work that made the result more expensive.
  *
- * Everything the engine can't do is said before you write a prompt
- * rather than after you press the button. An engine that isn't running
- * says so, in the words that tell you what to start.
+ * What a still IS worth: a thumbnail, a title card, a diagram, a
+ * background for a text overlay. Those are free on a local ComfyUI and
+ * they are needed on every video.
+ *
+ * The file lands in the project's folder under its own name, so a
+ * finished picture needs no import step — the bin already lists that
+ * folder and the timeline already refers to files by name.
  */
 
 const SIZES = [
+    { label: "Thumbnail · 1280×720", width: 1280, height: 720 },
     { label: "16:9 · 1024×576", width: 1024, height: 576 },
     { label: "9:16 · 576×1024", width: 576, height: 1024 },
     { label: "1:1 · 1024×1024", width: 1024, height: 1024 },
@@ -39,7 +46,6 @@ interface GeneratePanelProps {
 export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePanelProps) {
     const [engines, setEngines] = useState<Engine[] | null>(null);
     const [engineId, setEngineId] = useState<string>("");
-    const [kind, setKind] = useState<JobKind>("image");
     const [prompt, setPrompt] = useState("");
     const [size, setSize] = useState(0);
     const [count, setCount] = useState(1);
@@ -94,7 +100,7 @@ export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePan
         setSending(true);
         void enqueue({
             projectId,
-            kind,
+            kind: "image",
             engine: engineId,
             prompt: prompt.trim(),
             count,
@@ -117,9 +123,9 @@ export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePan
     return (
         <section className="pd-panel">
             <div className="pd-panel-head">
-                <h2>Generate</h2>
+                <h2>Thumbnails &amp; graphics</h2>
                 {jobs.length > 0 && <span className="pd-count">{jobs.length}</span>}
-                <span className="pd-panel-note">what comes out lands in this project's folder, as footage</span>
+                <span className="pd-panel-note">stills only — they land in this project's folder</span>
             </div>
 
             {engines !== null && engines.length === 0 && (
@@ -138,7 +144,7 @@ export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePan
                     className="gp-prompt"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Describe the shot — what is in it, how it is lit, how the camera moves…"
+                    placeholder="Describe the picture — what is in it, how it is lit, what it has to say at a glance…"
                     rows={3}
                 />
 
@@ -150,15 +156,6 @@ export default function GeneratePanel({ projectId, onFilesChanged }: GeneratePan
                                 <option key={e.id} value={e.id}>
                                     {e.label}{e.ready ? "" : " — not available"}
                                 </option>
-                            ))}
-                        </select>
-                    </label>
-
-                    <label className="gp-field">
-                        <span>Make</span>
-                        <select value={kind} onChange={(e) => setKind(e.target.value as JobKind)}>
-                            {(engine?.kinds ?? ["image"]).map((k) => (
-                                <option key={k} value={k}>{k === "image" ? "A still" : "A clip"}</option>
                             ))}
                         </select>
                     </label>

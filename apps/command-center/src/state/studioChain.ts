@@ -1,8 +1,7 @@
-import type { StudioProject } from "../lib/projectsApi";
 import type { VideoProject } from "../lib/videoApi";
 
 /**
- * The four phases a video goes through, and what each one is waiting on.
+ * The three phases a video goes through, and what each one is waiting on.
  *
  * This is NOT a second opinion about video_projects.stage — that column
  * still records where a video says it is, and state/videoPipeline.ts
@@ -13,9 +12,14 @@ import type { VideoProject } from "../lib/videoApi";
  * Every gate below is a fact that can be checked:
  *
  *   CREATE    a script exists for this video
- *   GENERATE  the project's folder has footage in it (AI track only)
  *   EDIT      a rendered file is on disk, in the project's Exports
  *   PUBLISH   the video is marked published
+ *
+ * GENERATE was a fourth link and is gone. It existed for videos whose
+ * pictures were generated rather than shot, and that is not the work
+ * this studio is for: the footage comes from a camera, and the scarce
+ * thing is having gone out and filmed it. A step that never applies to
+ * anything you actually make is a step that only has to be explained.
  *
  * That is deliberately stricter than the stage strip this replaces,
  * which coloured a step green because it was behind you. A chain whose
@@ -24,17 +28,11 @@ import type { VideoProject } from "../lib/videoApi";
  * unmet gate says what is missing instead of refusing.
  */
 
-export type ChainStage = "create" | "generate" | "edit" | "publish";
+export type ChainStage = "create" | "edit" | "publish";
 
 export interface ChainStep {
     stage: ChainStage;
     label: string;
-    /**
-     * False for GENERATE on shot footage. Kept in the list rather than
-     * filtered out, so the chain reads the same length everywhere and
-     * the missing step is visibly not needed rather than absent.
-     */
-    applies: boolean;
     done: boolean;
     /** What is missing, in words. Null once the gate is met. */
     blocker: string | null;
@@ -44,7 +42,6 @@ export interface Chain {
     steps: ChainStep[];
     /** The first step that isn't done — where the work actually is. */
     current: ChainStep;
-    /** How many of the steps that apply are done. */
     done: number;
     total: number;
 }
@@ -54,58 +51,40 @@ function hasScript(video: VideoProject): boolean {
 }
 
 /**
- * Footage to work with. On the AI track this is what generation is for;
- * the folder is the same place either way, which is why one check
- * covers both and why an AI video whose clips you dropped in by hand
- * counts as generated. It was — just not by us.
+ * Everything here comes off the video itself.
+ *
+ * It used to take the project too, for a gate that asked whether the
+ * FOLDER had anything in it — which was true for every video in the
+ * project at once and so said nothing about any one of them. A gate
+ * that can't tell two videos apart isn't measuring either.
  */
-function hasFootage(owner: StudioProject | null): boolean {
-    return (owner?.files ?? []).some((f) => f.kind === "video" || f.kind === "image");
-}
-
-export function chainFor(video: VideoProject, owner: StudioProject | null): Chain {
-    const ai = video.track === "ai";
-
+export function chainFor(video: VideoProject): Chain {
     const steps: ChainStep[] = [
         {
             stage: "create",
             label: "Create",
-            applies: true,
             done: hasScript(video),
             blocker: hasScript(video) ? null : "no script yet",
         },
         {
-            stage: "generate",
-            label: "Generate",
-            applies: ai,
-            // A shot video has nothing to generate, so this link is
-            // satisfied by not applying — otherwise every shot video
-            // would sit forever one step from the end.
-            done: !ai || hasFootage(owner),
-            blocker: !ai ? null : hasFootage(owner) ? null : "nothing in the project's folder",
-        },
-        {
             stage: "edit",
             label: "Edit",
-            applies: true,
             done: video.exported,
             blocker: video.exported ? null : "nothing exported yet",
         },
         {
             stage: "publish",
             label: "Publish",
-            applies: true,
             done: video.stage === "published",
             blocker: video.stage === "published" ? null : "not marked published",
         },
     ];
 
-    const applicable = steps.filter((s) => s.applies);
     return {
         steps,
-        current: applicable.find((s) => !s.done) ?? applicable[applicable.length - 1],
-        done: applicable.filter((s) => s.done).length,
-        total: applicable.length,
+        current: steps.find((s) => !s.done) ?? steps[steps.length - 1],
+        done: steps.filter((s) => s.done).length,
+        total: steps.length,
     };
 }
 
@@ -116,9 +95,9 @@ export function chainFor(video: VideoProject, owner: StudioProject | null): Chai
  * something went wrong rather than simply not having happened, and
  * burying that under "no script yet" is how a failure goes unnoticed.
  */
-export function chainSummary(video: VideoProject, owner: StudioProject | null): string {
+export function chainSummary(video: VideoProject): string {
     if (video.transcriptStatus === "failed") return "Transcription failed — read the error and run it again.";
-    const chain = chainFor(video, owner);
+    const chain = chainFor(video);
     if (chain.current.done) return "Done. Nothing pending.";
     return `${chain.current.label} — ${chain.current.blocker}`;
 }

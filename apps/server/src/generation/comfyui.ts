@@ -144,7 +144,11 @@ const POLL_MS = 1200;
 export const comfyui: GenerationEngine = {
     id: "comfyui",
     label: "ComfyUI (on this machine)",
-    kinds: ["image", "video"],
+    // Stills only. ComfyUI can drive video models and the interface
+    // still has a kind for it — what changed is the studio's mind about
+    // what generation is FOR here: thumbnails and graphics, not
+    // pretending to have filmed something.
+    kinds: ["image"],
     where: "local",
 
     async check() {
