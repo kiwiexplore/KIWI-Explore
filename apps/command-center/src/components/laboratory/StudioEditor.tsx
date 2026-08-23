@@ -7,7 +7,7 @@ import { useStudioEditorState, type Clip } from "../../state/studioEditor";
 import {
     exportFileUrl, exportTimeline, fetchTranscript, fetchVideoProject, saveTimeline,
     saveTimelineOnUnload, sendToResolve, startTranscription, VideoStepBlockedError, VIDEO_LANGUAGES,
-    type VideoProject,
+    EXPORT_PRESETS, type VideoProject,
 } from "../../lib/videoApi";
 import { assetsFromFolder } from "../../lib/projectMedia";
 import type { StudioProject } from "../../lib/projectsApi";
@@ -100,7 +100,11 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const [findings, setFindings] = useState<Finding[] | null>(null);
     const [cutReport, setCutReport] = useState<string | null>(null);
     const [exporting, setExporting] = useState<string | null>(null);
-    const [exportDone, setExportDone] = useState<{ bytes: number; warnings: string[] } | null>(null);
+    const [exportDone, setExportDone] = useState<{ variant: string; label: string; bytes: number; warnings: string[] }[] | null>(null);
+    // Which shapes to render. The native one on its own by default —
+    // a vertical cut is a deliberate act, not something to produce
+    // every time on the chance somebody wants one.
+    const [shapes, setShapes] = useState<string[]>([""]);
     const [exportError, setExportError] = useState<string | null>(null);
     const [resolveDone, setResolveDone] = useState<{ fcpxml: string; srt: string | null; warnings: string[] } | null>(null);
     const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -460,37 +464,58 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                 if (asset) files.set(clip.assetId, asset.serverFile);
             }
 
+            const clips = media.map((c) => ({
+                file: files.get(c.assetId) ?? "",
+                start: c.start,
+                duration: c.duration,
+                offset: c.offset,
+                kind: editor.tracks.find((t) => t.id === c.trackId)?.kind ?? "video" as "video" | "audio",
+            })).filter((c) => c.file);
+
             const first = editor.assets.find((a) => a.id === media[0].assetId);
-            const width = first?.width && first.width > 0 ? first.width : 1920;
-            const height = first?.height && first.height > 0 ? first.height : 1080;
+            const native = {
+                width: first?.width && first.width > 0 ? first.width : 1920,
+                height: first?.height && first.height > 0 ? first.height : 1080,
+            };
 
-            // Drawn here, at the size they will really have in the file,
-            // by the same engine that draws them over the preview.
-            setExporting("Drawing captions…");
-            const texts = editor.clips
-                .filter((c) => c.text !== undefined)
-                .map((c) => {
-                    const drawn = renderCaption(c.text ?? "", c.start, c.duration, width, height);
-                    return drawn
-                        ? { text: c.text ?? "", ...drawn }
-                        : { text: c.text ?? "", start: c.start, duration: c.duration };
+            // One render per shape, in sequence rather than at once:
+            // each one saturates the machine's encoder, so two in
+            // parallel finish no sooner and make either one's progress
+            // meaningless.
+            const chosen = EXPORT_PRESETS.filter((p) => shapes.includes(p.variant));
+            const done: { variant: string; label: string; bytes: number; warnings: string[] }[] = [];
+
+            for (const preset of chosen) {
+                // The native shape keeps the footage's own size; the
+                // rest use the preset's, because reframing to 9:16 at
+                // the source's resolution would be an accident.
+                const width = preset.variant === "" ? native.width : preset.width;
+                const height = preset.variant === "" ? native.height : preset.height;
+
+                // Captions are drawn per shape, at the size they will
+                // really have. A caption laid out for 1920 wide and
+                // dropped onto a 1080-wide vertical frame would run off
+                // both edges.
+                setExporting(`${preset.label} — captions…`);
+                const texts = editor.clips
+                    .filter((c) => c.text !== undefined)
+                    .map((c) => {
+                        const drawn = renderCaption(c.text ?? "", c.start, c.duration, width, height);
+                        return drawn
+                            ? { text: c.text ?? "", ...drawn }
+                            : { text: c.text ?? "", start: c.start, duration: c.duration };
+                    });
+
+                setExporting(`${preset.label} — rendering…`);
+                const result = await exportTimeline(project.id, {
+                    clips, texts, width, height,
+                    fit: preset.fit,
+                    variant: preset.variant,
+                    crossfade: 0,
                 });
-
-            setExporting("Rendering…");
-            const result = await exportTimeline(project.id, {
-                clips: media.map((c) => ({
-                    file: files.get(c.assetId) ?? "",
-                    start: c.start,
-                    duration: c.duration,
-                    offset: c.offset,
-                    kind: editor.tracks.find((t) => t.id === c.trackId)?.kind ?? "video",
-                })).filter((c) => c.file),
-                texts,
-                width,
-                height,
-                crossfade: 0,
-            });
-            setExportDone({ bytes: result.bytes, warnings: result.warnings });
+                done.push({ variant: preset.variant, label: preset.label, bytes: result.bytes, warnings: result.warnings });
+            }
+            setExportDone(done);
         } catch (e) {
             setExportError(e instanceof Error ? e.message : "Could not export.");
         } finally {
@@ -522,6 +547,31 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     <button type="button" className="studio-bar-btn" onClick={editor.redo} disabled={!editor.canRedo}>
                         <Redo2 size={13} strokeWidth={2} />Redo
                     </button>
+                    {/* Which shapes to render. Client work almost always
+                        wants more than one, and rendering them from one
+                        cut is the whole point of asking here rather
+                        than re-cutting for each. */}
+                    <span className="studio-shapes">
+                        {EXPORT_PRESETS.map((p) => (
+                            <button
+                                key={p.variant}
+                                type="button"
+                                className={`studio-shape${shapes.includes(p.variant) ? " studio-shape-on" : ""}`}
+                                aria-pressed={shapes.includes(p.variant)}
+                                onClick={() => setShapes((was) => (
+                                    was.includes(p.variant)
+                                        // Never all of them off — EXPORT
+                                        // would then have nothing to do
+                                        // and no way to say why.
+                                        ? (was.length === 1 ? was : was.filter((v) => v !== p.variant))
+                                        : [...was, p.variant]
+                                ))}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </span>
+
                     <span className="studio-bar-divider" />
                     {/* The cut saves itself, so this is a read-out
                         rather than a button — until it fails, which is
@@ -838,14 +888,17 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
             {exportError && <p className="studio-subtitle-error">{exportError}</p>}
             {exportDone && (
                 <div className="studio-export-done">
-                    <span>
-                        Exported {(exportDone.bytes / 1_000_000).toFixed(1)} MB —{" "}
-                        <a href={exportFileUrl(project.id)} target="_blank" rel="noreferrer">open the file</a>
-                    </span>
+                    {exportDone.map((d) => (
+                        <span key={d.variant}>
+                            <strong>{d.label}</strong> — {(d.bytes / 1_000_000).toFixed(1)} MB —{" "}
+                            <a href={exportFileUrl(project.id, d.variant)} target="_blank" rel="noreferrer">open the file</a>
+                        </span>
+                    ))}
                     {/* A render that quietly dropped something is worse
                         than one that failed: this says what it couldn't
                         do, in the same breath as the success. */}
-                    {exportDone.warnings.map((w) => <span key={w} className="studio-export-warning">{w}</span>)}
+                    {[...new Set(exportDone.flatMap((d) => d.warnings))]
+                        .map((w) => <span key={w} className="studio-export-warning">{w}</span>)}
                 </div>
             )}
 

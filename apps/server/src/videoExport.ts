@@ -34,8 +34,11 @@ export class ExportUnavailableError extends Error {}
  * gate between editing and publishing, and a gate has to be a fact on
  * disk rather than a checkbox somebody could tick without doing it.
  */
-export function exportPathFor(id: number, folder?: string): string {
-    return path.join(folder ? path.join(folder, "Exports") : exportsDir, `${id}.mp4`);
+export function exportPathFor(id: number, folder?: string, variant = ""): string {
+    // The variant is part of the NAME, so three shapes of the same cut
+    // are three files rather than each one overwriting the last.
+    const suffix = variant ? `-${variant}` : "";
+    return path.join(folder ? path.join(folder, "Exports") : exportsDir, `${id}${suffix}.mp4`);
 }
 
 export function hasExport(id: number, folder?: string): boolean {
@@ -86,11 +89,24 @@ export interface ExportText {
     y?: number;
 }
 
+/**
+ * How footage that isn't the output's shape gets there.
+ *
+ * `contain` fits the whole frame in and pads what's left; `cover`
+ * fills the frame and loses what hangs over the edge. Neither is right
+ * in general — landscape footage in a 9:16 frame is either a stamp
+ * between two black slabs or a centre crop, and for a vertical cut the
+ * crop is what anybody actually wants. So the preset carries it, and
+ * the native shape uses contain because nothing is being reframed.
+ */
+export type ExportFit = "contain" | "cover";
+
 export interface ExportRequest {
     clips: ExportClip[];
     texts: ExportText[];
     width: number;
     height: number;
+    fit?: ExportFit;
     /** Seconds of crossfade at each join, or 0 for hard cuts. */
     crossfade: number;
 }
@@ -159,8 +175,16 @@ function buildGraph(request: ExportRequest, captionFiles: string[], folder: stri
             : 0;
 
         const chain = [
-            `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
-            `pad=${width}:${height}:-1:-1:color=black`,
+            // `increase` then crop fills the frame; `decrease` then pad
+            // fits it inside one. Cropping has to come after the scale
+            // or it would take a window out of the source at its own
+            // resolution and blow that up instead.
+            request.fit === "cover"
+                ? `scale=${width}:${height}:force_original_aspect_ratio=increase`
+                : `scale=${width}:${height}:force_original_aspect_ratio=decrease`,
+            request.fit === "cover"
+                ? `crop=${width}:${height}`
+                : `pad=${width}:${height}:-1:-1:color=black`,
             // Shifted to WHERE IT SITS, not just zeroed.
             //
             // overlay pairs frames by timestamp, so a clip whose PTS
@@ -226,7 +250,9 @@ export interface ExportResult {
  * finished film lands beside the footage it was cut from rather than
  * inside the app's private store where nobody would think to look.
  */
-export async function renderExport(id: number, request: ExportRequest, folder?: string): Promise<ExportResult> {
+export async function renderExport(
+    id: number, request: ExportRequest, folder?: string, variant = "",
+): Promise<ExportResult> {
     if (request.clips.length === 0) throw new Error("There's nothing on the timeline to export.");
     const mediaFolder = folder || uploadsDir;
     const outDir = folder ? path.join(folder, "Exports") : exportsDir;
@@ -240,7 +266,7 @@ export async function renderExport(id: number, request: ExportRequest, folder?: 
     }
 
     fs.mkdirSync(outDir, { recursive: true });
-    const out = path.join(outDir, `${id}.mp4`);
+    const out = exportPathFor(id, folder, variant);
 
     // The PNGs live only as long as the render. They are the browser's
     // output, not anything worth keeping — the timeline still holds the

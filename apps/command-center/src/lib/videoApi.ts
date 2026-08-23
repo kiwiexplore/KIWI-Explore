@@ -319,6 +319,30 @@ export async function uploadMedia(projectId: number, file: File): Promise<string
     return (await res.json()).file as string;
 }
 
+/**
+ * One shape to render the same cut into.
+ *
+ * `cover` fills the frame and loses the edges; `contain` fits the whole
+ * frame in and pads. Landscape footage in a 9:16 frame is either a
+ * stamp between two black slabs or a centre crop, and for a vertical
+ * cut the crop is what anybody actually wants — so the preset carries
+ * the answer rather than the render guessing.
+ */
+export interface ExportPreset {
+    /** Names the file: 39-9x16.mp4. Empty for the native one. */
+    variant: string;
+    label: string;
+    width: number;
+    height: number;
+    fit: "contain" | "cover";
+}
+
+export const EXPORT_PRESETS: ExportPreset[] = [
+    { variant: "", label: "16:9", width: 1920, height: 1080, fit: "contain" },
+    { variant: "9x16", label: "9:16", width: 1080, height: 1920, fit: "cover" },
+    { variant: "1x1", label: "1:1", width: 1080, height: 1080, fit: "cover" },
+];
+
 export interface ExportRequest {
     clips: { file: string; start: number; duration: number; offset: number; kind: "video" | "audio" }[];
     /**
@@ -329,6 +353,8 @@ export interface ExportRequest {
     texts: { text: string; start: number; duration: number; png?: string; x?: number; y?: number }[];
     width: number;
     height: number;
+    fit?: "contain" | "cover";
+    variant?: string;
     crossfade: number;
 }
 
@@ -401,8 +427,9 @@ export function saveTimelineOnUnload(id: number, timeline: unknown): void {
     });
 }
 
-export function exportFileUrl(projectId: number): string {
-    return `${API_URL}/api/video/${projectId}/export/file`;
+export function exportFileUrl(projectId: number, variant = ""): string {
+    const query = variant ? `?variant=${encodeURIComponent(variant)}` : "";
+    return `${API_URL}/api/video/${projectId}/export/file${query}`;
 }
 
 export async function cutVideoClip(id: number, index: number): Promise<VideoProject> {

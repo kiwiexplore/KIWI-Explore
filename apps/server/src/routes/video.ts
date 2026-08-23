@@ -18,7 +18,7 @@ import { checkClippingAvailable, cutClip, ClippingUnavailableError } from "../vi
 import { writeResolveProject } from "../resolveExport.js";
 import { resolveProjectFile } from "../projectFolder.js";
 import {
-    checkExportAvailable, renderExport, uploadsDir, exportsDir, hasExport,
+    checkExportAvailable, renderExport, uploadsDir, exportPathFor, hasExport,
     ExportUnavailableError, type ExportRequest,
 } from "../videoExport.js";
 import fs from "node:fs";
@@ -518,6 +518,12 @@ const exportBodySchema = z.object({
     })).default([]),
     width: z.number().int().min(16).max(7680).default(1920),
     height: z.number().int().min(16).max(4320).default(1080),
+    fit: z.enum(["contain", "cover"]).default("contain"),
+    /**
+     * Names the file, so three shapes of one cut don't overwrite each
+     * other. Restricted rather than trusted: it becomes part of a path.
+     */
+    variant: z.string().regex(/^[a-z0-9-]{0,12}$/).default(""),
     crossfade: z.number().min(0).max(5).default(0),
 });
 
@@ -548,8 +554,15 @@ videoRouter.post("/:id/export", async (req, res) => {
         // render lands in its Exports — beside the footage rather than
         // in the app's private store.
         const owner = video.project_id ? getStudioProject(video.project_id) : null;
-        const result = await renderExport(video.id, parsed.data as ExportRequest, owner?.folder || undefined);
-        res.json({ file: result.file, bytes: fs.statSync(result.file).size, warnings: result.warnings });
+        const result = await renderExport(
+            video.id, parsed.data as ExportRequest, owner?.folder || undefined, parsed.data.variant,
+        );
+        res.json({
+            file: result.file,
+            variant: parsed.data.variant,
+            bytes: fs.statSync(result.file).size,
+            warnings: result.warnings,
+        });
     } catch (e) {
         fail(e, res, "Could not export");
     }
@@ -562,7 +575,17 @@ videoRouter.get("/:id/export/file", (req, res) => {
         res.status(400).json({ error: "Invalid id." });
         return;
     }
-    const file = path.join(exportsDir, `${id}.mp4`);
+    const video = getVideoProject(id);
+    const owner = video?.project_id ? getStudioProject(video.project_id) : null;
+    const raw = String(req.query.variant ?? "");
+    if (!/^[a-z0-9-]{0,12}$/.test(raw)) {
+        res.status(400).json({ error: "Invalid variant." });
+        return;
+    }
+    // Looked up where the render actually put it. Before this it always
+    // read the app's own store, so an export that landed in the
+    // project's Exports folder was never found here.
+    const file = exportPathFor(id, owner?.folder || undefined, raw);
     if (!fs.existsSync(file)) {
         res.status(404).json({ error: "Nothing has been exported for this project yet." });
         return;

@@ -928,3 +928,39 @@
 
 .studio-ai-cut:hover:not(:disabled) { color: var(--secondary); border-color: rgba(110, 243, 165, .5); }
 .studio-ai-cut:disabled { opacity: .4; cursor: not-allowed; }
+
+/* --- which shapes to render ------------------------------------------
+
+   Toggles rather than a dropdown: they are not exclusive, and the whole
+   point is rendering several from one cut. A dropdown would hide the
+   ones you aren't on and make picking two an act of memory. */
+
+.studio-shapes { display: inline-flex; gap: 3px; }
+
+.studio-shape {
+
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(5, 8, 22, .6);
+    cursor: pointer;
+
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+
+}
+
+.studio-shape:hover { color: var(--text); }
+
+.studio-shape-on {
+
+    border-color: var(--secondary);
+    background: linear-gradient(rgba(110, 243, 165, .14), rgba(110, 243, 165, .14)), #0d1526;
+    color: var(--secondary);
+
+}
+
+.studio-export-done strong { color: var(--text); font-weight: 700; }
