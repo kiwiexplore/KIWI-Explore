@@ -6,7 +6,7 @@ import {
 import { useStudioEditorState, type Clip } from "../../state/studioEditor";
 import {
     exportFileUrl, exportTimeline, fetchTranscript, fetchVideoProject, saveTimeline,
-    saveTimelineOnUnload, startTranscription, VideoStepBlockedError, VIDEO_LANGUAGES,
+    saveTimelineOnUnload, sendToResolve, startTranscription, VideoStepBlockedError, VIDEO_LANGUAGES,
     type VideoProject,
 } from "../../lib/videoApi";
 import { assetsFromFolder } from "../../lib/projectMedia";
@@ -102,6 +102,7 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
     const [exporting, setExporting] = useState<string | null>(null);
     const [exportDone, setExportDone] = useState<{ bytes: number; warnings: string[] } | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
+    const [resolveDone, setResolveDone] = useState<{ fcpxml: string; srt: string | null; warnings: string[] } | null>(null);
     const [saveState, setSaveState] = useState<SaveState>("idle");
     const [retry, setRetry] = useState(0);
 
@@ -385,6 +386,63 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
      * anything not already uploaded goes up now rather than at import —
      * a file you imported and never used shouldn't cost an upload.
      */
+    /** What the render and the hand-off both need: the edit, as files
+     *  in the project's folder plus the text laid over it. */
+    const buildRequest = () => {
+        const media = editor.clips.filter((c) => c.text === undefined);
+        const files = new Map<string, string>();
+        for (const clip of media) {
+            const asset = editor.assets.find((a) => a.id === clip.assetId);
+            if (asset) files.set(clip.assetId, asset.serverFile);
+        }
+        const first = editor.assets.find((a) => a.id === media[0]?.assetId);
+        return {
+            media,
+            clips: media.map((c) => ({
+                file: files.get(c.assetId) ?? "",
+                start: c.start,
+                duration: c.duration,
+                offset: c.offset,
+                kind: editor.tracks.find((t) => t.id === c.trackId)?.kind ?? "video",
+            })).filter((c) => c.file),
+            width: first?.width && first.width > 0 ? first.width : 1920,
+            height: first?.height && first.height > 0 ? first.height : 1080,
+        };
+    };
+
+    /**
+     * Hands the cut to Resolve rather than rendering it.
+     *
+     * Finishing happens there, so the useful thing is to arrive with
+     * the cut already made. Nothing is copied — the FCPXML points at
+     * the same files in the same folder.
+     */
+    const handToResolve = async () => {
+        setExportError(null);
+        setResolveDone(null);
+        const built = buildRequest();
+        if (built.clips.length === 0) {
+            setExportError("Nothing on the timeline to hand over.");
+            return;
+        }
+        try {
+            setExporting("Writing…");
+            const result = await sendToResolve(project.id, {
+                clips: built.clips,
+                texts: editor.clips.filter((c) => c.text !== undefined)
+                    .map((c) => ({ text: c.text ?? "", start: c.start, duration: c.duration })),
+                width: built.width,
+                height: built.height,
+                crossfade: 0,
+            });
+            setResolveDone(result);
+        } catch (e) {
+            setExportError(e instanceof Error ? e.message : "Could not write the Resolve project.");
+        } finally {
+            setExporting(null);
+        }
+    };
+
     const runExport = async () => {
         setExportError(null);
         setExportDone(null);
@@ -477,6 +535,15 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                             {saveState === "saving" ? "Saving…" : dirty ? "Unsaved" : "Saved"}
                         </span>
                     )}
+                    <button
+                        type="button"
+                        className="studio-bar-btn"
+                        onClick={() => void handToResolve()}
+                        disabled={exporting !== null || editor.clips.length === 0}
+                        title="Write the cut as an FCPXML beside the footage, for DaVinci Resolve"
+                    >
+                        To Resolve
+                    </button>
                     <button
                         type="button"
                         className="studio-bar-btn studio-bar-btn-export"
@@ -753,6 +820,17 @@ export default function StudioEditor({ project, owner, onBack }: StudioEditorPro
                     <span className="studio-text-edit-time">
                         {formatClock(selectedText.start)} – {formatClock(selectedText.start + selectedText.duration)}
                     </span>
+                </div>
+            )}
+
+            {resolveDone && (
+                <div className="studio-export-done">
+                    <span>
+                        Cut written for Resolve — <code>{resolveDone.fcpxml.split("/").pop()}</code>
+                        {resolveDone.srt && <> and <code>{resolveDone.srt.split("/").pop()}</code></>}
+                        {" "}in the project's folder. In Resolve: File → Import → Timeline.
+                    </span>
+                    {resolveDone.warnings.map((w) => <span key={w} className="studio-export-warning">{w}</span>)}
                 </div>
             )}
 

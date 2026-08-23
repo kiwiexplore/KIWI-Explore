@@ -339,6 +339,28 @@ export interface ExportResult {
     warnings: string[];
 }
 
+export interface ResolveResult {
+    /** Absolute path to the .fcpxml, so it can be said out loud. */
+    fcpxml: string;
+    srt: string | null;
+    warnings: string[];
+}
+
+/**
+ * Writes the cut as a Resolve project beside the footage.
+ *
+ * Same body as an export, because it is the same edit — what differs is
+ * that nothing is rendered, so this comes back in a moment rather than
+ * in minutes.
+ */
+export async function sendToResolve(projectId: number, request: ExportRequest): Promise<ResolveResult> {
+    const res = await fetch(`${API_URL}/api/video/${projectId}/resolve`, {
+        method: "POST", headers: headers(), body: JSON.stringify(request),
+    });
+    if (!res.ok) await readError(res, "Could not write the Resolve project");
+    return res.json();
+}
+
 export async function exportTimeline(projectId: number, request: ExportRequest): Promise<ExportResult> {
     const res = await fetch(`${API_URL}/api/video/${projectId}/export`, {
         method: "POST", headers: headers(), body: JSON.stringify(request),

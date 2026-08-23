@@ -15,6 +15,7 @@ import {
     DERIVED_CONTENT_TYPES, type DerivedContentType, type VideoClip,
 } from "../videoGenerator.js";
 import { checkClippingAvailable, cutClip, ClippingUnavailableError } from "../videoClipper.js";
+import { writeResolveProject } from "../resolveExport.js";
 import { resolveProjectFile } from "../projectFolder.js";
 import {
     checkExportAvailable, renderExport, uploadsDir, exportsDir, hasExport,
@@ -567,6 +568,42 @@ videoRouter.get("/:id/export/file", (req, res) => {
         return;
     }
     res.sendFile(file);
+});
+
+/**
+ * The cut, handed to Resolve.
+ *
+ * Takes the same body as an export, because it is the same edit — what
+ * differs is that nothing is rendered. Two files land beside the
+ * footage and Resolve opens them.
+ */
+videoRouter.post("/:id/resolve", async (req, res) => {
+    const id = parseId(req.params.id);
+    const video = id === null ? null : getVideoProject(id);
+    if (!video) {
+        res.status(404).json({ error: "No video project with that id." });
+        return;
+    }
+    const parsed = exportBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: "The timeline sent for Resolve doesn't look right." });
+        return;
+    }
+    const owner = video.project_id === null ? null : getStudioProject(video.project_id);
+    if (!owner?.folder) {
+        res.status(409).json({ error: "This video isn't in a project, so there is no folder to write the cut into." });
+        return;
+    }
+    try {
+        const result = await writeResolveProject(video.title, parsed.data as ExportRequest, owner.folder);
+        res.json({
+            fcpxml: result.fcpxml,
+            srt: result.srt,
+            warnings: result.warnings,
+        });
+    } catch (e) {
+        fail(e, res, "Could not write the Resolve project");
+    }
 });
 
 /**
