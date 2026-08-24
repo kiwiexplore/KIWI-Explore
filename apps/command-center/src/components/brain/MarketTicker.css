@@ -702,37 +702,30 @@
 
 }
 
-/* --- keeping an instrument in the bar --------------------------------
+/* --- choosing the four currencies ------------------------------------
 
-   A pin rather than a drag: the bar has room for three and there are
-   fifty instruments, so "which three" is a choice you make once from
-   the full list, not an arrangement you maintain. */
+   Four pickers rather than a list with add and remove: there are
+   exactly four places on screen and the act is always a swap, so the
+   control is one too. */
 
-.market-rows li { display: flex; align-items: center; gap: 4px; }
+.market-rows li { display: flex; align-items: center; gap: 6px; }
 
-.market-pin {
+.market-rate-pick {
 
-    display: inline-flex;
     flex-shrink: 0;
 
-    padding: 4px;
-    border: 1px solid transparent;
+    padding: 3px 6px;
+    border: 1px solid var(--border);
     border-radius: 6px;
-    background: none;
+    background: rgba(5, 8, 22, .7);
     cursor: pointer;
 
+    font: inherit;
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
     color: var(--text-muted);
-    opacity: .35;
 
 }
 
-.market-rows li:hover .market-pin { opacity: 1; }
-
-.market-pin-on {
-
-    opacity: 1;
-    color: var(--primary);
-    border-color: rgba(73, 199, 255, .45);
-    background: rgba(73, 199, 255, .12);
-
-}
+.market-rate-pick:hover { color: var(--text); border-color: var(--primary); }
+.market-rate-pick:focus { outline: none; border-color: var(--primary); }

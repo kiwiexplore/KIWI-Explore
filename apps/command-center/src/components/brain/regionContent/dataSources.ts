@@ -52,9 +52,20 @@ export async function entertainmentData() {
     return { shows, songs };
 }
 
-export async function marketsData() {
-    const [coins, rates] = await Promise.all([fetchCoins(15), fetchRates()]);
-    return { coins, rates };
+/**
+ * Coins and rates, over whichever four currencies are chosen.
+ *
+ * Keyed by those four upstream (see MarketTicker), because they are a
+ * choice the reader makes and each set is a different answer — the same
+ * reasoning the span already gets. Without the key in the cache, picking
+ * a new currency would show the old four until something else happened
+ * to invalidate them.
+ */
+export function marketsFor(symbols: string[]) {
+    return async () => {
+        const [coins, rates] = await Promise.all([fetchCoins(15), fetchRates("USD", symbols)]);
+        return { coins, rates };
+    };
 }
 
 /**

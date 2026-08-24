@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Pin} from "lucide-react";
+import { ChevronDown} from "lucide-react";
 import { useAsyncData } from "./regionContent/useAsyncData";
-import { indicesFor, marketsData } from "./regionContent/dataSources";
+import { indicesFor, marketsFor } from "./regionContent/dataSources";
 import { SPAN_LABELS, type MarketSpan } from "../../lib/indices";
 import Sparkline from "./regionContent/Sparkline";
 import MarketChange from "./MarketChange";
@@ -13,8 +13,27 @@ import "./MarketTicker.css";
 // read a line without chasing it.
 const HOLD_MS = 5000;
 
-/** Which instruments you chose to keep in the bar. */
-const PINNED_KEY = "kiwi.markets.pinned";
+/** Which four currencies you chose. */
+const RATES_KEY = "kiwi.markets.rates";
+
+/**
+ * Four, and four on purpose.
+ *
+ * The bar has room for a handful of things and the panel's rates column
+ * is a glance, not a table — the converter beside it already reaches
+ * every currency the ECB publishes. This is the short list worth having
+ * on screen, so the control swaps one for another rather than growing
+ * the list.
+ */
+const RATE_SLOTS = 4;
+const DEFAULT_RATES = ["CZK", "EUR", "AUD", "GBP"];
+
+/** What the ECB publishes, which is what Frankfurter will answer for. */
+const RATE_CHOICES = [
+    "AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
+    "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR",
+    "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "ZAR",
+];
 
 /**
  * How many of each kind the open panel draws.
@@ -95,7 +114,28 @@ function formatPrice(value: number): string {
  * exactly what that module will want.
  */
 export default function MarketTicker() {
-    const { data, loading } = useAsyncData("markets", marketsData);
+    // The four currencies on screen. A standing choice, so it is
+    // remembered — and part of the cache key, or picking a new one
+    // would keep showing the old four.
+    const [rateCodes, setRateCodes] = useState<string[]>(() => {
+        try {
+            const stored = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as string[] | null;
+            return Array.isArray(stored) && stored.length === RATE_SLOTS ? stored : DEFAULT_RATES;
+        } catch { return DEFAULT_RATES; }
+    });
+
+    const setRateAt = (index: number, code: string) => setRateCodes((was) => {
+        // Swapped rather than added: if the code is already on screen,
+        // the two trade places instead of the list holding it twice.
+        const next = [...was];
+        const already = next.indexOf(code);
+        if (already !== -1) next[already] = next[index];
+        next[index] = code;
+        localStorage.setItem(RATES_KEY, JSON.stringify(next));
+        return next;
+    });
+
+    const { data, loading } = useAsyncData(`markets-${rateCodes.join(",")}`, marketsFor(rateCodes));
     // The span the charts are drawn over. Its own fetch and its own
     // cache key, so switching back to one you've already seen is
     // instant and the coins and rates aren't refetched with it.
@@ -106,17 +146,7 @@ export default function MarketTicker() {
     const [open, setOpen] = useState(false);
     const [offset, setOffset] = useState(0);
     const [visible, setVisible] = useState(DEFAULT_VISIBLE);
-    // Remembered, because which instruments you care about is a
-    // standing choice rather than a per-visit one.
-    const [pinned, setPinned] = useState<string[]>(() => {
-        try { return JSON.parse(localStorage.getItem(PINNED_KEY) ?? "[]") as string[]; } catch { return []; }
-    });
 
-    const togglePin = (id: string) => setPinned((was) => {
-        const next = was.includes(id) ? was.filter((p) => p !== id) : [...was, id];
-        localStorage.setItem(PINNED_KEY, JSON.stringify(next));
-        return next;
-    });
     const observerRef = useRef<ResizeObserver | null>(null);
 
     // The bar's width is whatever the window leaves it, and it changes
@@ -189,22 +219,13 @@ export default function MarketTicker() {
 
     const all = [...indices, ...commodities, ...stocks, ...coins, ...rates];
 
-    // What you have pinned, if anything. Pinned quotes hold their place
-    // in the bar and never rotate away — which is the whole point:
-    // watching one instrument is a thing you decide, and a bar that
-    // rotates it out of sight every five seconds can't be watched.
-    const pinnedList = all.filter((q) => pinned.includes(q.id));
-    const rest = all.filter((q) => !pinned.includes(q.id));
-
     // How many quotes there are, kept in a ref so the timer below
     // doesn't depend on it. It changes whenever a price updates, and an
     // interval rebuilt on every update never gets to run its full term
     // — the row would turn over at whatever rhythm the data happened to
     // arrive in rather than the one set here.
-    // Only the unpinned ones rotate, so the count the timer works from
-    // is theirs.
-    const countRef = useRef(rest.length);
-    useEffect(() => { countRef.current = rest.length; }, [rest.length]);
+    const countRef = useRef(all.length);
+    useEffect(() => { countRef.current = all.length; }, [all.length]);
 
     // Rotation pauses while the panel is open — nothing should move
     // under the cursor of someone reading it.
@@ -222,14 +243,10 @@ export default function MarketTicker() {
     }
     if (all.length === 0) return <div className="market-ticker" ref={barRef} />;
 
-    // Pinned first, then as much of the rotation as still fits. Wraps
-    // around the end rather than stopping short, so the last set is as
-    // full as every other one.
-    const room = Math.max(0, visible - pinnedList.length);
-    const window_ = [
-        ...pinnedList.slice(0, visible),
-        ...Array.from({ length: Math.min(room, rest.length) }, (_, i) => rest[(offset + i) % rest.length]),
-    ];
+    // Wraps around the end rather than stopping short, so the last set
+    // is as full as every other one.
+    const window_ = Array.from({ length: Math.min(visible, all.length) },
+        (_, i) => all[(offset + i) % all.length]);
 
     return (
         <div className="market-ticker-shell">
@@ -303,8 +320,6 @@ export default function MarketTicker() {
                         <MarketGroup
                             title={`Indices · ${SPAN_LABELS[span]}`}
                             quotes={indices.slice(0, PER_GROUP)}
-                            pinned={pinned}
-                            onPin={togglePin}
                             note={indices.length === 0 && !boards.loading
                                 ? "Indices, commodities and stocks come through KIWI's own feed service, which isn't answering."
                                 : undefined}
@@ -312,14 +327,10 @@ export default function MarketTicker() {
                         <MarketGroup
                             title={`Commodities · ${SPAN_LABELS[span]}`}
                             quotes={commodities.slice(0, PER_GROUP)}
-                            pinned={pinned}
-                            onPin={togglePin}
                         />
                         <MarketGroup
                             title="Crypto · 24h · 7d line"
                             quotes={coins.slice(0, PER_GROUP)}
-                            pinned={pinned}
-                            onPin={togglePin}
                         />
                         <MarketHeatmap
                             title={`Stocks · ${SPAN_LABELS[span]} · largest first`}
@@ -346,13 +357,51 @@ export default function MarketTicker() {
                             have no chart to compare and the converter is
                             a tool rather than a reading. */}
                         <div className="market-currencies">
-                            <MarketGroup
-                                title={`Rates · ${data?.rates.base} · ${data?.rates.date}`}
-                                quotes={rates.slice(0, PER_GROUP)}
-                                pinned={pinned}
-                                onPin={togglePin}
-                                note="European Central Bank reference rates, published once a working day. Pin the ones you want kept in the top bar."
-                            />
+                            <div className="market-group">
+                                <h3 className="market-group-title">
+                                    Rates · {data?.rates.base} · {data?.rates.date}
+                                </h3>
+                                <p className="market-note">
+                                    European Central Bank reference rates, published once a working day.
+                                    Swap any of the four for another currency.
+                                </p>
+                                {/* Four pickers rather than a list with
+                                    add and remove: there are exactly four
+                                    places and the act is always a swap,
+                                    so the control should be one too. */}
+                                <ul className="market-rows">
+                                    {rateCodes.map((code, i) => {
+                                        const quote = rates.find((r) => r.id === code);
+                                        return (
+                                            <li key={`${code}-${i}`}>
+                                                <select
+                                                    className="market-rate-pick"
+                                                    value={code}
+                                                    onChange={(e) => setRateAt(i, e.target.value)}
+                                                    aria-label={`Currency ${i + 1}`}
+                                                >
+                                                    {RATE_CHOICES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                                <a
+                                                    className="market-row"
+                                                    href={quoteHref("fx", `${data?.rates.base ?? "USD"}${code}`)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <span className="market-row-label">
+                                                        {data?.rates.base}/{code}
+                                                    </span>
+                                                    <span className="market-row-value">
+                                                        {quote ? quote.value : "—"}
+                                                    </span>
+                                                    <span className="market-row-line" />
+                                                    <span className="market-row-change">—</span>
+                                                </a>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
                             <CurrencyConverter />
                         </div>
                     </section>
@@ -362,14 +411,7 @@ export default function MarketTicker() {
     );
 }
 
-function MarketGroup({ title, quotes, note, pinned, onPin }: {
-    title: string;
-    quotes: Quote[];
-    note?: string;
-    /** Ids kept in the top bar. */
-    pinned?: string[];
-    onPin?: (id: string) => void;
-}) {
+function MarketGroup({ title, quotes, note }: { title: string; quotes: Quote[]; note?: string }) {
     return (
         <div className="market-group">
             <h3 className="market-group-title">{title}</h3>
@@ -377,20 +419,6 @@ function MarketGroup({ title, quotes, note, pinned, onPin }: {
             <ul className="market-rows">
                 {quotes.map((quote) => (
                     <li key={quote.id}>
-                        {onPin && (
-                            /* Outside the link, because the row is an <a>
-                               and a button inside one is a click nobody
-                               can predict the target of. */
-                            <button
-                                type="button"
-                                className={`market-pin${pinned?.includes(quote.id) ? " market-pin-on" : ""}`}
-                                onClick={() => onPin(quote.id)}
-                                aria-pressed={pinned?.includes(quote.id)}
-                                title={pinned?.includes(quote.id) ? "Stop keeping this in the top bar" : "Keep this in the top bar"}
-                            >
-                                <Pin size={11} strokeWidth={2} />
-                            </button>
-                        )}
                         <a
                             className="market-row"
                             href={quote.href}
