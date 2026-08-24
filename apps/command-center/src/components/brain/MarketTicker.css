@@ -727,5 +727,8 @@
 
 }
 
+.market-rate-pair { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.market-rate-slash { color: var(--text-muted); font-size: 10px; }
+
 .market-rate-pick:hover { color: var(--text); border-color: var(--primary); }
 .market-rate-pick:focus { outline: none; border-color: var(--primary); }

@@ -58,6 +58,61 @@ export interface ExchangeRates {
     rates: { code: string; rate: number }[];
 }
 
+export interface RatePair { base: string; quote: string }
+export interface PairRate extends RatePair { rate: number | null }
+export interface PairRates {
+    date: string;
+    pairs: PairRate[];
+}
+
+/**
+ * Four arbitrary pairs, both sides chosen.
+ *
+ * Frankfurter answers one base at a time with as many symbols as you
+ * like, so the pairs are grouped by base and that is how many requests
+ * this makes — one for four USD pairs, two for a mix. Asking per pair
+ * would be four requests for something that is usually one.
+ *
+ * A pair whose base equals its quote is 1 without asking anybody, and a
+ * base the service doesn't know comes back with a null rate rather than
+ * taking the other three down with it.
+ */
+export async function fetchPairs(pairs: RatePair[]): Promise<PairRates> {
+    const byBase = new Map<string, Set<string>>();
+    for (const { base, quote } of pairs) {
+        if (base === quote) continue;
+        const set = byBase.get(base) ?? new Set<string>();
+        set.add(quote);
+        byBase.set(base, set);
+    }
+
+    let date = "";
+    const found = new Map<string, number>();
+
+    await Promise.all([...byBase.entries()].map(async ([base, quotes]) => {
+        try {
+            const res = await fetch(
+                `https://api.frankfurter.dev/v1/latest?base=${base}&symbols=${[...quotes].join(",")}`,
+            );
+            if (!res.ok) return;
+            const data = await res.json() as { date: string; rates: Record<string, number> };
+            date = data.date || date;
+            for (const [code, rate] of Object.entries(data.rates)) found.set(`${base}/${code}`, rate);
+        } catch {
+            // One base failing leaves the others alone; the pairs it
+            // was for read as "—" rather than the column disappearing.
+        }
+    }));
+
+    return {
+        date,
+        pairs: pairs.map((p) => ({
+            ...p,
+            rate: p.base === p.quote ? 1 : found.get(`${p.base}/${p.quote}`) ?? null,
+        })),
+    };
+}
+
 /** ECB reference rates, published once a working day. */
 export async function fetchRates(
     // Against the dollar, per explicit request: it's what most of the

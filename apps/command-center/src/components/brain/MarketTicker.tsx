@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown} from "lucide-react";
 import { useAsyncData } from "./regionContent/useAsyncData";
 import { indicesFor, marketsFor } from "./regionContent/dataSources";
+import type { RatePair } from "../../lib/markets";
 import { SPAN_LABELS, type MarketSpan } from "../../lib/indices";
 import Sparkline from "./regionContent/Sparkline";
 import MarketChange from "./MarketChange";
@@ -26,13 +27,26 @@ const RATES_KEY = "kiwi.markets.rates";
  * the list.
  */
 const RATE_SLOTS = 4;
-const DEFAULT_RATES = ["CZK", "EUR", "AUD", "GBP"];
+/** Both sides, because a rate is a pair and either half is a choice. */
+const DEFAULT_RATES: RatePair[] = [
+    { base: "USD", quote: "CZK" },
+    { base: "EUR", quote: "CZK" },
+    { base: "USD", quote: "EUR" },
+    { base: "GBP", quote: "CZK" },
+];
 
-/** What the ECB publishes, which is what Frankfurter will answer for. */
+/**
+ * What the ECB publishes, which is what Frankfurter will answer for.
+ *
+ * USD is in the list. Leaving it out was a real bug rather than an
+ * omission: the default base IS the dollar, and a select whose value
+ * isn't among its options silently shows the first one — so every pair
+ * read "AUD/…" while quietly holding USD and fetching the dollar rate.
+ */
 const RATE_CHOICES = [
     "AUD", "BGN", "BRL", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR", "GBP",
     "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW", "MXN", "MYR",
-    "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "ZAR",
+    "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "USD", "ZAR",
 ];
 
 /**
@@ -117,25 +131,28 @@ export default function MarketTicker() {
     // The four currencies on screen. A standing choice, so it is
     // remembered — and part of the cache key, or picking a new one
     // would keep showing the old four.
-    const [rateCodes, setRateCodes] = useState<string[]>(() => {
+    const [ratePairs, setRatePairs] = useState<RatePair[]>(() => {
         try {
-            const stored = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as string[] | null;
-            return Array.isArray(stored) && stored.length === RATE_SLOTS ? stored : DEFAULT_RATES;
+            const stored = JSON.parse(localStorage.getItem(RATES_KEY) ?? "null") as unknown;
+            if (!Array.isArray(stored) || stored.length !== RATE_SLOTS) return DEFAULT_RATES;
+            // An older setting was four quote codes against a fixed USD.
+            // Read as pairs rather than thrown away, so nobody's choice
+            // is lost to the shape changing under it.
+            if (stored.every((s) => typeof s === "string")) {
+                return (stored as string[]).map((quote) => ({ base: "USD", quote }));
+            }
+            return stored as RatePair[];
         } catch { return DEFAULT_RATES; }
     });
 
-    const setRateAt = (index: number, code: string) => setRateCodes((was) => {
-        // Swapped rather than added: if the code is already on screen,
-        // the two trade places instead of the list holding it twice.
-        const next = [...was];
-        const already = next.indexOf(code);
-        if (already !== -1) next[already] = next[index];
-        next[index] = code;
+    const setRateAt = (index: number, side: "base" | "quote", code: string) => setRatePairs((was) => {
+        const next = was.map((p, i) => (i === index ? { ...p, [side]: code } : p));
         localStorage.setItem(RATES_KEY, JSON.stringify(next));
         return next;
     });
 
-    const { data, loading } = useAsyncData(`markets-${rateCodes.join(",")}`, marketsFor(rateCodes));
+    const ratesKey = ratePairs.map((p) => `${p.base}/${p.quote}`).join(",");
+    const { data, loading } = useAsyncData(`markets-${ratesKey}`, marketsFor(ratePairs));
     // The span the charts are drawn over. Its own fetch and its own
     // cache key, so switching back to one you've already seen is
     // instant and the coins and rates aren't refetched with it.
@@ -206,16 +223,18 @@ export default function MarketTicker() {
     // stops at the first `?.`, so a payload that arrives without its
     // rates half throws instead of falling back to the empty list the
     // `?? []` was there to provide.
-    const base = data?.rates?.base ?? "";
-    const rates: Quote[] = (data?.rates?.rates ?? []).map((rate) => ({
-        id: rate.code,
-        // Read as "one euro buys this much", which is what the number is.
-        label: `${base}/${rate.code}`,
-        value: rate.rate.toFixed(3),
-        change: null,
-        series: [],
-        href: quoteHref("fx", `${base}${rate.code}`),
-    }));
+    const rates: Quote[] = (data?.rates?.pairs ?? [])
+        .filter((p) => p.rate !== null)
+        .map((p) => ({
+            id: `${p.base}/${p.quote}`,
+            // Read as "one of these buys this much of that", which is
+            // what the number is.
+            label: `${p.base}/${p.quote}`,
+            value: (p.rate as number).toFixed(3),
+            change: null,
+            series: [],
+            href: quoteHref("fx", `${p.base}${p.quote}`),
+        }));
 
     const all = [...indices, ...commodities, ...stocks, ...coins, ...rates];
 
@@ -359,40 +378,56 @@ export default function MarketTicker() {
                         <div className="market-currencies">
                             <div className="market-group">
                                 <h3 className="market-group-title">
-                                    Rates · {data?.rates.base} · {data?.rates.date}
+                                    Rates · {data?.rates?.date}
                                 </h3>
                                 <p className="market-note">
                                     European Central Bank reference rates, published once a working day.
-                                    Swap any of the four for another currency.
+                                    Both sides of each pair are yours to change.
                                 </p>
                                 {/* Four pickers rather than a list with
                                     add and remove: there are exactly four
                                     places and the act is always a swap,
                                     so the control should be one too. */}
                                 <ul className="market-rows">
-                                    {rateCodes.map((code, i) => {
-                                        const quote = rates.find((r) => r.id === code);
+                                    {ratePairs.map((pair, i) => {
+                                        const found = data?.rates?.pairs?.[i];
                                         return (
-                                            <li key={`${code}-${i}`}>
-                                                <select
-                                                    className="market-rate-pick"
-                                                    value={code}
-                                                    onChange={(e) => setRateAt(i, e.target.value)}
-                                                    aria-label={`Currency ${i + 1}`}
-                                                >
-                                                    {RATE_CHOICES.map((c) => <option key={c} value={c}>{c}</option>)}
-                                                </select>
+                                            <li key={`${pair.base}-${pair.quote}-${i}`}>
+                                                {/* Both halves are pickers. A rate is
+                                                    a pair, and fixing one side would
+                                                    be deciding half of it for you. */}
+                                                <span className="market-rate-pair">
+                                                    <select
+                                                        className="market-rate-pick"
+                                                        value={pair.base}
+                                                        onChange={(e) => setRateAt(i, "base", e.target.value)}
+                                                        aria-label={`Rate ${i + 1}, from`}
+                                                    >
+                                                        {RATE_CHOICES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                    <span className="market-rate-slash">/</span>
+                                                    <select
+                                                        className="market-rate-pick"
+                                                        value={pair.quote}
+                                                        onChange={(e) => setRateAt(i, "quote", e.target.value)}
+                                                        aria-label={`Rate ${i + 1}, to`}
+                                                    >
+                                                        {RATE_CHOICES.map((c) => <option key={c} value={c}>{c}</option>)}
+                                                    </select>
+                                                </span>
                                                 <a
                                                     className="market-row"
-                                                    href={quoteHref("fx", `${data?.rates.base ?? "USD"}${code}`)}
+                                                    href={quoteHref("fx", `${pair.base}${pair.quote}`)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >
                                                     <span className="market-row-label">
-                                                        {data?.rates.base}/{code}
+                                                        1 {pair.base} =
                                                     </span>
                                                     <span className="market-row-value">
-                                                        {quote ? quote.value : "—"}
+                                                        {found?.rate === null || found?.rate === undefined
+                                                            ? "—"
+                                                            : `${found.rate.toFixed(3)} ${pair.quote}`}
                                                     </span>
                                                     <span className="market-row-line" />
                                                     <span className="market-row-change">—</span>
