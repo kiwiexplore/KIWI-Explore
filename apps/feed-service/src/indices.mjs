@@ -52,12 +52,56 @@ const INSTRUMENTS = [
 ];
 
 // Yahoo refuses requests it reads as scripted.
-// The twenty-odd largest listed companies, in order of market
-// capitalisation. The order is CURATED, not live: Yahoo's quote
-// endpoint — the one that returns a capitalisation — now answers
-// "Unauthorized" without a session, and the chart endpoint this file
-// uses doesn't carry one. So the ranking is a considered list rather
-// than a computed one, and it drifts as companies do.
+/**
+ * Market capitalisation, from Nasdaq's own public API.
+ *
+ * Yahoo is where everything else on this board comes from and it will
+ * not give one up: its chart endpoint carries no such field, and both
+ * endpoints that do (v7/quote, v10/quoteSummary) answer 401 without a
+ * session — and the crumb flow that would get that session is itself
+ * rate-limited. Nasdaq publishes the number for free, keyless, with
+ * nothing more than a browser user-agent, so that is where this asks.
+ *
+ * One request per symbol, which is why it only runs for STOCKS: an
+ * index is an average rather than a company and a barrel of oil is
+ * neither, so there is no number to fetch for those and no request
+ * made. The whole result is cached for five minutes with everything
+ * else (see handler.mjs).
+ *
+ * A symbol Nasdaq doesn't know, or one with no cap to publish — a
+ * closed-end fund, a mutual fund — comes back null and the row simply
+ * carries no cap. Guessing one would be worse than the gap.
+ */
+const NASDAQ_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36";
+
+/** Yahoo writes Berkshire's B shares BRK-B; Nasdaq writes BRK.B. */
+function nasdaqSymbol(symbol) {
+    return symbol.replace("-", ".");
+}
+
+async function fetchMarketCap(symbol) {
+    try {
+        const res = await fetch(
+            `https://api.nasdaq.com/api/quote/${encodeURIComponent(nasdaqSymbol(symbol))}/summary?assetclass=stocks`,
+            { headers: { "User-Agent": NASDAQ_UA, Accept: "application/json" } },
+        );
+        if (!res.ok) return null;
+        const raw = (await res.json())?.data?.summaryData?.MarketCap?.value;
+        if (typeof raw !== "string") return null;
+        // Arrives as "4,514,709,583,000", and as "N/A" for anything
+        // that hasn't got one.
+        const value = Number(raw.replace(/[^0-9.]/g, ""));
+        return Number.isFinite(value) && value > 0 ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+// The twenty-odd largest listed companies. The order here is a
+// starting point only — the board sorts by the capitalisation it
+// actually fetches, so the ranking is live rather than a list that
+// drifts as companies do.
 const STOCKS = [
     { symbol: "NVDA", name: "Nvidia" },
     { symbol: "AAPL", name: "Apple" },
@@ -155,6 +199,9 @@ async function fetchIndex({ symbol, name, group, order }, span) {
         // genuinely carries, so it is the one shown — under its own
         // name, not under a borrowed one.
         volume: meta.regularMarketVolume ?? null,
+        // Filled in afterwards for stocks, from Nasdaq. Null everywhere
+        // else, because nothing else here has one.
+        marketCap: null,
         // The year's range, which is the other thing a single price
         // tells you nothing about.
         yearLow: meta.fiftyTwoWeekLow ?? null,
@@ -190,5 +237,27 @@ export async function indexQuotes(span = "1mo") {
         quotes.push(...await Promise.all(batch.map((instrument) => settle(fetchIndex(instrument, span)))));
     }
 
-    return quotes.filter((quote) => quote && Number.isFinite(quote.price));
+    const found = quotes.filter((quote) => quote && Number.isFinite(quote.price));
+
+    // Capitalisations, for the stocks only and in the same batches for
+    // the same reason. Nasdaq is a different host from Yahoo, so this
+    // runs after rather than alongside — a rate limit on one shouldn't
+    // be provoked while the other is still going.
+    const stocks = found.filter((quote) => quote.group === "stock");
+    for (let i = 0; i < stocks.length; i += BATCH_SIZE) {
+        const batch = stocks.slice(i, i + BATCH_SIZE);
+        const caps = await Promise.all(batch.map((quote) => settle(fetchMarketCap(quote.symbol))));
+        batch.forEach((quote, n) => { quote.marketCap = caps[n] ?? null; });
+    }
+
+    // Ranked by what was actually fetched rather than by the order they
+    // were listed in. `order` is what the heatmap sizes by, and it can
+    // finally mean the real thing — anything with no cap to rank by
+    // keeps its listed place at the back rather than jumping to the
+    // front on a zero.
+    const ranked = stocks.filter((q) => q.marketCap).sort((a, b) => b.marketCap - a.marketCap);
+    ranked.forEach((quote, n) => { quote.order = n; });
+    stocks.filter((q) => !q.marketCap).forEach((quote, n) => { quote.order = ranked.length + n; });
+
+    return found;
 }

@@ -4,6 +4,8 @@ interface HeatCell {
     /** Percent, positive or negative. */
     change: number;
     href: string;
+    /** Market capitalisation, already shortened. Stocks have one. */
+    cap?: string;
 }
 
 /**
@@ -37,10 +39,11 @@ interface MarketHeatmapProps {
  * single label. Ordered by company size, biggest first, so a name keeps
  * its place from one day to the next — what changes is its colour.
  *
- * Not a treemap — the version of this you see on trading sites sizes
- * each tile by market capitalisation, and the indices and commodities
- * here have no capitalisation to size by. Equal tiles say the one thing
- * that IS true of all of them: this is how much each moved.
+ * Not a treemap. The version on trading sites sizes each tile by
+ * capitalisation, which turns a board of two dozen names into four
+ * readable ones and twenty slivers. Equal tiles keep every name
+ * legible, and the capitalisation is written ON the tile instead —
+ * which says the same thing without spending the layout on it.
  */
 export default function MarketHeatmap({ title, cells }: MarketHeatmapProps) {
     if (cells.length === 0) return null;
@@ -74,12 +77,14 @@ export default function MarketHeatmap({ title, cells }: MarketHeatmapProps) {
                         href={cell.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title={`${cell.label} ${cell.change >= 0 ? "+" : "−"}${Math.abs(cell.change).toFixed(2)}%`}
+                        title={`${cell.label} ${cell.change >= 0 ? "+" : "−"}${Math.abs(cell.change).toFixed(2)}%`
+                            + (cell.cap ? ` · market cap ${cell.cap}` : "")}
                     >
                         <span className="market-heat-label">{cell.label}</span>
                         <span className="market-heat-figure">
                             {cell.change >= 0 ? "+" : "−"}{Math.abs(cell.change).toFixed(1)}%
                         </span>
+                        {cell.cap && <span className="market-heat-cap">{cell.cap}</span>}
                     </a>
                 ))}
             </div>

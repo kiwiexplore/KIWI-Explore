@@ -97,6 +97,8 @@ interface Quote {
      * it actually has.
      */
     sub?: string;
+    /** Market capitalisation, shortened. Stocks only. */
+    cap?: string;
 }
 
 /** 46.9M, 1.2B — a share count, without the currency a cap carries. */
@@ -225,43 +227,62 @@ export default function MarketTicker() {
         observerRef.current.observe(bar);
     };
 
+    // Sorted by `order`, which is the whole reason the field exists: the
+    // service re-ranks the stocks by the capitalisation it just fetched,
+    // but hands them back in the order they're listed in the file. Read
+    // straight off the array, Microsoft sat above Alphabet under a
+    // heading that said "by market cap" — the heading was right and the
+    // board wasn't. Indices and commodities keep their listed order,
+    // which is what their `order` already says.
     const quoteFrom = (group: "index" | "commodity" | "stock"): Quote[] =>
-        (boards.data ?? []).filter((item) => item.group === group).map((item) => ({
-            id: item.symbol,
-            label: item.name,
-            value: formatPrice(item.price),
-            change: item.changePercent,
-            series: item.month,
-            href: quoteHref("symbol", item.symbol),
-            // No market cap exists for an index or a barrel of oil, so
-            // the line under them carries what does: how far it moved.
-            //
-            // An index moves in POINTS, not in money. Yahoo reports a
-            // currency for one because that's what its constituents are
-            // priced in, and printing "+153.58 EUR" under the DAX made
-            // the row look like it had gained a hundred and fifty euros
-            // of something. Points is what the number is; it is also
-            // why the whole column now reads the same way instead of
-            // three currencies deep.
-            //
-            // Commodities and stocks are priced in real money, and on
-            // this board that money is the dollar — USX is Yahoo's code
-            // for US cents, which is a dollar with the decimal moved.
-            sub: [
-                group === "index"
-                    ? `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} pts`
-                    : `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} `
-                        + `${item.currency === "USX" ? "US¢" : item.currency || "USD"}`,
-                item.volume ? `vol ${units(item.volume)}` : null,
-                item.yearLow && item.yearHigh
-                    ? `year ${formatPrice(item.yearLow)}–${formatPrice(item.yearHigh)}`
-                    : null,
-            ].filter(Boolean).join(" · "),
-        }));
+        (boards.data ?? [])
+            .filter((item) => item.group === group)
+            .slice()
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+            .map((item) => ({
+                id: item.symbol,
+                label: item.name,
+                value: formatPrice(item.price),
+                change: item.changePercent,
+                series: item.month,
+                href: quoteHref("symbol", item.symbol),
+                // No market cap exists for an index or a barrel of oil, so
+                // the line under them carries what does: how far it moved.
+                //
+                // An index moves in POINTS, not in money. Yahoo reports a
+                // currency for one because that's what its constituents are
+                // priced in, and printing "+153.58 EUR" under the DAX made
+                // the row look like it had gained a hundred and fifty euros
+                // of something. Points is what the number is; it is also
+                // why the whole column now reads the same way instead of
+                // three currencies deep.
+                //
+                // Commodities and stocks are priced in real money, and on
+                // this board that money is the dollar — USX is Yahoo's code
+                // for US cents, which is a dollar with the decimal moved.
+                cap: item.marketCap ? compact(item.marketCap) : undefined,
+                sub: [
+                    item.marketCap ? `cap ${compact(item.marketCap)}` : null,
+                    group === "index"
+                        ? `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} pts`
+                        : `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} `
+                            + `${item.currency === "USX" ? "US¢" : item.currency || "USD"}`,
+                    item.volume ? `vol ${units(item.volume)}` : null,
+                    item.yearLow && item.yearHigh
+                        ? `year ${formatPrice(item.yearLow)}–${formatPrice(item.yearHigh)}`
+                        : null,
+                ].filter(Boolean).join(" · "),
+            }));
 
     const indices = quoteFrom("index");
     const commodities = quoteFrom("commodity");
     const stocks = quoteFrom("stock");
+
+    // Summed off the raw figures rather than off the shortened strings
+    // on the tiles, which have already thrown their precision away.
+    const stockMarketCap = (boards.data ?? [])
+        .filter((item) => item.group === "stock")
+        .reduce((sum, item) => sum + (item.marketCap ?? 0), 0);
 
     const coins: Quote[] = (data?.coins ?? []).map((coin) => ({
         id: coin.id,
@@ -415,12 +436,20 @@ export default function MarketTicker() {
                             quotes={coins.slice(0, PER_GROUP)}
                         />
                         <MarketHeatmap
-                            title={`Stocks · ${SPAN_LABELS[span]} · largest first`}
+                            // "These 24 together", not "the market" —
+                            // crypto's total is a published figure for
+                            // every coin there is, and the honest
+                            // equivalent here is what's on the board.
+                            // Calling a sum of two dozen names the US
+                            // market would be a number that reads true
+                            // and isn't.
+                            title={`Stocks · ${SPAN_LABELS[span]} · these ${stocks.length} worth ${compact(stockMarketCap)}`}
                             cells={stocks.map((quote) => ({
                                 id: quote.id,
                                 label: quote.label,
                                 change: quote.change ?? 0,
                                 href: quote.href,
+                                cap: quote.cap,
                             }))}
                         />
                         <MarketChange

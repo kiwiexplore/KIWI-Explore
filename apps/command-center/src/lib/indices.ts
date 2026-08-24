@@ -30,6 +30,13 @@ export interface IndexQuote {
      * all, being an average rather than a company.
      */
     volume: number | null;
+    /**
+     * Stocks only, from Nasdaq's public API — Yahoo will not give one
+     * up without a session. Null for indices and commodities, which do
+     * not have one to give: an index is an average rather than a
+     * company, and a barrel of oil is neither.
+     */
+    marketCap: number | null;
     /** The year's range — what a single price can't tell you. */
     yearLow: number | null;
     yearHigh: number | null;

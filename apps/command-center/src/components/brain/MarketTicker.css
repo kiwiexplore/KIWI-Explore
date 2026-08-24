@@ -768,3 +768,16 @@
 
 .market-rate-pick:hover { color: var(--text); border-color: var(--primary); }
 .market-rate-pick:focus { outline: none; border-color: var(--primary); }
+
+/* The capitalisation, written on the tile rather than spent on sizing
+   it — see MarketHeatmap's own note on why this isn't a treemap. */
+.market-heat-cap {
+
+    display: block;
+
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .2px;
+    color: rgba(245, 247, 250, .62);
+
+}
