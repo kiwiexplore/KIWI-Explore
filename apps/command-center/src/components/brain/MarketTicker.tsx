@@ -87,28 +87,19 @@ interface Quote {
     /** The series behind the number, for the line. */
     series: number[];
     /**
-     * The line pinned under the row.
+     * The line pinned under the row: the market capitalisation, and
+     * only that.
      *
-     * What it says depends on WHAT THE THING IS, because market cap
-     * only exists for some of them. A coin has one. An index does not —
-     * it isn't a company, it's an average — and neither does a barrel
-     * of oil. Printing "market cap" over a number that isn't one would
-     * be worse than leaving the row alone, so each kind says the thing
-     * it actually has.
+     * Absent where there is no capitalisation to print. A coin has one.
+     * An index does not — it isn't a company, it's an average — and
+     * neither does a barrel of oil. Those rows carry no line rather
+     * than a substitute fact standing in for the one that's missing.
      */
     sub?: string;
     /** Market capitalisation, shortened. Stocks only. */
     cap?: string;
 }
 
-/** 46.9M, 1.2B — a share count, without the currency a cap carries. */
-function units(value: number): string {
-    if (!Number.isFinite(value) || value <= 0) return "—";
-    if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
-    if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
-    if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
-    return `${Math.round(value)}`;
-}
 
 /** 1.55T, 812B, 4.2M — a market cap is unreadable in full. */
 function compact(value: number): string {
@@ -246,32 +237,23 @@ export default function MarketTicker() {
                 change: item.changePercent,
                 series: item.month,
                 href: quoteHref("symbol", item.symbol),
-                // No market cap exists for an index or a barrel of oil, so
-                // the line under them carries what does: how far it moved.
-                //
-                // An index moves in POINTS, not in money. Yahoo reports a
-                // currency for one because that's what its constituents are
-                // priced in, and printing "+153.58 EUR" under the DAX made
-                // the row look like it had gained a hundred and fifty euros
-                // of something. Points is what the number is; it is also
-                // why the whole column now reads the same way instead of
-                // three currencies deep.
-                //
-                // Commodities and stocks are priced in real money, and on
-                // this board that money is the dollar — USX is Yahoo's code
-                // for US cents, which is a dollar with the decimal moved.
                 cap: item.marketCap ? compact(item.marketCap) : undefined,
-                sub: [
-                    item.marketCap ? `cap ${compact(item.marketCap)}` : null,
-                    group === "index"
-                        ? `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} pts`
-                        : `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} `
-                            + `${item.currency === "USX" ? "US¢" : item.currency || "USD"}`,
-                    item.volume ? `vol ${units(item.volume)}` : null,
-                    item.yearLow && item.yearHigh
-                        ? `year ${formatPrice(item.yearLow)}–${formatPrice(item.yearHigh)}`
-                        : null,
-                ].filter(Boolean).join(" · "),
+                // The line under a row carries the capitalisation and
+                // nothing else, which is the shape crypto's rows have.
+                //
+                // It also used to carry the day's move in points, the
+                // volume and the year's range — three facts nobody
+                // asked for, crowding out the one that was requested.
+                // The move is already on the row as a percentage.
+                //
+                // An index or a commodity gets no line at all, because
+                // it has no capitalisation to print. An index is an
+                // average of other people's companies; a barrel of oil
+                // is not a company. Nasdaq's index endpoint returns a
+                // previous close and a day range and nothing else, and
+                // no free source gives a per-index constituent total —
+                // so the row stays silent rather than inventing one.
+                sub: item.marketCap ? `cap ${compact(item.marketCap)}` : undefined,
             }));
 
     const indices = quoteFrom("index");
