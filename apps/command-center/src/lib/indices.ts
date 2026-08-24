@@ -37,6 +37,8 @@ export interface IndexQuote {
      * company, and a barrel of oil is neither.
      */
     marketCap: number | null;
+    /** What that cap is a total of — "S&P 500 companies". */
+    capOf?: string | null;
     /** The year's range — what a single price can't tell you. */
     yearLow: number | null;
     yearHigh: number | null;

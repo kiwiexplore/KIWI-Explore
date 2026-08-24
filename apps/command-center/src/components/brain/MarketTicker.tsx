@@ -241,19 +241,24 @@ export default function MarketTicker() {
                 // The line under a row carries the capitalisation and
                 // nothing else, which is the shape crypto's rows have.
                 //
-                // It also used to carry the day's move in points, the
-                // volume and the year's range — three facts nobody
-                // asked for, crowding out the one that was requested.
-                // The move is already on the row as a percentage.
+                // Indices and metals now have one too, and it needs the
+                // gloss in front of it: the S&P 500 is not a company
+                // worth seventy trillion, its five hundred constituents
+                // are, and gold's figure is every ounce ever mined
+                // rather than the price of one. Where no gloss is
+                // needed — a company IS its own market cap — there
+                // isn't one.
                 //
-                // An index or a commodity gets no line at all, because
-                // it has no capitalisation to print. An index is an
-                // average of other people's companies; a barrel of oil
-                // is not a company. Nasdaq's index endpoint returns a
-                // previous close and a day range and nothing else, and
-                // no free source gives a per-index constituent total —
-                // so the row stays silent rather than inventing one.
-                sub: item.marketCap ? `cap ${compact(item.marketCap)}` : undefined,
+                // Still absent entirely on the rows with no such number
+                // to print. Oil, gas, copper and the crops get burnt or
+                // eaten rather than hoarded, so no world total exists
+                // for them, and the same goes for the indices outside
+                // America, which nobody publishes a constituent sum for
+                // free. Those rows say nothing rather than something
+                // invented.
+                sub: item.marketCap
+                    ? [item.capOf, `cap ${compact(item.marketCap)}`].filter(Boolean).join(" · ")
+                    : undefined,
             }));
 
     const indices = quoteFrom("index");

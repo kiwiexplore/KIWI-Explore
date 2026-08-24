@@ -13,6 +13,8 @@
  * nothing about how it got there.
  */
 
+import { capitalOf, totalCapitals } from "./capitals.mjs";
+
 const INSTRUMENTS = [
     { symbol: "^GSPC", name: "S&P 500", group: "index" },
     { symbol: "^DJI", name: "Dow Jones", group: "index" },
@@ -190,18 +192,17 @@ async function fetchIndex({ symbol, name, group, order }, span) {
         name,
         price,
         currency: meta.currency ?? "",
-        // How much changed hands today.
-        //
-        // NOT a market cap, and it is here because a market cap can't
-        // be had: this endpoint's `meta` has no such field, and both of
-        // Yahoo's that do (v7/quote and v10/quoteSummary) answer 401
-        // without a session. Volume is the size number this feed
-        // genuinely carries, so it is the one shown — under its own
-        // name, not under a borrowed one.
+        // How much changed hands today. Nothing on the board reads it
+        // any more — it is kept because it costs nothing, arrives in
+        // the same response, and is the obvious next thing to want.
         volume: meta.regularMarketVolume ?? null,
-        // Filled in afterwards for stocks, from Nasdaq. Null everywhere
-        // else, because nothing else here has one.
+        // Filled in afterwards, from somewhere that isn't Yahoo:
+        // Nasdaq for a company, stockanalysis or companiesmarketcap
+        // for an index or a metal. Null for the rows that genuinely
+        // have no such number — a barrel of oil, a bushel of wheat.
         marketCap: null,
+        /** What the cap is a total OF, where that needs saying. */
+        capOf: null,
         // The year's range, which is the other thing a single price
         // tells you nothing about.
         yearLow: meta.fiftyTwoWeekLow ?? null,
@@ -258,6 +259,22 @@ export async function indexQuotes(span = "1mo") {
     const ranked = stocks.filter((q) => q.marketCap).sort((a, b) => b.marketCap - a.marketCap);
     ranked.forEach((quote, n) => { quote.order = n; });
     stocks.filter((q) => !q.marketCap).forEach((quote, n) => { quote.order = ranked.length + n; });
+
+    // And the totals for the rows that aren't companies. An index and a
+    // metal both HAVE a capitalisation — the sum of the constituents,
+    // the worth of every ounce ever dug up — it just isn't a number any
+    // quote API carries, because it isn't a property of the instrument
+    // being quoted. See capitals.mjs for where each one comes from.
+    //
+    // Two page fetches, cached for an hour, and a failure at either end
+    // leaves the affected rows exactly as they were before this
+    // existed: no cap, no line.
+    const totals = await settle(totalCapitals()) ?? {};
+    for (const quote of found) {
+        if (quote.group === "stock") continue;
+        quote.marketCap = totals[quote.symbol] ?? null;
+        quote.capOf = quote.marketCap ? capitalOf(quote.symbol) : null;
+    }
 
     return found;
 }
