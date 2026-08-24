@@ -146,6 +146,19 @@ async function fetchIndex({ symbol, name, group, order }, span) {
         name,
         price,
         currency: meta.currency ?? "",
+        // How much changed hands today.
+        //
+        // NOT a market cap, and it is here because a market cap can't
+        // be had: this endpoint's `meta` has no such field, and both of
+        // Yahoo's that do (v7/quote and v10/quoteSummary) answer 401
+        // without a session. Volume is the size number this feed
+        // genuinely carries, so it is the one shown — under its own
+        // name, not under a borrowed one.
+        volume: meta.regularMarketVolume ?? null,
+        // The year's range, which is the other thing a single price
+        // tells you nothing about.
+        yearLow: meta.fiftyTwoWeekLow ?? null,
+        yearHigh: meta.fiftyTwoWeekHigh ?? null,
         change: price - previous,
         changePercent: previous ? ((price - previous) / previous) * 100 : 0,
         // Named for what it is now that the span is a choice: the

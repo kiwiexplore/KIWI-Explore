@@ -113,6 +113,34 @@ export async function fetchPairs(pairs: RatePair[]): Promise<PairRates> {
     };
 }
 
+export interface GlobalCrypto {
+    /** The whole crypto market in USD, as CoinGecko publishes it. */
+    marketCap: number;
+    volume24h: number;
+}
+
+/**
+ * The market as a whole, rather than the coins on screen.
+ *
+ * Summing the top fifteen would give the top fifteen and call it the
+ * market. This is the published figure, and a failure returns zero
+ * rather than taking the panel with it — a missing total is a heading
+ * without a number, not a broken column.
+ */
+export async function fetchGlobalCrypto(): Promise<GlobalCrypto> {
+    try {
+        const res = await fetch("https://api.coingecko.com/api/v3/global");
+        if (!res.ok) return { marketCap: 0, volume24h: 0 };
+        const data = await res.json() as { data?: { total_market_cap?: Record<string, number>; total_volume?: Record<string, number> } };
+        return {
+            marketCap: data.data?.total_market_cap?.usd ?? 0,
+            volume24h: data.data?.total_volume?.usd ?? 0,
+        };
+    } catch {
+        return { marketCap: 0, volume24h: 0 };
+    }
+}
+
 /** ECB reference rates, published once a working day. */
 export async function fetchRates(
     // Against the dollar, per explicit request: it's what most of the

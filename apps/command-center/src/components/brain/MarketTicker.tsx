@@ -86,6 +86,35 @@ interface Quote {
     change: number | null;
     /** The series behind the number, for the line. */
     series: number[];
+    /**
+     * The line pinned under the row.
+     *
+     * What it says depends on WHAT THE THING IS, because market cap
+     * only exists for some of them. A coin has one. An index does not —
+     * it isn't a company, it's an average — and neither does a barrel
+     * of oil. Printing "market cap" over a number that isn't one would
+     * be worse than leaving the row alone, so each kind says the thing
+     * it actually has.
+     */
+    sub?: string;
+}
+
+/** 46.9M, 1.2B — a share count, without the currency a cap carries. */
+function units(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) return "—";
+    if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+    return `${Math.round(value)}`;
+}
+
+/** 1.55T, 812B, 4.2M — a market cap is unreadable in full. */
+function compact(value: number): string {
+    if (!Number.isFinite(value) || value <= 0) return "—";
+    if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+    return `$${Math.round(value).toLocaleString()}`;
 }
 
 /**
@@ -204,6 +233,30 @@ export default function MarketTicker() {
             change: item.changePercent,
             series: item.month,
             href: quoteHref("symbol", item.symbol),
+            // No market cap exists for an index or a barrel of oil, so
+            // the line under them carries what does: how far it moved.
+            //
+            // An index moves in POINTS, not in money. Yahoo reports a
+            // currency for one because that's what its constituents are
+            // priced in, and printing "+153.58 EUR" under the DAX made
+            // the row look like it had gained a hundred and fifty euros
+            // of something. Points is what the number is; it is also
+            // why the whole column now reads the same way instead of
+            // three currencies deep.
+            //
+            // Commodities and stocks are priced in real money, and on
+            // this board that money is the dollar — USX is Yahoo's code
+            // for US cents, which is a dollar with the decimal moved.
+            sub: [
+                group === "index"
+                    ? `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} pts`
+                    : `${item.change >= 0 ? "+" : "−"}${Math.abs(item.change).toFixed(2)} `
+                        + `${item.currency === "USX" ? "US¢" : item.currency || "USD"}`,
+                item.volume ? `vol ${units(item.volume)}` : null,
+                item.yearLow && item.yearHigh
+                    ? `year ${formatPrice(item.yearLow)}–${formatPrice(item.yearHigh)}`
+                    : null,
+            ].filter(Boolean).join(" · "),
         }));
 
     const indices = quoteFrom("index");
@@ -217,6 +270,8 @@ export default function MarketTicker() {
         change: coin.change24h,
         series: coin.week,
         href: quoteHref("coin", coin.id),
+        // The one kind that genuinely has a market cap.
+        sub: `${coin.name} · cap ${compact(coin.marketCap)}`,
     }));
 
     // `data?.rates.rates`, as this was, only guards `data` — the chain
@@ -235,6 +290,11 @@ export default function MarketTicker() {
             series: [],
             href: quoteHref("fx", `${p.base}${p.quote}`),
         }));
+
+    // The whole crypto market, which CoinGecko publishes as one figure.
+    // Summed from the coins on screen it would be the top fifteen and
+    // not the market, so it comes from /global instead.
+    const coinMarketCap = data?.global?.marketCap ?? 0;
 
     const all = [...indices, ...commodities, ...stocks, ...coins, ...rates];
 
@@ -348,7 +408,10 @@ export default function MarketTicker() {
                             quotes={commodities.slice(0, PER_GROUP)}
                         />
                         <MarketGroup
-                            title="Crypto · 24h · 7d line"
+                            // The one board where a total market cap is
+                            // a real, published number rather than a
+                            // sum nobody agrees on.
+                            title={`Crypto · 24h · market ${compact(coinMarketCap)}`}
                             quotes={coins.slice(0, PER_GROUP)}
                         />
                         <MarketHeatmap
@@ -475,6 +538,10 @@ function MarketGroup({ title, quotes, note }: { title: string; quotes: Quote[]; 
                                 : `${quote.change >= 0 ? "▲" : "▼"} ${Math.abs(quote.change).toFixed(2)}%`}
                         </span>
                         </a>
+                        {/* Pinned under the row rather than squeezed
+                            into it: the row is what you scan and this is
+                            what you read once you have stopped. */}
+                        {quote.sub && <span className="market-row-sub">{quote.sub}</span>}
                     </li>
                 ))}
             </ul>

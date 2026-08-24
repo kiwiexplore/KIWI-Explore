@@ -4,7 +4,7 @@ import { fetchSpaceNews } from "../../../lib/spaceNews";
 import { fetchUpcomingLaunches } from "../../../lib/spaceMissions";
 import { fetchTodaysSchedule } from "../../../lib/tvmaze";
 import { fetchTopSongs } from "../../../lib/itunes";
-import { fetchCoins, fetchPairs, type RatePair } from "../../../lib/markets";
+import { fetchCoins, fetchGlobalCrypto, fetchPairs, type RatePair } from "../../../lib/markets";
 import { fetchIndices, type MarketSpan } from "../../../lib/indices";
 import { fetchWorldNews } from "../../../lib/worldNews";
 import { fetchLiberecNews } from "../../../lib/liberecNews";
@@ -63,8 +63,10 @@ export async function entertainmentData() {
  */
 export function marketsFor(pairs: RatePair[]) {
     return async () => {
-        const [coins, rates] = await Promise.all([fetchCoins(15), fetchPairs(pairs)]);
-        return { coins, rates };
+        const [coins, rates, global] = await Promise.all([
+            fetchCoins(15), fetchPairs(pairs), fetchGlobalCrypto(),
+        ]);
+        return { coins, rates, global };
     };
 }
 

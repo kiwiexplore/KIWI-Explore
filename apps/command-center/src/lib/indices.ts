@@ -20,6 +20,19 @@ export interface IndexQuote {
     currency: string;
     change: number;
     changePercent: number;
+    /**
+     * How much changed hands today, where the feed knows.
+     *
+     * Deliberately not called a market cap, because it isn't one and
+     * one isn't available: Yahoo's chart endpoint has no such field and
+     * the two endpoints that do refuse without a session. A coin has a
+     * real cap because CoinGecko gives it away; an index has none at
+     * all, being an average rather than a company.
+     */
+    volume: number | null;
+    /** The year's range — what a single price can't tell you. */
+    yearLow: number | null;
+    yearHigh: number | null;
     /** The series for whichever span was asked for, oldest first. */
     month: number[];
 }

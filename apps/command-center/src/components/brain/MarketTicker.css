@@ -708,7 +708,43 @@
    exactly four places on screen and the act is always a swap, so the
    control is one too. */
 
-.market-rows li { display: flex; align-items: center; gap: 6px; }
+/* A row and the line pinned under it are one block, so the next row
+   sits below both. The sub-line is deliberately NOT styled like a row:
+   it is quieter, indented, and hangs off a hairline that runs down from
+   the row it belongs to — so a column reads as ten things with notes,
+   not twenty things. */
+
+.market-rows li {
+
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0 6px;
+
+}
+
+.market-rows li + li { margin-top: 5px; }
+
+.market-row-sub {
+
+    grid-column: 1 / -1;
+
+    margin: 2px 0 0 10px;
+    padding: 3px 0 1px 9px;
+    border-left: 1px solid var(--border);
+
+    font-size: 10px;
+    letter-spacing: .2px;
+    color: var(--text-muted);
+    opacity: .8;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+}
+
+.market-rows li:hover .market-row-sub { border-left-color: var(--primary); opacity: 1; }
 
 .market-rate-pick {
 
